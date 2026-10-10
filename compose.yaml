@@ -1,0 +1,40 @@
+# octo·modern — default deployment.
+#
+#   docker compose up -d
+#   open http://<this-host>:3040 and create the admin account
+#
+services:
+  octo-modern:
+    image: ghcr.io/vitafortis/octo-modern:latest
+    container_name: octo-modern
+    restart: unless-stopped
+    ports:
+      - "3040:3000"
+    environment:
+      # Time zone for ETAs and logs.
+      TZ: Etc/UTC
+      # Optional: create the first admin here instead of in the setup wizard.
+      # OCM_ADMIN_EMAIL: you@example.com
+      # OCM_ADMIN_PASSWORD: ${OCM_ADMIN_PASSWORD}
+      # Optional: manage the API-key encryption key yourself.
+      # Otherwise a random key is generated at /data/secret.key — back it up.
+      # OCM_SECRET_KEY: change-me-to-a-long-random-string
+      # Single sign-on can be set up in the UI (Integrations); these are optional:
+      # OCM_OIDC_ISSUER: https://auth.example.com/application/o/octo-modern/
+      # OCM_OIDC_CLIENT_ID: octo-modern
+      # OCM_OIDC_CLIENT_SECRET: ${OCM_OIDC_CLIENT_SECRET}
+      # OCM_OIDC_NAME: Authentik
+      # OCM_OIDC_AUTO_CREATE: "*@example.com"
+      # OCM_OIDC_ADMIN_EMAILS: you@example.com
+      # OCM_OIDC_DEFAULT_ROLE: viewer
+      # Behind a TLS reverse proxy, uncomment so secure cookies and SSO callbacks work:
+      # PROTOCOL_HEADER: x-forwarded-proto
+      # HOST_HEADER: x-forwarded-host
+    volumes:
+      - octo-modern-data:/data
+    extra_hosts:
+      # Lets octo·modern reach an OctoPrint published on the Docker host itself.
+      - host.docker.internal:host-gateway
+
+volumes:
+  octo-modern-data:
