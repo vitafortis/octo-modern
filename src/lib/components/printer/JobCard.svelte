@@ -90,7 +90,7 @@
 				<button class="btn btn-ghost btn-sm" disabled={busy} onclick={() => run('restart')}><RotateCcw />Restart</button>
 			{/if}
 			{#if active && s.state !== 'cancelling'}
-				<button class="btn btn-ghost btn-sm ml-auto text-danger hover:bg-danger/10 hover:text-danger" disabled={busy} onclick={() => run('cancel')}><CircleStop />Cancel</button>
+				<button class="btn btn-secondary btn-sm ml-auto border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" disabled={busy} onclick={() => run('cancel')}><CircleStop />Cancel print</button>
 			{/if}
 			{#if !active && !(s.state === 'operational' && file)}
 				<span class="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Layers class="size-3.5" />{s.state === 'operational' ? 'Ready for a job.' : 'Connect the printer to print.'}</span>

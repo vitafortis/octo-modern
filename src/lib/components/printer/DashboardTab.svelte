@@ -2,7 +2,7 @@
 	import { Box, CircleAlert, Gauge, Radio } from '@lucide/svelte';
 	import JobCard from './JobCard.svelte';
 	import TemperatureCard from './TemperatureCard.svelte';
-	import WebcamThumb from './WebcamThumb.svelte';
+	import WebcamView from './WebcamView.svelte';
 	import { ago } from '#lib/client/format.ts';
 	import type { TabProps } from './tabs.ts';
 
@@ -18,11 +18,11 @@
 				<div><p class="font-medium">The printer reported an error</p><p class="mt-0.5 font-mono text-xs text-muted-foreground">{s.printerError}</p></div>
 			</div>
 		{/if}
+		<WebcamView printerId={printer.id} compact class="w-full" height="min(24rem, 40vh)" />
 		<TemperatureCard {live} {canControl} />
 	</div>
 	<div class="space-y-4">
 		<JobCard {live} {canControl} />
-		<WebcamThumb printerId={printer.id} class="aspect-video w-full rounded-xl border border-border" everyMs={5_000} />
 		<section class="card p-4 text-[13px]">
 			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Gauge class="size-4 text-primary" />Server</h2>
 			<dl class="mt-3 space-y-2">

@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { startMjpegSource } from '../mjpeg-source.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const SHOTS = join(ROOT, 'docs/screenshots');
@@ -19,6 +20,8 @@ const APP_PORT = Number(process.env.E2E_APP_PORT ?? 3041);
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const OP_BASE = Number(process.env.E2E_OP_PORT_BASE ?? 5111);
 const OP_PREFIX = 'octo-modern-e2e-op';
+const CAM_PORT = Number(process.env.E2E_CAM_PORT ?? 5191);
+const CAM = `http://127.0.0.1:${CAM_PORT}`;
 const OP = [1, 2].map((i) => ({ url: `http://127.0.0.1:${OP_BASE + i - 1}`, key: `ocm-dev-key-${i}` }));
 const ADMIN = { email: 'admin@example.com', name: 'Ada Admin', password: 'e2e-admin-password' };
 const OPERATOR = { email: 'operator@example.com', name: 'Otto Operator', password: 'e2e-operator-password' };
@@ -31,6 +34,7 @@ const devOctoprint = (...args) => execFileSync(join(ROOT, 'scripts/dev-octoprint
 
 let app;
 let browser;
+let cam;
 const dataDir = mkdtempSync(join(tmpdir(), 'ocm-e2e-'));
 
 async function waitFor(fn, label, { tries = 60, every = 500 } = {}) {
@@ -129,6 +133,48 @@ async function uploadToOctoPrint(op, name, content, { select = false } = {}) {
 	assert.equal(res.status, 201, `upload to OctoPrint: ${await res.text()}`);
 }
 
+/** Uploads through octo·modern (multipart, streamed to OctoPrint), as the browser does. */
+async function uploadViaApp(c, printerId, name, content, query = {}) {
+	const fd = new FormData();
+	fd.set('file', new Blob([content]), name);
+	const q = new URLSearchParams({ name, ...query });
+	const res = await fetch(`${APP}/api/printers/${printerId}/files/upload?${q}`, { method: 'POST', headers: { cookie: c.cookie, origin: APP }, body: fd });
+	return { status: res.status, data: await res.json().catch(() => null) };
+}
+
+/** Streams a large multipart upload from a generator (known length, never in memory), sampling the app's memory meanwhile. */
+async function bigUpload(c, printerId, name, megabytes) {
+	const boundary = `----ocm${Date.now()}`;
+	const head = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+	const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+	const chunk = Buffer.from('; padding line for a large upload test '.padEnd(1023, 'x') + '\n');
+	const chunks = megabytes * 1024;
+	let i = -1;
+	const body = new ReadableStream({
+		pull(ctrl) {
+			if (i === -1) ctrl.enqueue(head);
+			else if (i < chunks) ctrl.enqueue(i === 0 ? Buffer.from('G28\nG1 X10 Y10\n'.padEnd(1024, ';') ) : chunk);
+			else {
+				ctrl.enqueue(tail);
+				ctrl.close();
+			}
+			i++;
+		}
+	});
+	const rss = () => Number(execFileSync('ps', ['-o', 'rss=', '-p', String(app.pid)]).toString().trim()) * 1024;
+	const before = rss();
+	let peak = before;
+	const sampler = setInterval(() => (peak = Math.max(peak, rss())), 200);
+	const res = await fetch(`${APP}/api/printers/${printerId}/files/upload?name=${name}`, {
+		method: 'POST',
+		headers: { cookie: c.cookie, origin: APP, 'content-type': `multipart/form-data; boundary=${boundary}`, 'content-length': String(head.length + chunks * 1024 + tail.length) },
+		body,
+		duplex: 'half'
+	});
+	clearInterval(sampler);
+	return { status: res.status, data: await res.json().catch(() => null), growth: peak - before };
+}
+
 async function opState(op) {
 	const r = await fetch(`${op.url}/api/job`, { headers: { 'X-Api-Key': op.key } });
 	return (await r.json()).state;
@@ -145,6 +191,9 @@ async function main() {
 		body: JSON.stringify({ command: 'connect', port: 'VIRTUAL', baudrate: 0 })
 	});
 
+	cam = await startMjpegSource({ port: CAM_PORT, host: '127.0.0.1' });
+	log(`MJPEG test camera on ${CAM}`);
+
 	if (!process.env.E2E_SKIP_BUILD) {
 		log('building');
 		execFileSync('pnpm', ['build'], { cwd: ROOT, stdio: 'ignore' });
@@ -153,7 +202,7 @@ async function main() {
 	app = spawn('node', ['build'], {
 		cwd: ROOT,
 		stdio: ['ignore', 'pipe', 'pipe'],
-		env: { ...process.env, PORT: String(APP_PORT), HOST: '127.0.0.1', OCM_DATA_DIR: dataDir, OCM_POLL_INTERVAL_MS: '3000', NODE_OPTIONS: '--disable-warning=ExperimentalWarning' }
+		env: { ...process.env, PORT: String(APP_PORT), HOST: '127.0.0.1', OCM_DATA_DIR: dataDir, OCM_POLL_INTERVAL_MS: '3000', BODY_SIZE_LIMIT: '4G', NODE_OPTIONS: '--disable-warning=ExperimentalWarning' }
 	});
 	let appLog = '';
 	app.stdout.on('data', (d) => (appLog += d));
@@ -180,7 +229,7 @@ async function main() {
 	assert.equal(refused.error.code, 'ECONNREFUSED');
 
 	log('adding the first server');
-	const p1 = (await admin.post('/api/printers', { name: 'Prusa MK4', baseUrl: OP[0].url, apiKey: OP[0].key, color: 'violet' })).data;
+	const p1 = (await admin.post('/api/printers', { name: 'Prusa MK4', baseUrl: OP[0].url, apiKey: OP[0].key, color: 'violet', webcamUrl: `${CAM}/?action=stream` })).data;
 	assert.ok(p1.id && p1.hasApiKey && !JSON.stringify(p1).includes(OP[0].key), 'the key is never sent back');
 	const root = await admin.get('/', { raw: true });
 	assert.equal(root.status, 307, 'one printer: / goes straight to it');
@@ -225,11 +274,21 @@ async function main() {
 	assert.equal((await viewer.get(`/api/printers/${p1.id}`)).data.access.control, false);
 	assert.ok(!JSON.stringify((await viewer.get(`/api/printers/${p1.id}`)).data).includes(OP[0].key));
 
-	// --- a print: upload via OctoPrint, start/pause/resume/cancel via octo·modern -----------
-	log('uploading G-code to OctoPrint and printing it from octo·modern');
-	await uploadToOctoPrint(OP[0], 'e2e-ring.gcode', slowGcode(), { select: true });
-	await waitFor(async () => (await admin.get('/api/printers/status')).data.find((s) => s.id === p1.id)?.job?.file?.name === 'e2e-ring.gcode', 'the selected file to show up');
-	assert.equal((await operator.post(`/api/printers/${p1.id}/job`, { command: 'start' })).status, 200);
+	// --- files and a print: upload, start, pause, resume, cancel -----------------------
+	log('files: a slicer upload to OctoPrint shows up in the listing');
+	await uploadToOctoPrint(OP[0], 'from-slicer.gcode', slowGcode());
+	const listed = await waitFor(async () => {
+		const l = (await viewer.get(`/api/printers/${p1.id}/files`)).data;
+		return l.files.find((f) => f.name === 'from-slicer.gcode' && f.estimatedPrintTime > 0) && l;
+	}, 'the analysed file in the listing');
+	assert.ok(listed.free > 0);
+	assert.equal((await uploadViaApp(viewer, p1.id, 'nope.gcode', 'G28\n')).status, 403, 'viewers can’t upload');
+	assert.equal((await viewer.del(`/api/printers/${p1.id}/files?origin=local&path=from-slicer.gcode&confirm=1`)).status, 403, 'viewers can’t delete');
+
+	log('upload & print through octo·modern, then pause, resume and cancel');
+	const up = await uploadViaApp(operator, p1.id, 'e2e-ring.gcode', slowGcode(), { print: '1' });
+	assert.equal(up.status, 201, `${up.status} ${JSON.stringify(up.data)}`);
+	assert.equal(up.data.printing, true, 'upload & print starts the job');
 	await waitFor(async () => (await opState(OP[0])).startsWith('Printing'), 'printing');
 	const gcodeWhilePrinting = await operator.post(`/api/printers/${p1.id}/command`, { commands: ['M105'] });
 	assert.equal(gcodeWhilePrinting.status, 409, 'G-code while printing needs confirming');
@@ -239,14 +298,39 @@ async function main() {
 	await waitFor(async () => (await opState(OP[0])) === 'Paused', 'paused');
 	assert.equal((await operator.post(`/api/printers/${p1.id}/job`, { command: 'resume' })).status, 200);
 	await waitFor(async () => (await opState(OP[0])).startsWith('Printing'), 'printing again');
+	const busyDelete = await operator.del(`/api/printers/${p1.id}/files?origin=local&path=e2e-ring.gcode&confirm=1`);
+	assert.equal(busyDelete.status, 409, 'a file being printed can’t be deleted');
 	const cancelNoConfirm = await operator.post(`/api/printers/${p1.id}/job`, { command: 'cancel' });
 	assert.equal(cancelNoConfirm.status, 409, 'cancel needs confirming');
 	assert.equal((await operator.post(`/api/printers/${p1.id}/job`, { command: 'cancel', confirm: true })).status, 200);
 	await waitFor(async () => (await opState(OP[0])) === 'Operational', 'cancelled');
 
+	log('select & print an existing file, folders, and delete with confirmation');
+	assert.equal((await operator.post(`/api/printers/${p1.id}/files/select`, { origin: 'local', path: 'from-slicer.gcode', print: true })).status, 200);
+	await waitFor(async () => (await opState(OP[0])).startsWith('Printing'), 'printing the selected file');
+	assert.equal((await operator.post(`/api/printers/${p1.id}/job`, { command: 'cancel', confirm: true })).status, 200);
+	await waitFor(async () => (await opState(OP[0])) === 'Operational', 'cancelled again');
+	assert.equal((await operator.post(`/api/printers/${p1.id}/files/folder`, { name: 'Calibration', parent: '' })).status, 201);
+	assert.equal((await uploadViaApp(operator, p1.id, 'cube.gcode', 'G28\nG1 X10\n', { path: 'Calibration' })).status, 201);
+	const nested = (await operator.get(`/api/printers/${p1.id}/files`)).data.files.find((f) => f.name === 'Calibration');
+	assert.deepEqual(nested.children.map((c) => c.path), ['Calibration/cube.gcode']);
+	const noConfirm = await operator.del(`/api/printers/${p1.id}/files?origin=local&path=from-slicer.gcode`);
+	assert.equal(noConfirm.status, 409, 'deleting needs confirming');
+	assert.equal((await operator.del(`/api/printers/${p1.id}/files?origin=local&path=from-slicer.gcode&confirm=1`)).status, 200);
+	assert.ok(!(await operator.get(`/api/printers/${p1.id}/files`)).data.files.some((f) => f.name === 'from-slicer.gcode'));
+
+	log('a 200 MB upload streams through without buffering');
+	const big = await bigUpload(operator, p1.id, 'big-upload.gcode', 200);
+	assert.equal(big.status, 201, JSON.stringify(big.data));
+	log(`  app memory grew by ${(big.growth / 1048576).toFixed(1)} MB during the upload`);
+	assert.ok(big.growth < 64 * 1048576, `memory grew ${big.growth} bytes`);
+	const bigFile = (await operator.get(`/api/printers/${p1.id}/files`)).data.files.find((f) => f.name === 'big-upload.gcode');
+	assert.ok(bigFile.size > 200 * 1048576 * 0.99, 'OctoPrint got the whole file');
+	assert.equal((await operator.del(`/api/printers/${p1.id}/files?origin=local&path=big-upload.gcode&confirm=1`)).status, 200);
+
 	log('audit log records each action with its user');
 	const audit = (await admin.get('/api/audit?limit=200')).data;
-	for (const action of ['printer.create', 'printer.connect', 'temperature.set', 'job.start', 'job.pause', 'job.resume', 'job.cancel', 'gcode.send', 'user.create']) {
+	for (const action of ['printer.create', 'printer.connect', 'temperature.set', 'job.start', 'job.pause', 'job.resume', 'job.cancel', 'gcode.send', 'user.create', 'file.upload', 'file.delete', 'file.folder']) {
 		assert.ok(audit.some((e) => e.action === action), action);
 	}
 	assert.equal(audit.find((e) => e.action === 'job.cancel').userEmail, OPERATOR.email);
@@ -264,17 +348,43 @@ async function main() {
 	assert.equal((await fetch(`${APP}/api/status`)).status, 401);
 	assert.equal((await fetch(`${APP}/api/printers`, { headers: { authorization: `Bearer ${token}` } })).status, 401, 'tokens open nothing else');
 
+	// --- webcams: the override on one server, OctoPrint's own settings on the other ---------
+	log('webcams: proxied stream and snapshots, and cleanup when the viewer leaves');
+	await fetch(`${OP[1].url}/api/settings`, {
+		method: 'POST',
+		headers: { 'X-Api-Key': OP[1].key, 'content-type': 'application/json' },
+		body: JSON.stringify({ plugins: { classicwebcam: { stream: `${CAM}/?action=stream`, snapshot: `${CAM}/?action=snapshot`, flipH: true } } })
+	});
+	const cams1 = (await viewer.get(`/api/printers/${p1.id}/webcam`)).data.cameras;
+	assert.deepEqual(cams1.map((c) => [c.id, c.stream, c.proxied, c.source]), [['override', 'mjpeg', true, 'override']]);
+	assert.ok(!JSON.stringify(cams1).includes(String(CAM_PORT)), 'camera URLs stay server-side');
+	const cams2 = (await admin.get(`/api/printers/${p2.id}/webcam`)).data.cameras;
+	assert.equal(cams2[0].source, 'octoprint');
+	assert.equal(cams2[0].flipH, true, 'OctoPrint’s flip setting comes along');
+	const snap = await fetch(`${APP}/api/printers/${p2.id}/webcam/snapshot`, { headers: { cookie: viewer.cookie } });
+	assert.equal(snap.headers.get('content-type'), 'image/jpeg');
+	assert.ok((await snap.arrayBuffer()).byteLength > 1000);
+	const ctrl = new AbortController();
+	const stream = await fetch(`${APP}/api/printers/${p1.id}/webcam/stream`, { headers: { cookie: viewer.cookie }, signal: ctrl.signal });
+	assert.match(stream.headers.get('content-type'), /multipart\/x-mixed-replace/);
+	let got = Buffer.alloc(0);
+	for await (const chunk of stream.body) {
+		got = Buffer.concat([got, chunk]);
+		// Two JPEG frames (FF D8 start-of-image markers) are enough.
+		if (got.indexOf(Buffer.from([0xff, 0xd8]), got.indexOf(Buffer.from([0xff, 0xd8])) + 2) !== -1) break;
+	}
+	assert.equal(cam.stats.active, 1, 'one upstream stream while watching');
+	ctrl.abort();
+	await waitFor(() => cam.stats.active === 0, 'the camera stream to close after the viewer left', { tries: 20 });
+
 	// --- browser: screenshots and the cancel confirmation -----------------------------------
 	log('browser: screenshots and UI flows');
-	// A print and some heat on both, so the screenshots have something to show.
+	// Heat and a print on the second printer, and a file to print from the UI on the first.
 	await admin.post(`/api/printers/${p1.id}/temperature`, { targets: { tool0: 215, bed: 60 } });
 	await admin.post(`/api/printers/${p2.id}/temperature`, { targets: { tool0: 240, bed: 85 } });
-	await uploadToOctoPrint(OP[1], 'voron-cube.gcode', slowGcode(), { select: true });
+	await uploadViaApp(admin, p2.id, 'voron-cube.gcode', slowGcode(), { print: '1' });
+	await uploadToOctoPrint(OP[0], 'benchy.gcode', slowGcode());
 	await sleep(1500);
-	await admin.post(`/api/printers/${p2.id}/job`, { command: 'start' });
-	await uploadToOctoPrint(OP[0], 'benchy.gcode', slowGcode(), { select: true });
-	await sleep(1500);
-	await admin.post(`/api/printers/${p1.id}/job`, { command: 'start' });
 
 	browser = await chromium.launch();
 	const shot = async (page, name) => {
@@ -312,19 +422,42 @@ async function main() {
 	await sleep(4000);
 	await shot(dark, 'overview');
 
+	// Files tab: upload through the file picker, delete with confirmation, print from the list.
+	await dark.goto(`${APP}/p/${p1.id}?tab=files`);
+	await dark.waitForSelector('tr[data-file="benchy.gcode"]');
+	await dark.setInputFiles('[data-testid=file-input]', { name: 'ui-upload.gcode', mimeType: 'text/x-gcode', buffer: Buffer.from('G28\nG1 X5 Y5\n') });
+	await dark.waitForSelector('tr[data-file="ui-upload.gcode"]');
+	await dark.click('button[aria-label="Delete ui-upload.gcode"]');
+	await dark.waitForSelector('dialog[open] >> text=Delete ui-upload.gcode?');
+	await dark.click('dialog[open] button:has-text("Delete")');
+	await dark.waitForSelector('tr[data-file="ui-upload.gcode"]', { state: 'detached' });
+	await sleep(800);
+	await shot(dark, 'files');
+	await dark.click('tr[data-file="benchy.gcode"] button:has-text("Print")');
+	await waitFor(async () => (await opState(OP[0])).startsWith('Printing'), 'printing from the Files tab');
+
 	await dark.goto(`${APP}/p/${p1.id}`);
 	await dark.waitForSelector('text=live push');
+	await dark.waitForSelector('img[alt="Webcam live"]');
 	await sleep(6000);
 	await shot(dark, 'printer');
+	assert.ok(cam.stats.active >= 1, 'the dashboard shows the live stream');
 
-	// Cancel through the UI: the confirmation dialog must appear first.
-	await dark.click('button:has-text("Cancel")');
+	await dark.goto(`${APP}/p/${p1.id}?tab=webcam`);
+	await dark.waitForSelector('img[alt="Webcam live"]');
+	await sleep(1500);
+	await shot(dark, 'webcam');
+
+	// Cancel through the header button: the confirmation dialog must appear first.
+	await dark.click('header button:has-text("Cancel print")');
 	await dark.waitForSelector('dialog[open] >> text=Cancel this print?');
 	await shot(dark, 'confirm-cancel');
 	await dark.click('dialog[open] button:has-text("Cancel print")');
 	await waitFor(async () => (await opState(OP[0])) === 'Operational', 'cancelled from the UI');
 	const uiAudit = (await admin.get('/api/audit?action=job.cancel')).data;
 	assert.equal(uiAudit[0].userEmail, ADMIN.email, 'the UI cancel is audited as the admin');
+	await dark.goto(`${APP}/p/${p1.id}`);
+	await dark.waitForSelector('text=live push');
 
 	// Set a temperature through the UI's preset button.
 	await dark.click('button:has-text("PETG")');
@@ -332,6 +465,7 @@ async function main() {
 
 	await dark.goto(`${APP}/settings`);
 	await dark.waitForSelector('text=Backup');
+	await waitFor(() => cam.stats.active === 0, 'browser camera streams to close after leaving the page', { tries: 20 });
 	await sleep(500);
 	await shot(dark, 'settings');
 	await dark.goto(`${APP}/users`);
@@ -373,6 +507,7 @@ async function main() {
 
 async function cleanup() {
 	await browser?.close().catch(() => {});
+	await cam?.close().catch(() => {});
 	if (process.env.E2E_KEEP) {
 		log(`E2E_KEEP: app still running on ${APP} (pid ${app?.pid}), data in ${dataDir}`);
 		return;

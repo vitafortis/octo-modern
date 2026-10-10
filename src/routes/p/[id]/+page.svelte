@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { OctagonX, Settings2, WifiOff } from '@lucide/svelte';
+	import { CirclePause, CirclePlay, CircleStop, OctagonX, Settings2, WifiOff } from '@lucide/svelte';
 	import StateBadge from '#lib/components/printer/StateBadge.svelte';
 	import ConnectionControls from '#lib/components/printer/ConnectionControls.svelte';
 	import { TABS } from '#lib/components/printer/tabs.ts';
 	import { LivePrinter } from '#lib/client/live.svelte.ts';
-	import { emergencyStop } from '#lib/client/actions.ts';
+	import { emergencyStop, jobCommand } from '#lib/client/actions.ts';
 	import { COLORS } from '#lib/client/format.ts';
 	import { registerPrinter } from '#lib/client/palette.svelte.ts';
 	import { editor, isAdmin, printers } from '#lib/client/state.svelte.ts';
-	import { isConnected, progressPercent } from '#lib/printer.ts';
+	import { isConnected, jobActive, progressPercent } from '#lib/printer.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -58,7 +58,16 @@
 				{#if !live.connected}
 					<span class="badge badge-warning" title="The live connection to octo·modern dropped; reconnecting"><WifiOff />reconnecting</span>
 				{/if}
-				<ConnectionControls {live} {canControl} />
+				{#if canControl && jobActive(s.state)}
+					{#if s.state === 'paused'}
+						<button class="btn btn-secondary btn-sm" onclick={() => jobCommand(printer.id, 'resume')}><CirclePlay />Resume</button>
+					{:else}
+						<button class="btn btn-secondary btn-sm" disabled={s.state !== 'printing'} onclick={() => jobCommand(printer.id, 'pause')}><CirclePause />Pause</button>
+					{/if}
+					<button class="btn btn-secondary btn-sm border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />Cancel print</button>
+				{:else}
+					<ConnectionControls {live} {canControl} />
+				{/if}
 				{#if canControl && isConnected(s.state)}
 					<button class="btn btn-danger btn-sm" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>
 				{/if}

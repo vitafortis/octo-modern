@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { CircleAlert, Clock, FileBox, Settings2, Unplug } from '@lucide/svelte';
+	import { CircleAlert, CirclePause, CirclePlay, CircleStop, Clock, FileBox, Settings2, Unplug } from '@lucide/svelte';
 	import StateBadge from './StateBadge.svelte';
 	import WebcamThumb from './WebcamThumb.svelte';
 	import { COLORS } from '#lib/client/format.ts';
 	import { editor, isAdmin } from '#lib/client/state.svelte.ts';
+	import { jobCommand } from '#lib/client/actions.ts';
 	import { formatDuration, formatEta, formatTemp, heaterKeys, heaterLabel, jobActive, progressPercent, type LiveSnapshot } from '#lib/printer.ts';
 	import type { Printer } from '#lib/types.ts';
 
@@ -19,7 +20,9 @@
 
 <div class="card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-surface-lg">
 	<div class="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full opacity-[0.12] blur-2xl" style="background:{color}"></div>
-	<a href="/p/{printer.id}" class="relative flex flex-1 flex-col p-4">
+	<a href="/p/{printer.id}" class="relative flex flex-1 flex-col">
+		{#if s && s.state !== 'offline'}<WebcamThumb printerId={printer.id} class="aspect-[16/7] w-full border-b border-border" />{/if}
+		<div class="flex flex-1 flex-col p-4">
 		<div class="flex items-start gap-3">
 			<div class="min-w-0 flex-1">
 				<h3 class="truncate text-[15px] font-semibold tracking-tight">{printer.name}</h3>
@@ -38,19 +41,16 @@
 		{/if}
 
 		{#if active && s}
-			<div class="mt-4 flex gap-3">
-				<WebcamThumb printerId={printer.id} class="aspect-video w-28 shrink-0 rounded-lg" />
-				<div class="min-w-0 flex-1">
+			<div class="mt-4">
+				<div class="min-w-0">
 					<p class="flex items-center gap-1.5 truncate text-[13px] font-medium" title={s.job?.file?.display}><FileBox class="size-3.5 shrink-0 text-muted-foreground" />{s.job?.file?.display ?? 'Unknown file'}</p>
 					<div class="mt-2 flex items-baseline justify-between">
 						<span class="text-2xl font-semibold tracking-tight tabular-nums">{pct != null ? `${pct.toFixed(pct >= 10 ? 0 : 1)}%` : '—'}</span>
-						<span class="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock class="size-3" />{formatDuration(s.progress?.printTimeLeft)} left · {formatEta(s.progress?.printTimeLeft)}</span>
+						{#if s.progress?.printTimeLeft != null}<span class="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock class="size-3" />{formatDuration(s.progress.printTimeLeft)} left · {formatEta(s.progress.printTimeLeft)}</span>{/if}
 					</div>
 					<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full bg-primary transition-[width] duration-700" style="width:{pct ?? 0}%"></div></div>
 				</div>
 			</div>
-		{:else if s && s.state !== 'offline'}
-			<WebcamThumb printerId={printer.id} class="mt-4 aspect-video w-full rounded-lg" everyMs={30_000} />
 		{/if}
 
 		{#if heaters.length}
@@ -64,8 +64,19 @@
 				{/each}
 			</div>
 		{/if}
+		</div>
 	</a>
+	{#if printer.access?.control && s && jobActive(s.state)}
+		<div class="relative flex items-center gap-1.5 border-t border-border bg-surface px-4 py-2">
+			{#if s.state === 'paused'}
+				<button class="btn btn-secondary btn-sm" onclick={() => jobCommand(printer.id, 'resume')}><CirclePlay />Resume</button>
+			{:else}
+				<button class="btn btn-secondary btn-sm" disabled={s.state !== 'printing'} onclick={() => jobCommand(printer.id, 'pause')}><CirclePause />Pause</button>
+			{/if}
+			<button class="btn btn-secondary btn-sm ml-auto border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />Cancel print</button>
+		</div>
+	{/if}
 	{#if isAdmin()}
-		<button class="btn btn-ghost btn-icon btn-sm absolute right-2 bottom-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" title="Edit {printer.name}" onclick={() => (editor.target = printer)}><Settings2 /></button>
+		<button class="btn btn-ghost btn-icon btn-sm absolute top-2 right-2 bg-card/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" title="Edit {printer.name}" onclick={() => (editor.target = printer)}><Settings2 /></button>
 	{/if}
 </div>

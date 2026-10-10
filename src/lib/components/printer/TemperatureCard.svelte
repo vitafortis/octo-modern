@@ -16,7 +16,14 @@
 		{ label: '15 min', ms: 15 * 60_000 },
 		{ label: '30 min', ms: 30 * 60_000 }
 	];
-	let range = $state(RANGES[1].ms);
+	/** Chosen range; until someone picks one, the smallest that shows all the history there is. */
+	let picked = $state<number | null>(null);
+	const range = $derived.by(() => {
+		if (picked) return picked;
+		void live.historyVersion;
+		const span = (live.history.newest()?.t ?? 0) - (live.history.oldest()?.t ?? 0);
+		return (RANGES.find((r) => span <= r.ms) ?? RANGES[2]).ms;
+	});
 	let profiles = $state<Profile[]>([]);
 	let drafts = $state<Record<string, string>>({});
 	let busy = $state<string | null>(null);
@@ -71,7 +78,7 @@
 		</div>
 		<div class="ml-auto inline-flex rounded-lg border border-border bg-surface p-0.5">
 			{#each RANGES as r (r.ms)}
-				<button class="h-6 rounded-md px-2 text-[11px] {range === r.ms ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}" onclick={() => (range = r.ms)}>{r.label}</button>
+				<button class="h-6 rounded-md px-2 text-[11px] {range === r.ms ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}" onclick={() => (picked = r.ms)}>{r.label}</button>
 			{/each}
 		</div>
 	</div>
