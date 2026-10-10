@@ -6,11 +6,11 @@
 import type { Role } from '#lib/types.ts';
 
 /** Pages only admins can open. */
-export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit'];
+export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit', '/discover'];
 
-/** API calls only admins may make: users, settings, integrations, audit, backups, and adding/editing servers. */
+/** API calls only admins may make: users, settings, integrations, audit, backups, discovery, and adding/editing servers. */
 export function adminOnlyApi(method: string, path: string): boolean {
-	if (/^\/api\/(settings|users|integrations|audit|backup)(\/|$)/.test(path)) return true;
+	if (/^\/api\/(settings|users|integrations|audit|backup|discover)(\/|$)/.test(path)) return true;
 	if (path === '/api/printers') return method !== 'GET';
 	if (path === '/api/printers/test') return true;
 	if (/^\/api\/printers\/[^/]+$/.test(path)) return method !== 'GET';
