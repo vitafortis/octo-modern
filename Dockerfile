@@ -6,6 +6,8 @@ FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml .npmrc ./
+# Small fixes to smb3-client (Samba compatibility, ranged reads); see patches/.
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY . .
 # The release version shown in the sidebar (the image workflow passes it; local builds say -dev).

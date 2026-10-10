@@ -6,11 +6,13 @@
 import type { Role } from '#lib/types.ts';
 
 /** Pages only admins can open. */
-export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit', '/discover'];
+export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit', '/discover', '/library/sources'];
 
 /** API calls only admins may make: users, settings, integrations, audit, backups, discovery, and adding/editing servers. */
 export function adminOnlyApi(method: string, path: string): boolean {
 	if (/^\/api\/(settings|users|integrations|audit|backup|discover)(\/|$)/.test(path)) return true;
+	// Library sources: everyone lists them (handlers hide addresses); admins change and test them.
+	if (/^\/api\/library\/sources(\/|$)/.test(path)) return method !== 'GET';
 	if (path === '/api/printers') return method !== 'GET';
 	if (path === '/api/printers/test') return true;
 	if (/^\/api\/printers\/[^/]+$/.test(path)) return method !== 'GET';
@@ -24,6 +26,8 @@ export function adminOnlyApi(method: string, path: string): boolean {
  */
 export function controlApi(method: string, path: string): boolean {
 	if (method === 'GET' || method === 'HEAD') return false;
+	// Sending library files to printers (and cancelling sends).
+	if (/^\/api\/library\/(?!sources(\/|$))/.test(path)) return true;
 	return /^\/api\/printers\/[^/]+\/.+/.test(path) && !path.startsWith('/api/printers/test');
 }
 

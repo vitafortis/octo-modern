@@ -114,6 +114,37 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 				revoked_at TEXT
 			);
 		`)
+	],
+	[
+		'library-001',
+		(h) =>
+			h.exec(`
+			-- Library sources: where G-code lives on the NAS. Credentials are sealed in "secret", bound to the id.
+			CREATE TABLE IF NOT EXISTS library_sources (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				kind TEXT NOT NULL,
+				config TEXT NOT NULL,
+				secret TEXT,
+				writable INTEGER NOT NULL DEFAULT 0,
+				printers TEXT NOT NULL DEFAULT '"all"',
+				sort INTEGER NOT NULL DEFAULT 0,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL
+			);
+			-- Slicer metadata and thumbnails read from library files, valid while size and mtime ("version") match.
+			CREATE TABLE IF NOT EXISTS library_meta (
+				source_id TEXT NOT NULL REFERENCES library_sources(id) ON DELETE CASCADE,
+				path TEXT NOT NULL,
+				version TEXT NOT NULL,
+				meta TEXT NOT NULL,
+				thumb BLOB,
+				thumb_type TEXT,
+				parsed_at INTEGER NOT NULL,
+				PRIMARY KEY (source_id, path)
+			);
+			CREATE INDEX IF NOT EXISTS library_meta_age ON library_meta(parsed_at);
+		`)
 	]
 ];
 
