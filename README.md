@@ -406,3 +406,7 @@ pnpm e2e:library                      # the Library against OctoPrint, SFTP, Sam
 Requires Node 24+. The store uses the built-in `node:sqlite`, so there are no native modules. SFTP uses `ssh2` in pure JavaScript (its optional native addons are never built, see `pnpm.neverBuiltDependencies`), and SMB uses `smb3-client` with a few fixes for Samba compatibility and streaming in [`patches/`](patches/).
 
 **Stack:** SvelteKit 3 · Svelte 5 · Tailwind CSS 4 · Node's built-in fetch and WebSocket. The look follows [Arcane](https://getarcane.app), like its sibling [pg·modern](https://github.com/vitafortis/pg-modern).
+
+## License
+
+[Apache-2.0](LICENSE). Copyright 2026 vitafortis.
