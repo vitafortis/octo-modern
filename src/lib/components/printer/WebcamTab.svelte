@@ -1,11 +1,13 @@
 <script lang="ts">
-	// PHASE 2 PLACEHOLDER — replace this file's body with the real tab.
-	// Props: see TabProps in ./tabs.ts (printer, live, canControl).
-	import { Camera } from '@lucide/svelte';
-	import TabPlaceholder from './TabPlaceholder.svelte';
+	import WebcamView from './WebcamView.svelte';
 	import type { TabProps } from './tabs.ts';
 
 	let { printer }: TabProps = $props();
 </script>
 
-<TabPlaceholder icon={Camera} title="Webcam" description="The live stream, proxied through octo·modern, with OctoPrint's flip and rotation settings." />
+<div class="mx-auto max-w-6xl">
+	<WebcamView printerId={printer.id} class="w-full" />
+	<p class="mt-3 text-xs text-muted-foreground">
+		The stream is relayed through octo·modern, so it works wherever octo·modern does; it pauses while this page is hidden. Flip and rotation follow OctoPrint’s webcam settings.
+	</p>
+</div>

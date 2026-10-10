@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stateFromFlags, stateFromText, filamentMeters, formatDuration, heaterKeys, heaterLabel, jobActive, progressPercent, emptySnapshot } from '../src/lib/printer.ts';
-import { parseJob, parseJobResponse, parsePrinterResponse, parsePushUpdate, parseTempProfiles, parseTemps, parseWebcam, tempSample } from '../src/lib/server/octoprint/parse.ts';
+import { parseJob, parseJobResponse, parsePrinterResponse, parsePushUpdate, parseTempProfiles, parseTemps, tempSample } from '../src/lib/server/octoprint/parse.ts';
 import { normalizeBaseUrl, pushUrl } from '../src/lib/server/octoprint/client.ts';
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'));
@@ -92,15 +92,9 @@ test('progress helpers', () => {
 	assert.equal(formatDuration(null), '—');
 });
 
-test('temperature presets and webcam settings', () => {
+test('temperature presets', () => {
 	assert.deepEqual(parseTempProfiles({ temperature: { profiles: [{ name: 'PLA', extruder: 200, bed: 60, chamber: null }] } }), [{ name: 'PLA', extruder: 200, bed: 60, chamber: null }]);
 	assert.deepEqual(parseTempProfiles({}), []);
-	const w = parseWebcam({ webcam: { webcamEnabled: true, streamUrl: '/webcam/?action=stream', snapshotUrl: 'http://cam.lan/snap.jpg', flipH: true } }, 'http://octopi.lan/octoprint');
-	assert.equal(w.streamUrl, 'http://octopi.lan/webcam/?action=stream');
-	assert.equal(w.snapshotUrl, 'http://cam.lan/snap.jpg');
-	assert.equal(w.flipH, true);
-	const none = parseWebcam({ webcam: { webcamEnabled: true, streamUrl: '', snapshotUrl: '', webcams: [{ compat: { stream: '', snapshot: '' } }] } }, 'http://x');
-	assert.equal(none.snapshotUrl, null);
 });
 
 test('base URLs are normalized; push URL uses ws(s)', () => {

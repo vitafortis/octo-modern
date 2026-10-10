@@ -1,22 +1,22 @@
 import { json } from '@sveltejs/kit';
 import { handler } from '#lib/server/http.ts';
 import { requirePrinter } from '#lib/server/permissions.ts';
-import { cameraHeaders, webcamInfo } from '#lib/server/octoprint/webcam.ts';
+import { cameraFor, cameraHeaders } from '#lib/server/octoprint/webcam.ts';
 import { httpFetch } from '#lib/server/octoprint/transport.ts';
 import { toOctoPrintError } from '#lib/server/octoprint/errors.ts';
 import { getApiKey } from '#lib/server/store.ts';
 import type { RequestHandler } from './$types';
 
-/** One webcam frame, fetched by the server. 404 when the printer has no webcam. */
-export const GET: RequestHandler = handler(async ({ params, locals }) => {
+/** One frame from a camera (`?cam=<id>`, default the first), fetched by the server. */
+export const GET: RequestHandler = handler(async ({ params, locals, url }) => {
 	const p = requirePrinter(locals.user, params.id);
-	const w = await webcamInfo(p);
-	if (!w.snapshotUrl) return json({ message: 'No webcam snapshot URL for this printer' }, { status: 404 });
+	const cam = await cameraFor(p, url.searchParams.get('cam'));
+	if (!cam?.snapshotUrl) return json({ message: 'This printer has no webcam snapshot URL' }, { status: 404 });
 	let res: Response;
 	try {
-		res = await httpFetch(w.snapshotUrl, { headers: cameraHeaders(p, w.snapshotUrl, getApiKey(p.id)), signal: AbortSignal.timeout(8_000) }, p.verifyTls);
+		res = await httpFetch(cam.snapshotUrl, { headers: cameraHeaders(p, cam.snapshotUrl, getApiKey(p.id)), signal: AbortSignal.timeout(8_000) }, p.verifyTls);
 	} catch (err) {
-		throw toOctoPrintError(err, new URL(w.snapshotUrl).host);
+		throw toOctoPrintError(err, new URL(cam.snapshotUrl).host);
 	}
 	const type = res.headers.get('content-type') ?? '';
 	if (!res.ok || !type.startsWith('image/')) {

@@ -166,34 +166,3 @@ export function parseTempProfiles(settings: unknown): TempProfile[] {
 		chamber: num(p.chamber)
 	}));
 }
-
-/** Webcam URLs OctoPrint reports (classic webcam settings), resolved against the base URL. */
-export function parseWebcam(settings: unknown, baseUrl: string): { snapshotUrl: string | null; streamUrl: string | null; flipH: boolean; flipV: boolean; rotate90: boolean; enabled: boolean } {
-	const out = { snapshotUrl: null as string | null, streamUrl: null as string | null, flipH: false, flipV: false, rotate90: false, enabled: false };
-	if (!isObj(settings) || !isObj(settings.webcam)) return out;
-	const w = settings.webcam;
-	const resolve = (u: unknown) => {
-		const s = str(u)?.trim();
-		if (!s) return null;
-		try {
-			return new URL(s, `${baseUrl}/`).href;
-		} catch {
-			return null;
-		}
-	};
-	out.enabled = w.webcamEnabled !== false;
-	out.snapshotUrl = resolve(w.snapshotUrl);
-	out.streamUrl = resolve(w.streamUrl);
-	out.flipH = w.flipH === true;
-	out.flipV = w.flipV === true;
-	out.rotate90 = w.rotate90 === true;
-	// OctoPrint ≥1.9 keeps webcams in a list; the classic one mirrors the legacy fields.
-	if (Array.isArray(w.webcams) && (!out.snapshotUrl || !out.streamUrl)) {
-		for (const cam of w.webcams.filter(isObj)) {
-			const compat = isObj(cam.compat) ? cam.compat : {};
-			out.snapshotUrl ??= resolve(compat.snapshot);
-			out.streamUrl ??= resolve(compat.stream ?? (isObj(cam.extras) ? cam.extras.stream : undefined));
-		}
-	}
-	return out;
-}
