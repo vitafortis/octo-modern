@@ -49,6 +49,24 @@ config = {
         "softwareupdate": {"check_overlay_url": None},
     },
     "serial": {"autoconnect": False, "port": "VIRTUAL", "baudrate": 0},
+    # A few custom controls (Control tab): a section with a command, a slider input and feedback.
+    "controls": [
+        {
+            "name": "Lights",
+            "layout": "horizontal",
+            "children": [
+                {"name": "Lights on", "command": "M42 P8 S255"},
+                {"name": "Set brightness", "command": "M42 P8 S%(brightness)s", "input": [{"name": "Brightness", "parameter": "brightness", "default": 128, "slider": {"min": 0, "max": 255}}]},
+            ],
+        },
+        {
+            "name": "Diagnostics",
+            "children": [
+                {"name": "Report position", "command": "M114"},
+                {"name": "Position", "regex": "X:([-\\d.]+) Y:([-\\d.]+) Z:([-\\d.]+)", "template": "X {0} · Y {1} · Z {2}"},
+            ],
+        },
+    ],
     "temperature": {
         "profiles": [
             {"name": "PLA", "extruder": 200, "bed": 60, "chamber": None},
