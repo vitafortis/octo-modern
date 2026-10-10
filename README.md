@@ -25,6 +25,9 @@
 - **Control**: jog X/Y/Z in 0.1–100 mm steps (buttons or arrow keys, Page Up/Down and Home while the pad has focus), home, motors off, feed and flow rate overrides, part fan, extrude/retract and tool select. It follows the printer profile (axis inversion, build volume, extruder count, heated bed/chamber) and shows OctoPrint's custom controls (sections, commands, scripts, sliders and inputs, feedback lines). Movement is refused while a print runs, by the server too; jogs are coalesced in the audit log.
 - **Terminal**: the live serial log (virtualized, follows the bottom until you scroll up), filters for temperature reports, `ok`, SD status, `wait` and `busy`, search with highlighting, clear and copy. A G-code prompt with multi-line send, history (↑/↓, kept per user and printer), autocomplete with short descriptions, optional uppercasing, and an emergency stop button.
 - **Discover**: find OctoPrint in Docker (through a read-only socket proxy), in [Arcane](https://getarcane.app), over mDNS and with a subnet scan, see which serial port each container owns, and add one by approving octo·modern in OctoPrint (Application Keys), no key to copy. See [Discover](#discover).
+- **Print history**: every print on every printer, recorded whether or not anyone has a browser open: file, start and end, duration, result (success, failed, cancelled), filament used, who started it, a webcam picture of how it ended, and notes. A History tab per printer and a History page across all of them, with filters, success rate, print time and filament per printer and per week, CSV export, and "print again". Earlier prints are imported from OctoPrint. See [Print history](#print-history).
+- **Timelapses**: watch OctoPrint's timelapses in the browser (with seeking), download and delete them, render unrendered ones, and change the timelapse settings.
+- **Notifications** when a print finishes, fails or is cancelled: ntfy, Discord or any webhook.
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
@@ -144,6 +147,9 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Upload, print and delete files | ✓ | ✓ | |
 | Browse the library | ✓ | ✓ | ✓ |
 | Send library files to printers, save printer files to the library | ✓ | ✓ | |
+| Watch the print history and timelapses, export CSV | ✓ | ✓ | ✓ |
+| Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
+| Timelapse settings, delete history entries, import history, notifications | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
 | Users, Integrations, Audit log, Settings, backups, library sources | ✓ | | |
 
@@ -225,6 +231,36 @@ volumes:
 ```
 
 The container runs as uid 1000, so the share must be readable (and, for **Save to library**, writable) by it: for NFS, export it to that uid or squash; for CIFS, the `uid`/`gid` options above. With Arcane, put the same lines in the project's compose file.
+## Print history
+
+octo·modern records each print itself, from the live state it already keeps:
+
+- **Nobody watching**: the background status poll (`OCM_POLL_INTERVAL_MS`, 10 s) sees a printer start printing and opens a history entry. From then until the print ends, octo·modern holds OctoPrint's push connection open for that printer (one websocket per *printing* printer; idle printers are only polled). The end then arrives as OctoPrint's own `PrintDone`, `PrintFailed` or `PrintCancelled` event, with the exact result and print time. Should the push connection be unavailable (a proxy without websockets), the printer is polled every 2 s instead, and the outcome is read from the state change (100 % done, an error, a "Cancelling" in between) and OctoPrint's record of the file's last print.
+- **Someone watching**: the push connection is open anyway; the same events end the entry.
+- **octo·modern restarts mid-print**: the open entry continues when the printer is next seen printing the same file, or is closed with OctoPrint's record of how it ended.
+
+A print shorter than one poll interval, started and finished while nobody watched and no other print was running, can be missed; lower `OCM_POLL_INTERVAL_MS` if that matters. Prints started through octo·modern show who started them (from the audit log); others say "OctoPrint". Filament used is the slicer's estimate scaled by how far the print got. The picture is a webcam snapshot taken as the print ends (the slicer's thumbnail when there's no camera), scaled down to at most 100 KB.
+
+**Importing**: the first time a printer is reachable, octo·modern imports its earlier prints once: every print the [PrintJobHistory](https://plugins.octoprint.org/plugins/PrintJobHistory/) plugin recorded, if it's installed, otherwise the last print of each file from OctoPrint's file statistics (OctoPrint counts a cancel as a failure there, so those come in as failed). Admins can import again from the History page; prints already recorded aren't duplicated.
+
+**Notifications**: admins add channels under **History → Notifications**: [ntfy](https://ntfy.sh) (topic, optional token), a Discord webhook, or a generic webhook, each for finished, failed and/or cancelled prints, with a test button. Webhook URLs and tokens are stored encrypted. A generic webhook receives a JSON `POST`:
+
+```json
+{
+  "source": "octo-modern", "version": 1, "event": "failed",
+  "title": "Print failed: benchy.gcode",
+  "message": "Prusa MK4: benchy.gcode failed after 1h 02m, at 42%, 1.50 m filament, reason: error.",
+  "printer": { "id": "…", "name": "Prusa MK4" },
+  "print": { "id": 12, "file": "benchy.gcode", "path": "parts/benchy.gcode", "startedAt": "…", "endedAt": "…", "durationS": 3720, "filamentMm": 1500, "completion": 42, "startedBy": "Otto", "reason": "error" },
+  "at": "…", "url": "http://octo-modern.lan:3040/p/…?tab=history"
+}
+```
+
+`GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`).
+
+## Timelapses
+
+The **Timelapse** tab lists OctoPrint's rendered timelapses with their thumbnails, plays them in the browser and downloads them. octo·modern relays the videos with HTTP Range requests passed through, so the player can seek without downloading the whole file, and the browser never needs to reach OctoPrint. Operators delete timelapses and render or delete unrendered ones; admins change the settings (off, on each layer change, or timed; frame rate, interval, post-roll). OctoPrint needs a webcam snapshot URL and ffmpeg to record timelapses (the `octoprint/octoprint` image has ffmpeg).
 
 ## Dashboards and monitoring
 
@@ -334,6 +370,12 @@ To build it yourself: `docker build -t octo-modern .`
 | **Library**: previews and slicer details from your NAS | **Send & print** to any printer |
 | ![From library](docs/screenshots/library-picker.png) | ![Library source](docs/screenshots/library-source-edit.png) |
 | **From library** in a printer's Files tab | **Library sources**: folder, SMB, SFTP, WebDAV |
+| ![History](docs/screenshots/history.png) | ![History, light](docs/screenshots/history-light.png) |
+| **History**: every print, stats per printer and week | **History**, light |
+| ![A print in the history](docs/screenshots/history-entry.png) | ![Printer history](docs/screenshots/printer-history.png) |
+| **A print**: how it ended, notes, print again | **History tab** of one printer |
+| ![Timelapse player](docs/screenshots/timelapse-player.png) | ![Timelapses, light](docs/screenshots/timelapse-light.png) |
+| **Timelapse**: play with seeking, download | **Timelapse settings**, light |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
@@ -371,7 +413,7 @@ To build it yourself: `docker build -t octo-modern .`
 
 ## Backup & restore
 
-Under **Settings → Backup & restore**, admins download an encrypted file with printers (and their API keys), users (roles, password hashes, SSO links, printer access) and settings (single sign-on). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, nothing is deleted, and your own account is never changed. The audit log and API tokens aren't included.
+Under **Settings → Backup & restore**, admins download an encrypted file with printers (and their API keys), users (roles, password hashes, SSO links, printer access) and settings (single sign-on). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, nothing is deleted, and your own account is never changed. The audit log, print history and API tokens aren't included.
 
 ## Security model
 
@@ -400,6 +442,10 @@ pnpm e2e:library                      # the Library against OctoPrint, SFTP, Sam
 ```
 
 `scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:library` does the same for the Library: a folder source plus SFTP (`atmoz/sftp`), Samba (`crazymax/samba`) and WebDAV (`rclone serve webdav`) servers, browsing, metadata, search, send & print, 150 MB transfers from each with a memory check, and Save to library.
+pnpm e2e:history                      # print history, notifications and timelapses end to end
+```
+
+`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts).
 
 `pnpm e2e:discover` starts three OctoPrint servers on `:5151`–`:5153` and has octo·modern discover them through a mock Docker API (fictional containers, devices and networks pointing at the real ports, on `:5251`), a mock Arcane (`:5252`), a unicast mDNS responder (`OCM_MDNS_TARGET=127.0.0.1:5253`), the real local Docker socket (read-only) and a subnet scan of `127.0.0.1`. It runs the setup wizard in Chromium, adds printers through the Application Keys flow (approving and denying in OctoPrint by logging in to its API as its admin), pastes a key, moves a published port and relinks the saved printer, then writes the Discover screenshots and cleans up.
 

@@ -16,6 +16,10 @@ export function adminOnlyApi(method: string, path: string): boolean {
 	if (path === '/api/printers') return method !== 'GET';
 	if (path === '/api/printers/test') return true;
 	if (/^\/api\/printers\/[^/]+$/.test(path)) return method !== 'GET';
+	// Timelapse settings; deleting and importing print history.
+	if (/^\/api\/printers\/[^/]+\/timelapse$/.test(path)) return method !== 'GET';
+	if (/^\/api\/history\/\d+$/.test(path)) return method === 'DELETE';
+	if (path === '/api/history/import') return true;
 	return false;
 }
 

@@ -2,7 +2,7 @@
 	import type { Component } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { LayoutDashboard, LogOut, Moon, PanelLeft, Plug, Plus, Printer, ScrollText, Search, Settings, Sun, UserRound, Users, AppWindow, LibraryBig } from '@lucide/svelte';
+	import { LayoutDashboard, LogOut, Moon, PanelLeft, Plug, Plus, Printer, ScrollText, Search, Settings, Sun, UserRound, Users, AppWindow, LibraryBig, History } from '@lucide/svelte';
 	import { fuzzyRank } from '#lib/fuzzy.ts';
 	import { api } from '#lib/client/api.ts';
 	import { editor, isAdmin, printers, setTheme, statuses, theme } from '#lib/client/state.svelte.ts';
@@ -74,6 +74,7 @@
 			['/', 'Overview', LayoutDashboard, printers.list.length !== 1],
 			['/library', 'Library', LibraryBig, true],
 			['/library/sources', 'Library sources', LibraryBig, isAdmin()],
+			['/history', 'History', History, true],
 			['/users', 'Users', Users, isAdmin()],
 			['/integrations', 'Integrations', Plug, isAdmin()],
 			['/audit', 'Audit log', ScrollText, isAdmin()],

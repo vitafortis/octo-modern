@@ -12,7 +12,7 @@ import { config } from '../config.ts';
 import { getApiKey, getPrinter, listPrinters, touchPrinter } from '../store.ts';
 import { OctoPrintClient, pushUrl } from './client.ts';
 import { OctoPrintError, toOctoPrintError } from './errors.ts';
-import { LiveModel, type LiveListener } from './model.ts';
+import { LiveModel, type LiveEvent, type LiveListener } from './model.ts';
 import { PushSession, type PushStatus } from './push.ts';
 import { openWebSocket } from './transport.ts';
 import type { LiveSnapshot } from '#lib/printer.ts';
@@ -56,8 +56,20 @@ class Entry {
 
 const signature = (p: Printer) => `${p.baseUrl}|${p.verifyTls}|${p.updatedAt}`;
 
+export type LiveObserver = (printerId: string, e: LiveEvent) => void;
+
 class PrinterManager {
 	private entries = new Map<string, Entry>();
+	private observers = new Set<LiveObserver>();
+
+	/**
+	 * Sees every printer's live events (REST polls and push updates, OctoPrint events),
+	 * whether or not anyone watches it; e.g. the print history.
+	 */
+	observe(fn: LiveObserver): () => void {
+		this.observers.add(fn);
+		return () => this.observers.delete(fn);
+	}
 
 	/** The entry for a stored printer (created on first use, rebuilt after an edit). */
 	private entry(id: string): Entry | undefined {
@@ -74,6 +86,9 @@ class PrinterManager {
 			this.teardown(existing);
 		}
 		const e = new Entry(id, signature(printer));
+		e.model.observer = (ev) => {
+			for (const fn of this.observers) fn(id, ev);
+		};
 		this.entries.set(id, e);
 		if (carried) {
 			// Keep the watchers and their listeners: they move to the rebuilt model.
