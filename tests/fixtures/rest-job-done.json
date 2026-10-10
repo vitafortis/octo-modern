@@ -1,0 +1,30 @@
+{
+  "job": {
+    "averagePrintTime": 2.358427917584777,
+    "estimatedPrintTime": 16.850311730029723,
+    "filament": {
+      "tool0": {
+        "length": 3.78,
+        "volume": 0.0
+      }
+    },
+    "file": {
+      "date": 1791661258,
+      "display": "tiny.gcode",
+      "name": "tiny.gcode",
+      "origin": "local",
+      "path": "tiny.gcode",
+      "size": 3853
+    },
+    "lastPrintTime": 2.358427917584777,
+    "user": "admin"
+  },
+  "progress": {
+    "completion": 100.0,
+    "filepos": 3853,
+    "printTime": 2,
+    "printTimeLeft": 0,
+    "printTimeLeftOrigin": null
+  },
+  "state": "Operational"
+}
