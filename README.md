@@ -20,6 +20,7 @@
 - **Temperatures**: a live chart of actual and target temperatures per hotend, bed and chamber (5, 15 or 30 minutes), set targets directly or from OctoPrint's temperature presets, and turn everything off at once.
 - **Jobs**: print, pause, resume, restart and cancel. Cancelling always asks first, from the dashboard, the printer header or the overview card.
 - **Files**: browse OctoPrint's storage and the SD card with folders, sizes, upload dates, estimated print time, filament and the last print's outcome (and slicer thumbnails, if a thumbnail plugin provides them). Search and sort, drag and drop G-code to upload with progress, "print after upload", print or load any file, create folders, and delete (with confirmation). Uploads stream through octo·modern to OctoPrint without being held in memory, so files of hundreds of megabytes are fine.
+- **Library**: print G-code straight from your NAS (a mounted NFS/SMB share, SMB, SFTP or WebDAV). Browse and search it with slicer thumbnails, print time and filament read from each file, then send it to any printer, or send and print, streamed without a copy in between. See [Library](#library-print-from-your-nas).
 - **Webcams**: the live MJPEG stream on the dashboard (with fullscreen) and its own tab, relayed by octo·modern so it works wherever octo·modern does, even when the camera is on a LAN address the browser can't reach. Several cameras per printer get a switcher; flip and rotation follow OctoPrint's settings; HLS and WebRTC cameras get an "Open stream" link.
 - **Control**: jog X/Y/Z in 0.1–100 mm steps (buttons or arrow keys, Page Up/Down and Home while the pad has focus), home, motors off, feed and flow rate overrides, part fan, extrude/retract and tool select. It follows the printer profile (axis inversion, build volume, extruder count, heated bed/chamber) and shows OctoPrint's custom controls (sections, commands, scripts, sliders and inputs, feedback lines). Movement is refused while a print runs, by the server too; jogs are coalesced in the audit log.
 - **Terminal**: the live serial log (virtualized, follows the bottom until you scroll up), filters for temperature reports, `ok`, SD status, `wait` and `busy`, search with highlighting, clear and copy. A G-code prompt with multi-line send, history (↑/↓, kept per user and printer), autocomplete with short descriptions, optional uppercasing, and an emergency stop button.
@@ -141,8 +142,10 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Start, pause, resume, cancel prints | ✓ | ✓ | |
 | Set temperatures, connect/disconnect, G-code, emergency stop | ✓ | ✓ | |
 | Upload, print and delete files | ✓ | ✓ | |
+| Browse the library | ✓ | ✓ | ✓ |
+| Send library files to printers, save printer files to the library | ✓ | ✓ | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
-| Users, Integrations, Audit log, Settings, backups | ✓ | | |
+| Users, Integrations, Audit log, Settings, backups, library sources | ✓ | | |
 
 Operators and viewers see every printer, or only the ones you pick under **Users → Printers**. Printers someone hasn't been given don't exist as far as they can tell. Roles are enforced on the server for every route, not just hidden in the UI.
 
@@ -171,6 +174,57 @@ octo·modern reads each printer's cameras from OctoPrint's webcam settings: the 
 ## Files and uploads
 
 The **Files** tab lists OctoPrint's local storage and, when the printer has one, its SD card. Uploads go to local storage (OctoPrint can copy files to the SD card itself). The upload is streamed to OctoPrint as it arrives, so octo·modern's memory use doesn't grow with the file; the image allows uploads up to 4 GB (`BODY_SIZE_LIMIT`). A reverse proxy in front of octo·modern may have its own limit (nginx: `client_max_body_size`).
+
+## Library (print from your NAS)
+
+<p align="center"><img src="docs/screenshots/library.png" alt="The Library" /></p>
+
+The **Library** (in the sidebar, for everyone) shows the G-code your slicer saved on your NAS, so you don't have to upload it to each printer first. Pick a file, see its preview, print time, filament, layer height, nozzle and temperatures, and **Send** it to a printer or **Send & print**. Each printer's **Files** tab has a **From library** button that does the same into the folder you're looking at.
+
+- **Sources** (admins, **Library → Sources**) say where the files are. There can be several; each can be limited to some printers.
+
+  | Type | For | Notes |
+  | --- | --- | --- |
+  | **Folder** | A path inside the container, typically an NFS or SMB share mounted as a Docker volume | The recommended NAS route; nothing to install on the NAS, and the fastest |
+  | **SMB share** | Windows, Synology, TrueNAS, Unraid, Samba | SMB 2.1/3 directly, no mount needed. User and password (NTLMv2); no guest access or Kerberos |
+  | **SFTP** | Any SSH server | Password or private key. **Test** shows the server's host key; pin it to refuse anything else |
+  | **WebDAV** | Nextcloud, ownCloud, Synology WebDAV Server, rclone | A folder URL, user and password (an app password for Nextcloud) |
+
+  **Test** connects and lists the top folder. Passwords and keys are encrypted like printer API keys and never sent to a browser; people who aren't admins don't see addresses or user names either.
+- **Read-only by default.** octo·modern never writes to a source unless you turn on **Allow writing**, which enables **Save to library** on a printer's files (OctoPrint → NAS).
+- **Browsing**: folders, search through subfolders (it stops after 300 matches, 3,000 folders or 15 seconds, and says so), sort by name, date or size. Only printable files (`.gcode`, `.gco`, `.g`, `.gc`, `.bgcode`, `.ufp`) are shown unless you flip **All files**; NAS clutter like `@eaDir`, `#recycle` and dotfiles is always hidden.
+- **Slicer details** come from the comments at the top and bottom of each file (PrusaSlicer, SuperSlicer, OrcaSlicer/Bambu Studio, Cura, and Prusa's binary `.bgcode`), including the embedded thumbnail (PNG, JPG or QOI). Only the first 64 KB and last 128 KB are read (a bit more if a big thumbnail runs past that), and the result is cached until the file's size or date changes.
+- **Sending** streams the file from the NAS into OctoPrint's upload as it's read, so a 150 MB file costs octo·modern no more memory than a small one. You choose the printer (with one printer, it's preselected), the folder on OctoPrint and whether to start printing; a progress bar follows the transfer, which keeps going if you close the dialog. If the printer already has a file with that name you're asked before it's replaced, and if it's busy printing, **Send & print** asks whether to just send it. Every send is in the audit log (`library.send`, with source, path and printer).
+- **Folder paths are contained**: paths with `..` are refused, and symlinks that lead out of the source's folder are neither listed nor followed.
+
+### Mounting a NAS share
+
+Let Docker mount the share as a volume, so nothing needs mounting on the host (also in [`compose.yaml`](compose.yaml)), then add a **Folder** source at `/library`:
+
+```yaml
+services:
+  octo-modern:
+    volumes:
+      - octo-modern-data:/data
+      - nas-library:/library:ro    # drop :ro to allow "Save to library"
+
+volumes:
+  nas-library:
+    driver: local
+    driver_opts:                   # NFS
+      type: nfs
+      o: addr=nas.lan,ro,nfsvers=4
+      device: ":/volume1/3d/gcode"
+  # or SMB / CIFS:
+  # nas-library:
+  #   driver: local
+  #   driver_opts:
+  #     type: cifs
+  #     o: addr=nas.lan,username=printer,password=${NAS_PASSWORD},uid=1000,gid=1000,vers=3.0,ro
+  #     device: //nas.lan/3d/gcode
+```
+
+The container runs as uid 1000, so the share must be readable (and, for **Save to library**, writable) by it: for NFS, export it to that uid or squash; for CIFS, the `uid`/`gid` options above. With Arcane, put the same lines in the project's compose file.
 
 ## Dashboards and monitoring
 
@@ -276,6 +330,10 @@ To build it yourself: `docker build -t octo-modern .`
 | **Light theme** | **Overview**, light |
 | ![Users](docs/screenshots/users.png) | ![Audit log](docs/screenshots/audit.png) |
 | **Users**: admins, operators, viewers | **Audit log** |
+| ![Library](docs/screenshots/library-light.png) | ![Send to printer](docs/screenshots/library-send.png) |
+| **Library**: previews and slicer details from your NAS | **Send & print** to any printer |
+| ![From library](docs/screenshots/library-picker.png) | ![Library source](docs/screenshots/library-source-edit.png) |
+| **From library** in a printer's Files tab | **Library sources**: folder, SMB, SFTP, WebDAV |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
@@ -324,6 +382,7 @@ Under **Settings → Backup & restore**, admins download an encrypted file with 
 - **API tokens** (`ocm_` + 32 random bytes, SHA-256 hashed at rest) only work on `GET /api/status…`; they never become sessions, and repeated bad tokens from one address are throttled. Status responses omit OctoPrint URLs unless the token allows it, and report errors as codes only.
 - **Sign-in** is by OIDC or by local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies tied to a user and end when the user is disabled or their role changes. Writes from another origin are rejected.
 - **Discovery** is admin-only and read-only: Docker and Arcane are only read (`GET`), a socket proxy keeps writes blocked, and fingerprinting uses unauthenticated `GET`s. Keys from the Application Keys flow are polled for by octo·modern's server and go straight into the encrypted store; the browser only sees the request's state. Subnet scans need an admin, are capped at 4096 addresses and are audited.
+- **Library sources**: NAS passwords and SFTP keys are sealed like API keys (bound to the source) and never sent to a browser. Sources are read-only unless an admin allows writing; folder sources refuse `..` and symlinks that lead outside the folder; SFTP host keys can be pinned.
 - **Backup files** hold decrypted API keys and the SSO client secret, re-encrypted with AES-256-GCM under a key derived from your passphrase (scrypt). Treat the file and its passphrase like a password manager export.
 
 ## Development
@@ -337,12 +396,13 @@ node scripts/mjpeg-source.mjs 5190    # a fake MJPEG webcam on :5190
 pnpm e2e                              # end-to-end against real OctoPrint containers (needs Docker)
 pnpm e2e:control                      # the Control and Terminal tabs end-to-end (OctoPrint on :5131, app on :3150)
 pnpm e2e:discover                     # Discover end-to-end: real OctoPrint, mock Docker/Arcane/mDNS, Application Keys
+pnpm e2e:library                      # the Library against OctoPrint, SFTP, Samba and WebDAV containers
 ```
 
-`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards.
+`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:library` does the same for the Library: a folder source plus SFTP (`atmoz/sftp`), Samba (`crazymax/samba`) and WebDAV (`rclone serve webdav`) servers, browsing, metadata, search, send & print, 150 MB transfers from each with a memory check, and Save to library.
 
 `pnpm e2e:discover` starts three OctoPrint servers on `:5151`–`:5153` and has octo·modern discover them through a mock Docker API (fictional containers, devices and networks pointing at the real ports, on `:5251`), a mock Arcane (`:5252`), a unicast mDNS responder (`OCM_MDNS_TARGET=127.0.0.1:5253`), the real local Docker socket (read-only) and a subnet scan of `127.0.0.1`. It runs the setup wizard in Chromium, adds printers through the Application Keys flow (approving and denying in OctoPrint by logging in to its API as its admin), pastes a key, moves a published port and relinks the saved printer, then writes the Discover screenshots and cleans up.
 
-Requires Node 24+. The store uses the built-in `node:sqlite`, so there are no native modules.
+Requires Node 24+. The store uses the built-in `node:sqlite`, so there are no native modules. SFTP uses `ssh2` in pure JavaScript (its optional native addons are never built, see `pnpm.neverBuiltDependencies`), and SMB uses `smb3-client` with a few fixes for Samba compatibility and streaming in [`patches/`](patches/).
 
 **Stack:** SvelteKit 3 · Svelte 5 · Tailwind CSS 4 · Node's built-in fetch and WebSocket. The look follows [Arcane](https://getarcane.app), like its sibling [pg·modern](https://github.com/vitafortis/pg-modern).

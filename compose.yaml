@@ -39,6 +39,9 @@ services:
       # HOST_HEADER: x-forwarded-host
     volumes:
       - octo-modern-data:/data
+      # Library (print G-code from your NAS): mount a share (see volumes below), then add
+      # a "Folder" source at /library under Library → Sources. Add :ro to keep it read-only.
+      # - nas-library:/library
     extra_hosts:
       # Lets octo·modern reach an OctoPrint published on the Docker host itself.
       - host.docker.internal:host-gateway
@@ -61,3 +64,19 @@ services:
 
 volumes:
   octo-modern-data:
+  # NAS share for the Library, mounted by Docker itself (nothing to mount on the host).
+  # The container runs as uid 1000; it only needs read access unless you allow writing.
+  # NFS:
+  # nas-library:
+  #   driver: local
+  #   driver_opts:
+  #     type: nfs
+  #     o: addr=nas.lan,ro,nfsvers=4
+  #     device: ":/volume1/3d/gcode"
+  # SMB / CIFS:
+  # nas-library:
+  #   driver: local
+  #   driver_opts:
+  #     type: cifs
+  #     o: addr=nas.lan,username=printer,password=${NAS_PASSWORD},uid=1000,gid=1000,vers=3.0,ro
+  #     device: //nas.lan/3d/gcode
