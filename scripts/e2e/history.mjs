@@ -8,6 +8,7 @@
 // Ports (override with the env vars): app 3161, OctoPrint 5141–5142, test camera 5241.
 // Needs Docker and a Playwright Chromium. Screenshots land in docs/screenshots/.
 import { execFileSync, spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -23,6 +24,7 @@ const OP_BASE = Number(process.env.E2E_OP_PORT_BASE ?? 5141);
 const OP_PREFIX = process.env.E2E_OP_PREFIX ?? 'octo-modern-hist-e2e-op';
 const CAM_PORT = Number(process.env.E2E_CAM_PORT ?? 5241);
 const CAM = `http://127.0.0.1:${CAM_PORT}`;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT ?? 5243);
 // OctoPrint (in Docker) reaches the camera on the host this way (Docker Desktop; on Linux, --add-host).
 const CAM_FROM_DOCKER = `http://host.docker.internal:${CAM_PORT}`;
 const OP = [1, 2].map((i) => ({ url: `http://127.0.0.1:${OP_BASE + i - 1}`, key: `ocm-dev-key-${i}` }));
@@ -38,6 +40,9 @@ const devOctoprint = (...args) => execFileSync(join(ROOT, 'scripts/dev-octoprint
 let app;
 let browser;
 let cam;
+let hookServer;
+/** Webhook notifications received: { headers, body }. */
+const hooks = [];
 const dataDir = mkdtempSync(join(tmpdir(), 'ocm-e2e-history-'));
 
 async function waitFor(fn, label, { tries = 120, every = 500 } = {}) {
@@ -73,6 +78,7 @@ function client() {
 	return {
 		get: (p, o) => call('GET', p, undefined, o),
 		post: (p, b, o) => call('POST', p, b ?? {}, o),
+		put: (p, b) => call('PUT', p, b),
 		patch: (p, b) => call('PATCH', p, b),
 		del: (p) => call('DELETE', p, {}),
 		get cookie() {
@@ -247,6 +253,24 @@ async function main() {
 	assert.equal((await viewer.post('/api/auth/login', VIEWER)).status, 200);
 	await waitFor(async () => (await admin.get('/api/printers/status')).data.every((s) => s.state === 'operational'), 'both printers ready');
 
+	// A webhook that hears about every print's end.
+	hookServer = createServer((req, res) => {
+		let body = '';
+		req.on('data', (d) => (body += d));
+		req.on('end', () => {
+			hooks.push({ headers: req.headers, body: JSON.parse(body) });
+			res.end('ok');
+		});
+	});
+	await new Promise((r) => hookServer.listen(HOOK_PORT, '127.0.0.1', r));
+	assert.equal((await operator.get('/api/settings/notifications')).status, 403, 'notification settings are for admins');
+	const saved = await admin.put('/api/settings/notifications', {
+		channels: [{ kind: 'webhook', name: 'e2e hook', on: ['success', 'failed', 'cancelled'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/print`, authorization: 'Bearer e2e' } }]
+	});
+	assert.equal(saved.status, 200, JSON.stringify(saved.data));
+	assert.equal((await admin.post('/api/settings/notifications/test', { id: saved.data.channels[0].id })).status, 200);
+	assert.equal(hooks.shift().body.event, 'test');
+
 	// --- nobody watching: the background poll notices, the push socket is held while printing ----
 	log('no browser: a print started on OctoPrint itself, to completion');
 	const e1 = await printAndCheck({ c: admin, admin, o: OP[0], printerId: mk4.id, file: 'unwatched-done.gcode', seconds: 14, direct: true, startedBy: null });
@@ -306,6 +330,13 @@ async function main() {
 	assert.equal(e4.startedBy, ADMIN.name);
 	assert.equal((await entries(admin, voron.id, 'watched-cancel.gcode')).length, 1);
 	await dark.waitForSelector('tr[data-print="watched-cancel.gcode"][data-result="cancelled"]', { timeout: 20_000 });
+
+	log('notifications: one webhook call per finished print');
+	await waitFor(() => hooks.length >= 4, 'four webhook notifications', { tries: 20 });
+	assert.deepEqual(hooks.map((h) => `${h.body.print.file}:${h.body.event}`).sort(), ['unwatched-cancel.gcode:cancelled', 'unwatched-done.gcode:success', 'watched-cancel.gcode:cancelled', 'watched-done.gcode:success']);
+	assert.equal(hooks[0].headers.authorization, 'Bearer e2e');
+	assert.equal(hooks[0].body.source, 'octo-modern');
+	assert.match(hooks[0].body.url, new RegExp(`^${APP}/p/`), 'links back to the printer');
 
 	// --- history API: access, stats, CSV, notes, import, delete ------------------------------
 	log('history API: who sees and changes what, stats, CSV, import');
@@ -489,6 +520,8 @@ async function main() {
 async function cleanup(ok) {
 	await browser?.close().catch(() => {});
 	await cam?.close().catch(() => {});
+	hookServer?.closeAllConnections?.();
+	hookServer?.close();
 	if (process.env.E2E_KEEP) {
 		log(`E2E_KEEP: app still running on ${APP} (pid ${app?.pid}), data in ${dataDir}`);
 		return;
