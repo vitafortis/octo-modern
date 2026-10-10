@@ -39,7 +39,12 @@ export interface Driver {
 }
 
 /** A library error with a hint, shaped like OctoPrint errors so API handlers report it the same way. */
-export class LibraryError extends OctoPrintError {}
+export class LibraryError extends OctoPrintError {
+	constructor(message: string, opts: ConstructorParameters<typeof OctoPrintError>[1] = {}) {
+		super(message, opts);
+		this.name = 'LibraryError';
+	}
+}
 
 export const notFound = (what = 'File') => new LibraryError(`${what} not found`, { status: 404, code: 'NOT_FOUND' });
 
@@ -48,6 +53,7 @@ const HINTS: Record<string, [string, string]> = {
 	EACCES: ['Permission denied', 'The account (or, for a folder, octo·modern’s user, uid 1000) can’t read this. Check the share’s permissions.'],
 	EPERM: ['Permission denied', 'The account (or, for a folder, octo·modern’s user, uid 1000) can’t read this. Check the share’s permissions.'],
 	ENOTDIR: ['Not a folder', 'Check the root folder of this source.'],
+	ENXIO: ['Share not found', 'Check the share name (it’s case-insensitive, without slashes).'],
 	ECONNREFUSED: ['Connection refused', 'Is the NAS on, and is the port right? Inside Docker, localhost is octo·modern’s own container.'],
 	ENOTFOUND: ['Host not found', 'Check the host name; .local (mDNS) names usually don’t resolve inside containers — use the IP address.'],
 	EHOSTUNREACH: ['Host unreachable', 'No route to the NAS from octo·modern.'],
@@ -321,6 +327,11 @@ function smbDriver(c: SmbConfig, s: SourceSecrets): Driver {
 		return cl;
 	};
 	const client = () => (conn ??= connect().catch((err) => ((conn = null), Promise.reject(err))));
+	const dropConnection = () => {
+		const old = conn;
+		conn = null;
+		void old?.then((cl) => cl.close()).catch(() => {});
+	};
 	const remote = (rel: string) => [c.share, c.path.replace(/^\/+|\/+$/g, ''), cleanRelPath(rel)].filter(Boolean).join('/');
 	const run = async <T>(fn: (cl: SmbClient) => Promise<T>): Promise<T> => {
 		try {
@@ -328,11 +339,7 @@ function smbDriver(c: SmbConfig, s: SourceSecrets): Driver {
 		} catch (err) {
 			const e = toLibraryError(err);
 			// A broken connection: reconnect next time.
-			if (e.code !== 'NOT_FOUND' && e.code !== 'EACCES') {
-				const old = conn;
-				conn = null;
-				void old?.then((cl) => cl.close()).catch(() => {});
-			}
+			if (e.code !== 'NOT_FOUND' && e.code !== 'EACCES') dropConnection();
 			throw e;
 		}
 	};
@@ -351,25 +358,27 @@ function smbDriver(c: SmbConfig, s: SourceSecrets): Driver {
 			run(async (cl) => {
 				const st = await cl.stat(remote(path));
 				if (st.isDirectory) throw notFound();
-				// Errors opening the file arrive on the stream; surface them before returning.
 				const stream = cl.createReadStream(remote(path), range ? { start: range.start, end: Math.min(range.end, st.size - 1) } : undefined);
+				stream.once('error', (err) => {
+					// The connection died mid-transfer: start a fresh one next time.
+					if (/connection closed|ECONNRESET|socket/i.test(String((err as Error)?.message))) dropConnection();
+				});
 				return stream;
 			}),
 		write: (path, body) =>
 			run(async (cl) => {
 				const file = remote(path);
-				const partial = `${file}.octo-modern-partial`;
 				const parts = file.split('/');
 				// Create missing folders below the share.
 				for (let i = 2; i < parts.length; i++) {
 					await cl.mkdir(parts.slice(0, i).join('/')).catch(() => {});
 				}
+				// Written in place (some servers can't rename over SMB2 on their file system);
+				// a failed copy is deleted rather than left half-written.
 				try {
-					await pipeline(body, cl.createWriteStream(partial));
-					await cl.rm(file).catch(() => {});
-					await cl.rename(partial, file);
+					await pipeline(body, cl.createWriteStream(file));
 				} catch (err) {
-					await cl.rm(partial).catch(() => {});
+					await cl.rm(file).catch(() => {});
 					throw err;
 				}
 			}),
@@ -431,7 +440,7 @@ function webdavDriver(c: WebdavConfig, s: SourceSecrets): Driver {
 		if (res.ok || allow.includes(res.status)) return res;
 		await res.body?.cancel().catch(() => {});
 		if (res.status === 404) throw notFound();
-		if (res.status === 401 || res.status === 403) throw new LibraryError(res.status === 401 ? 'Sign-in failed' : 'Permission denied', { status: res.status === 401 ? 401 : 403, code: res.status === 401 ? 'AUTH' : 'EACCES', hint: HINTS.AUTH[1] });
+		if (res.status === 401 || res.status === 403) throw new LibraryError(res.status === 401 ? 'Sign-in failed' : 'Permission denied', { code: res.status === 401 ? 'AUTH' : 'EACCES', hint: HINTS.AUTH[1] });
 		throw new LibraryError(`The WebDAV server answered HTTP ${res.status}`, { code: `HTTP_${res.status}` });
 	};
 	const propfind = async (rel: string, depth: '0' | '1', folder: boolean) => {

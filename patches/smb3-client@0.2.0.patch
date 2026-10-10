@@ -74,6 +74,47 @@ index 8998d79e324d0ea2d2a0d8b96f9bfcb70bcb582f..f95d7d1668adfa7956b78e06da072664
              inner.on("error", () => { open.close().catch(() => undefined); });
              cbs.onReady(inner);
          }
+diff --git a/dist/connection/connection.js b/dist/connection/connection.js
+index 28949615d752da1428e8772833b16b0ff25477c1..feabac4d388d042fdcaf19f5bbb905e610c3285c 100644
+--- a/dist/connection/connection.js
++++ b/dist/connection/connection.js
+@@ -80,8 +80,9 @@ export class Connection extends EventEmitter {
+         if (this.closed)
+             throw new SmbProtocolError({ status: 0, message: "connection closed" });
+         const charge = opts.creditCharge ?? 1;
+-        if (charge > 0)
+-            await this.credits.take(charge);
++        // Every request uses at least one credit (a CreditCharge of 0 counts as 1, e.g. NEGOTIATE);
++        // not counting it lets the window run one ahead and Samba drops the connection.
++        await this.credits.take(Math.max(1, charge));
+         const messageId = this.nextMessageId++;
+         const flags = opts.flags ?? 0;
+         const wantEncrypt = opts.encrypt === true && this.encryptor !== null;
+diff --git a/dist/open/readStream.js b/dist/open/readStream.js
+index 940e4c7e40f001f3e09da582b18598eebc0121b6..6428ab95e0309d6a690f441a0ce746a208b01d5e 100644
+--- a/dist/open/readStream.js
++++ b/dist/open/readStream.js
+@@ -7,7 +7,8 @@ export function createReadStream(open, opts = {}) {
+         return Readable.from([], { objectMode: false });
+     }
+     const max = open.tree.conn.state?.maxReadSize ?? 65536;
+-    const chunkSize = Math.min(max, opts.highWaterMark ?? max);
++    // 256 KiB reads by default: maxReadSize can be 8 MiB, which times `concurrency` is a lot to hold.
++    const chunkSize = Math.min(max, opts.highWaterMark ?? 1 << 18);
+     const concurrency = Math.max(1, Math.min(opts.concurrency ?? 4, 8));
+     let nextOffset = start;
+     let outOffset = start; // next offset we may push
+@@ -35,7 +36,9 @@ export function createReadStream(open, opts = {}) {
+             stream.push(null);
+             return;
+         }
+-        while (inFlight < concurrency && nextOffset <= totalEnd) {
++        // Backpressure: only read ahead while the consumer wants data, and never hold more
++        // than `concurrency` chunks (in flight plus buffered).
++        while (pushing && inFlight + buffers.size < concurrency && nextOffset <= totalEnd) {
+             const remaining = totalEnd - nextOffset + 1n;
+             const want = remaining > BigInt(chunkSize) ? BigInt(chunkSize) : remaining;
+             const offset = nextOffset;
 diff --git a/dist/open/readdir.js b/dist/open/readdir.js
 index 37bef080bb1cd7be5e045d7e64789dbeeac74ba6..c1abe58c1509b565929768e548831c536f81682e 100644
 --- a/dist/open/readdir.js

@@ -23,6 +23,10 @@ export function handler<E>(fn: (event: E) => Promise<Response> | Response) {
 			if (err instanceof Forbidden) return json({ message: err.message }, { status: 403 });
 			// SvelteKit redirects and errors pass through.
 			if (isRedirect(err) || isHttpError(err)) throw err;
+			// Library (NAS) errors that are the request's fault keep their 4xx status.
+			if (err instanceof OctoPrintError && err.name === 'LibraryError' && err.status && err.status >= 400 && err.status < 500 && err.status !== 401) {
+				return json(err.toJSON(), { status: err.status });
+			}
 			const e = err instanceof OctoPrintError ? err : toOctoPrintError(err);
 			if (!(err instanceof OctoPrintError)) console.error('[octo-modern] request failed', err);
 			const status = e.status === 409 ? 409 : e.status === 404 && e.code === 'NOT_FOUND' ? 404 : 502;

@@ -76,7 +76,12 @@
 		'token.create': 'Created API token',
 		'token.revoke': 'Revoked API token',
 		'backup.export': 'Exported backup',
-		'backup.restore': 'Restored backup'
+		'backup.restore': 'Restored backup',
+		'library.send': 'Sent from library',
+		'library.save': 'Saved to library',
+		'library.source.create': 'Added library source',
+		'library.source.update': 'Changed library source',
+		'library.source.delete': 'Removed library source'
 	};
 	const GROUPS = [
 		{ value: '', label: 'All actions' },
@@ -84,6 +89,7 @@
 		{ value: 'temperature.', label: 'Temperatures' },
 		{ value: 'gcode.', label: 'G-code' },
 		{ value: 'printer.', label: 'Printers' },
+		{ value: 'library.', label: 'Library' },
 		{ value: 'user.', label: 'Users' },
 		{ value: 'auth.', label: 'Sign-ins' }
 	];

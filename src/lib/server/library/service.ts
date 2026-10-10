@@ -4,7 +4,7 @@
  * (cached by source, path, size and mtime).
  */
 import type { Readable } from 'node:stream';
-import { NotFound } from '../http.ts';
+import { BadRequest, NotFound } from '../http.ts';
 import { canSee } from '../permissions.ts';
 import { listPrinters } from '../store.ts';
 import { openDriver, readAll, sftpConnect, toLibraryError, LibraryError, type Driver } from './drivers.ts';
@@ -28,6 +28,15 @@ import {
 	type SourceSecrets
 } from '#lib/library.ts';
 import type { User } from '#lib/types.ts';
+
+/** A path from a request: relative, no traversal (400 otherwise). */
+export function relPath(raw: unknown): string {
+	try {
+		return cleanRelPath(raw);
+	} catch (err) {
+		throw new BadRequest((err as Error).message);
+	}
+}
 
 // --- access ------------------------------------------------------------------------------
 
@@ -178,7 +187,7 @@ function attachMeta(sourceId: string, entries: LibraryEntry[]): LibraryEntry[] {
 }
 
 export async function listFolder(src: LibrarySource, rawPath: unknown): Promise<LibraryListing> {
-	const path = cleanRelPath(rawPath);
+	const path = relPath(rawPath);
 	const raw = await withDriver(src, (d) => d.list(path));
 	const entries: LibraryEntry[] = raw
 		.filter((e) => !isHiddenName(e.name) && !e.name.endsWith('.octo-modern-partial'))
@@ -195,7 +204,7 @@ export const SEARCH_LIMITS = { results: 300, folders: 3000, ms: 15_000 };
 export async function searchFolder(src: LibrarySource, rawFrom: unknown, query: string, opts: { all?: boolean; limits?: Partial<typeof SEARCH_LIMITS> } = {}): Promise<LibrarySearch> {
 	const limits = { ...SEARCH_LIMITS, ...opts.limits };
 	const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-	const from = cleanRelPath(rawFrom);
+	const from = relPath(rawFrom);
 	const results: LibraryEntry[] = [];
 	const queue = [from];
 	const started = Date.now();
@@ -279,8 +288,8 @@ export async function readMetaFrom(read: (start: number, end: number) => Promise
 
 /** Metadata for one file: from the cache when size and mtime match, else read and cached. */
 export async function fileMeta(src: LibrarySource, rawPath: unknown): Promise<{ meta: GcodeMeta; version: string }> {
-	const path = cleanRelPath(rawPath);
-	if (!path) throw new LibraryError('Pick a file', { status: 400 });
+	const path = relPath(rawPath);
+	if (!path) throw new BadRequest('Pick a file');
 	const st = await withDriver(src, (d) => d.stat(path));
 	if (st.type !== 'file') throw new LibraryError('Not a file', { status: 400, code: 'NOT_A_FILE' });
 	const version = fileVersion(st);
@@ -328,7 +337,7 @@ export function emptyMeta(): GcodeMeta {
 
 /** The cached thumbnail for a file (parsing it first if needed). */
 export async function fileThumbnail(src: LibrarySource, rawPath: unknown): Promise<{ data: Uint8Array; type: string; version: string } | null> {
-	const path = cleanRelPath(rawPath);
+	const path = relPath(rawPath);
 	const { version } = await fileMeta(src, path);
 	const hit = getMeta(src.id, path, version);
 	if (!hit?.thumb || !hit.thumbType) return null;

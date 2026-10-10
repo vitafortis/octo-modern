@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   smb3-client@0.2.0:
-    hash: 37vof77wjv6kwcmvxfb2ecewkq
+    hash: oxilyzilwifl2v3o6252nocbuq
     path: patches/smb3-client@0.2.0.patch
 
 importers:
@@ -18,7 +18,7 @@ importers:
         version: 6.8.8
       smb3-client:
         specifier: 0.2.0
-        version: 0.2.0(patch_hash=37vof77wjv6kwcmvxfb2ecewkq)
+        version: 0.2.0(patch_hash=oxilyzilwifl2v3o6252nocbuq)
       ssh2-sftp-client:
         specifier: ^12.1.1
         version: 12.1.1
@@ -1258,7 +1258,7 @@ snapshots:
       mrmime: 2.0.1
       totalist: 3.0.1
 
-  smb3-client@0.2.0(patch_hash=37vof77wjv6kwcmvxfb2ecewkq): {}
+  smb3-client@0.2.0(patch_hash=oxilyzilwifl2v3o6252nocbuq): {}
 
   source-map-js@1.2.2: {}
 

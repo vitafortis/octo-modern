@@ -9,10 +9,12 @@
 		Folder,
 		FolderPlus,
 		HardDrive,
+		LibraryBig,
 		LoaderCircle,
 		MemoryStick,
 		Play,
 		RefreshCw,
+		Save,
 		Search,
 		Trash2,
 		Upload as UploadIcon,
@@ -26,6 +28,10 @@
 	import { formatDuration, jobActive } from '#lib/printer.ts';
 	import type { FileEntry, FileListing } from '#lib/types.ts';
 	import type { TabProps } from './tabs.ts';
+	import LibraryPickerDialog from '../library/LibraryPickerDialog.svelte';
+	import SaveToLibraryDialog from '../library/SaveToLibraryDialog.svelte';
+	import { listSources } from '#lib/client/library.ts';
+	import type { LibrarySourceSummary } from '#lib/library.ts';
 
 	let { printer, live, canControl }: TabProps = $props();
 
@@ -41,6 +47,12 @@
 	let dragging = $state(0);
 	let fileInput = $state<HTMLInputElement>();
 	let newFolder = $state<string | null>(null);
+
+	// Library sources this printer may print from (and save to, when writable).
+	let librarySources = $state<LibrarySourceSummary[]>([]);
+	let picker = $state(false);
+	let saving = $state<FileEntry | null>(null);
+	const writableSources = $derived(librarySources.filter((x) => x.writable));
 
 	async function load() {
 		loading = true;
@@ -62,6 +74,7 @@
 	};
 	onMount(() => {
 		void load();
+		if (canControl) listSources().then((list) => (librarySources = list.filter((x) => x.printers.includes(printer.id)))).catch(() => {});
 		const offs = ['UpdatedFiles', 'FileAdded', 'FileRemoved', 'FolderAdded', 'FolderRemoved', 'MetadataAnalysisFinished', 'MetadataStatisticsUpdated'].map((e) => live.on(e, soon));
 		return () => {
 			offs.forEach((off) => off());
@@ -197,6 +210,7 @@
 			<button class="btn btn-ghost btn-icon btn-sm" title="Refresh" aria-label="Refresh" onclick={load} disabled={loading}><RefreshCw class={loading ? 'animate-spin' : ''} /></button>
 			{#if canControl && origin === 'local'}
 				<button class="btn btn-secondary btn-sm" onclick={() => (newFolder = '')}><FolderPlus />Folder</button>
+				{#if librarySources.length}<button class="btn btn-secondary btn-sm" onclick={() => (picker = true)}><LibraryBig />From library</button>{/if}
 				<label class="flex items-center gap-2 text-xs text-muted-foreground" title="Start printing right after the upload (one file at a time, and only when the printer is ready)">
 					<Switch label="Print after upload" bind:checked={printAfterUpload} />Print after upload
 				</label>
@@ -299,6 +313,9 @@
 											>
 											<button class="btn btn-ghost btn-sm" disabled={!ready || current === key} title="Load without starting" onclick={() => printFile(printer.id, f, false)}>Load</button>
 										{/if}
+										{#if f.type === 'machinecode' && f.origin === 'local' && writableSources.length}
+											<button class="btn btn-ghost btn-icon btn-sm" title="Save to library" aria-label="Save {f.display} to library" onclick={() => (saving = f)}><Save /></button>
+										{/if}
 										<button
 											class="btn btn-ghost btn-icon btn-sm hover:text-danger"
 											title={inUse ? 'In use by OctoPrint' : `Delete ${f.display}`}
@@ -335,3 +352,10 @@
 		</div>
 	{/if}
 </div>
+
+{#if librarySources.length}
+	<LibraryPickerDialog bind:open={picker} sources={librarySources} printerId={printer.id} printerName={printer.name} folder={origin === 'sdcard' ? '' : folder} onsent={() => load()} />
+{/if}
+{#if saving}
+	<SaveToLibraryDialog bind:open={() => !!saving, (v) => !v && (saving = null)} printerId={printer.id} file={saving} sources={writableSources} />
+{/if}

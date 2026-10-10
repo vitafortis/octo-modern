@@ -13,7 +13,8 @@
 		"test": "node --no-warnings --experimental-strip-types --test tests/*.test.ts",
 		"e2e": "node scripts/e2e/run.mjs",
 		"e2e:control": "node scripts/e2e/control.mjs",
-		"e2e:discover": "node scripts/e2e/discover.mjs"
+		"e2e:discover": "node scripts/e2e/discover.mjs",
+		"e2e:library": "node scripts/e2e/library.mjs"
 	},
 	"devDependencies": {
 		"@fontsource-variable/geist": "^5.3.0",
