@@ -24,6 +24,8 @@ export class LivePrinter {
 	/** Bumped whenever `history` changes (the buffer itself isn't reactive). */
 	historyVersion = $state(0);
 	logs = $state<string[]>([]);
+	/** Sequence number of `logs[0]`: line i has the stable id `logBase + i` (for lists keyed by line). */
+	logBase = $state(0);
 	busyFiles = $state<{ origin: string; path: string }[]>([]);
 	/** The SSE stream is open. */
 	connected = $state(false);
@@ -76,6 +78,7 @@ export class LivePrinter {
 			this.history.clear();
 			this.history.merge(d.history);
 			this.historyVersion++;
+			this.logBase += this.logs.length;
 			this.logs = d.logs.slice(-MAX_LOGS);
 			this.busyFiles = d.busyFiles;
 			this.push = d.push;
@@ -92,7 +95,9 @@ export class LivePrinter {
 		});
 		es.addEventListener('log', (e) => {
 			const d = JSON.parse((e as MessageEvent).data) as { lines: string[]; reset: boolean };
+			if (d.reset) this.logBase += this.logs.length;
 			const next = d.reset ? d.lines : [...this.logs, ...d.lines];
+			if (next.length > MAX_LOGS) this.logBase += next.length - MAX_LOGS;
 			this.logs = next.length > MAX_LOGS ? next.slice(-MAX_LOGS) : next;
 		});
 		es.addEventListener('octoprint', (e) => {

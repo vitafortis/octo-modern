@@ -203,6 +203,17 @@
 	.badge-danger {
 		@apply border-danger/30 bg-danger/10 text-danger;
 	}
+	/* Range slider: a thin track filled up to the value (set --fill: <percent>), round thumb. */
+	.range {
+		@apply h-1.5 w-full cursor-pointer appearance-none rounded-full disabled:cursor-default disabled:opacity-50;
+		background: linear-gradient(var(--primary), var(--primary)) 0 / var(--fill, 0%) 100% no-repeat, var(--input);
+	}
+	.range::-webkit-slider-thumb {
+		@apply size-3.5 appearance-none rounded-full border-2 border-primary bg-card shadow-surface;
+	}
+	.range::-moz-range-thumb {
+		@apply size-3.5 rounded-full border-2 border-primary bg-card shadow-surface;
+	}
 	.kbd {
 		@apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground;
 	}
