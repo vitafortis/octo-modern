@@ -20,11 +20,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const method = event.request.method;
 	const isApi = pathname.startsWith('/api/');
 
-	// JSON APIs must come from our own host. Browsers always send Origin on
-	// cross-site and non-GET requests, so a mismatch means a forged request.
+	// Writes must come from our own host. Browsers always send Origin on cross-site
+	// and non-GET requests, so a mismatch means a forged request. (This replaces
+	// SvelteKit's own CSRF check; see vite.config.ts.)
 	// Hosts are compared (not full origins) so it works by IP, hostname, or
 	// behind a TLS-terminating proxy without configuring ORIGIN.
-	if (isApi && method !== 'GET' && method !== 'HEAD') {
+	if (method !== 'GET' && method !== 'HEAD') {
 		const origin = event.request.headers.get('origin');
 		if (origin) {
 			const h = event.request.headers;

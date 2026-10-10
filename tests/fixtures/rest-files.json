@@ -1,0 +1,303 @@
+{
+  "files": [
+    {
+      "date": 1791661916,
+      "display": "chunked.gcode",
+      "gcodeAnalysis": {
+        "_empty": true,
+        "dimensions": {
+          "depth": 0,
+          "height": 0,
+          "width": 0
+        },
+        "filament": {},
+        "printingArea": {
+          "maxX": 0,
+          "maxY": 0,
+          "maxZ": 0,
+          "minX": 0,
+          "minY": 0,
+          "minZ": 0
+        },
+        "travelArea": {
+          "maxX": 0,
+          "maxY": 0,
+          "maxZ": 0,
+          "minX": 0,
+          "minY": 0,
+          "minZ": 0
+        },
+        "travelDimensions": {
+          "depth": 0,
+          "height": 0,
+          "width": 0
+        }
+      },
+      "hash": "dcfbc4cb3583a2bbe6824090651999c0f9f31b0c",
+      "name": "chunked.gcode",
+      "origin": "local",
+      "path": "chunked.gcode",
+      "refs": {
+        "download": "http://127.0.0.1:5101/downloads/files/local/chunked.gcode",
+        "resource": "http://127.0.0.1:5101/api/files/local/chunked.gcode"
+      },
+      "size": 300000,
+      "type": "machinecode",
+      "typePath": [
+        "machinecode",
+        "gcode"
+      ],
+      "user": "admin"
+    },
+    {
+      "date": 1791661258,
+      "display": "tiny.gcode",
+      "gcodeAnalysis": {
+        "dimensions": {
+          "depth": 110.0,
+          "height": 0.6,
+          "width": 110.0
+        },
+        "estimatedPrintTime": 16.850311730029723,
+        "filament": {
+          "tool0": {
+            "length": 3.78,
+            "volume": 0.0
+          }
+        },
+        "printingArea": {
+          "maxX": 110.0,
+          "maxY": 110.0,
+          "maxZ": 0.6,
+          "minX": 0.0,
+          "minY": 0.0,
+          "minZ": 0.0
+        },
+        "travelArea": {
+          "maxX": 110.0,
+          "maxY": 110.0,
+          "maxZ": 0.6,
+          "minX": 0.0,
+          "minY": 0.0,
+          "minZ": 0.0
+        },
+        "travelDimensions": {
+          "depth": 110.0,
+          "height": 0.6,
+          "width": 110.0
+        }
+      },
+      "hash": "d23e68e8ce34a49582935d2a9b6242c77949fe4f",
+      "name": "tiny.gcode",
+      "origin": "local",
+      "path": "tiny.gcode",
+      "prints": {
+        "failure": 0,
+        "last": {
+          "date": 1791661668.4097497,
+          "printTime": 2.3403070429340005,
+          "success": true
+        },
+        "success": 2
+      },
+      "refs": {
+        "download": "http://127.0.0.1:5101/downloads/files/local/tiny.gcode",
+        "resource": "http://127.0.0.1:5101/api/files/local/tiny.gcode"
+      },
+      "size": 3853,
+      "statistics": {
+        "averagePrintTime": {
+          "_default": 2.3493674802593887
+        },
+        "lastPrintTime": {
+          "_default": 2.3403070429340005
+        }
+      },
+      "type": "machinecode",
+      "typePath": [
+        "machinecode",
+        "gcode"
+      ],
+      "user": "admin"
+    },
+    {
+      "date": 1791661713,
+      "display": "x.gcode",
+      "gcodeAnalysis": {
+        "_empty": true,
+        "dimensions": {
+          "depth": 0,
+          "height": 0,
+          "width": 0
+        },
+        "filament": {},
+        "printingArea": {
+          "maxX": 0,
+          "maxY": 0,
+          "maxZ": 0,
+          "minX": 0,
+          "minY": 0,
+          "minZ": 0
+        },
+        "travelArea": {
+          "maxX": 0,
+          "maxY": 0,
+          "maxZ": 0,
+          "minX": 0,
+          "minY": 0,
+          "minZ": 0
+        },
+        "travelDimensions": {
+          "depth": 0,
+          "height": 0,
+          "width": 0
+        }
+      },
+      "hash": "1089acd5ca8d05459f073df4c6070788a90ee731",
+      "name": "x.gcode",
+      "origin": "local",
+      "path": "x.gcode",
+      "refs": {
+        "download": "http://127.0.0.1:5101/downloads/files/local/x.gcode",
+        "resource": "http://127.0.0.1:5101/api/files/local/x.gcode"
+      },
+      "size": 5500,
+      "type": "machinecode",
+      "typePath": [
+        "machinecode",
+        "gcode"
+      ],
+      "user": "admin"
+    },
+    {
+      "date": 1791661734,
+      "display": "t2.gcode",
+      "gcodeAnalysis": {
+        "dimensions": {
+          "depth": 110.0,
+          "height": 0.6,
+          "width": 110.0
+        },
+        "estimatedPrintTime": 16.850311730029723,
+        "filament": {
+          "tool0": {
+            "length": 3.78,
+            "volume": 0.0
+          }
+        },
+        "printingArea": {
+          "maxX": 110.0,
+          "maxY": 110.0,
+          "maxZ": 0.6,
+          "minX": 0.0,
+          "minY": 0.0,
+          "minZ": 0.0
+        },
+        "travelArea": {
+          "maxX": 110.0,
+          "maxY": 110.0,
+          "maxZ": 0.6,
+          "minX": 0.0,
+          "minY": 0.0,
+          "minZ": 0.0
+        },
+        "travelDimensions": {
+          "depth": 110.0,
+          "height": 0.6,
+          "width": 110.0
+        }
+      },
+      "hash": "d23e68e8ce34a49582935d2a9b6242c77949fe4f",
+      "name": "t2.gcode",
+      "origin": "local",
+      "path": "t2.gcode",
+      "refs": {
+        "download": "http://127.0.0.1:5101/downloads/files/local/t2.gcode",
+        "resource": "http://127.0.0.1:5101/api/files/local/t2.gcode"
+      },
+      "size": 3853,
+      "type": "machinecode",
+      "typePath": [
+        "machinecode",
+        "gcode"
+      ],
+      "user": "admin"
+    },
+    {
+      "children": [],
+      "date": 1791662318,
+      "display": "parts",
+      "name": "parts",
+      "origin": "local",
+      "path": "parts",
+      "prints": {
+        "failure": 0,
+        "success": 0
+      },
+      "refs": {
+        "resource": "http://127.0.0.1:5101/api/files/local/parts"
+      },
+      "size": 0,
+      "type": "folder",
+      "typePath": [
+        "folder"
+      ]
+    },
+    {
+      "date": 1791662318,
+      "display": "via-ocm.gcode",
+      "gcodeAnalysis": {
+        "dimensions": {
+          "depth": 110.0,
+          "height": 0.6,
+          "width": 110.0
+        },
+        "estimatedPrintTime": 16.850311730029723,
+        "filament": {
+          "tool0": {
+            "length": 3.78,
+            "volume": 0.0
+          }
+        },
+        "printingArea": {
+          "maxX": 110.0,
+          "maxY": 110.0,
+          "maxZ": 0.6,
+          "minX": 0.0,
+          "minY": 0.0,
+          "minZ": 0.0
+        },
+        "travelArea": {
+          "maxX": 110.0,
+          "maxY": 110.0,
+          "maxZ": 0.6,
+          "minX": 0.0,
+          "minY": 0.0,
+          "minZ": 0.0
+        },
+        "travelDimensions": {
+          "depth": 110.0,
+          "height": 0.6,
+          "width": 110.0
+        }
+      },
+      "hash": "d23e68e8ce34a49582935d2a9b6242c77949fe4f",
+      "name": "via-ocm.gcode",
+      "origin": "local",
+      "path": "via-ocm.gcode",
+      "refs": {
+        "download": "http://127.0.0.1:5101/downloads/files/local/via-ocm.gcode",
+        "resource": "http://127.0.0.1:5101/api/files/local/via-ocm.gcode"
+      },
+      "size": 3853,
+      "type": "machinecode",
+      "typePath": [
+        "machinecode",
+        "gcode"
+      ],
+      "user": "admin"
+    }
+  ],
+  "free": 357833986048,
+  "total": 485473984512
+}

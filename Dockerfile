@@ -20,8 +20,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     OCM_DATA_DIR=/data \
     NODE_OPTIONS=--disable-warning=ExperimentalWarning
-# G-code uploads (phase 2) can be large; the server's default body limit is 512 KB.
-ENV BODY_SIZE_LIMIT=512M
+# G-code uploads stream through to OctoPrint (never buffered), so allow big ones; the default limit is 512 KB.
+ENV BODY_SIZE_LIMIT=4G
 # tzdata lets TZ set the time zone used for ETAs in the status API and logs.
 RUN apk add --no-cache tzdata
 COPY --from=build /app/build ./build

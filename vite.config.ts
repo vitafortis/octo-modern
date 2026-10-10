@@ -18,7 +18,12 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter({ out: 'build' })
+			adapter: adapter({ out: 'build' }),
+			// hooks.server.ts checks the Origin of every API write against the host the
+			// browser used (works by IP, hostname or behind a TLS proxy). SvelteKit's own
+			// check compares against an origin adapter-node guesses as https without ORIGIN,
+			// which rejects multipart uploads on a plain-http LAN, so it's replaced by ours.
+			csrf: { trustedOrigins: ['*'] }
 		})
 	]
 });

@@ -68,6 +68,15 @@ export function normalizeBaseUrl(raw: string): string {
 	return `${u.protocol}//${u.host}${path}`;
 }
 
+/** Encodes each segment of a file path for a URL (keeps the slashes). */
+export function encodePath(path: string): string {
+	return path
+		.split('/')
+		.filter(Boolean)
+		.map((seg) => encodeURIComponent(seg))
+		.join('/');
+}
+
 /** OctoPrint's raw SockJS websocket endpoint for a base URL. */
 export function pushUrl(baseUrl: string): string {
 	return `${baseUrl.replace(/^http/i, 'ws')}/sockjs/websocket`;
@@ -212,6 +221,28 @@ export class OctoPrintClient {
 		if (heater === 'bed') return this.post<void>('/api/printer/bed', { command: 'target', target: value });
 		if (heater === 'chamber') return this.post<void>('/api/printer/chamber', { command: 'target', target: value });
 		return this.post<void>('/api/printer/tool', { command: 'target', targets: { [heater]: value } });
+	}
+
+	/** Every file and folder, local and on the SD card. */
+	files() {
+		return this.get<unknown>('/api/files?recursive=true');
+	}
+
+	/** Selects a file (and starts printing it when `print`). */
+	selectFile(origin: string, path: string, print: boolean) {
+		return this.post<void>(`/api/files/${origin}/${encodePath(path)}`, { command: 'select', print });
+	}
+
+	deleteFile(origin: string, path: string) {
+		return this.json<void>('DELETE', `/api/files/${origin}/${encodePath(path)}`);
+	}
+
+	/** Creates a folder in local storage (`parent` empty for the top level). */
+	createFolder(name: string, parent: string) {
+		const form = new FormData();
+		form.set('foldername', name);
+		form.set('path', parent);
+		return this.json<unknown>('POST', '/api/files/local', { body: form });
 	}
 
 	/** Sends G-code lines to the printer. */

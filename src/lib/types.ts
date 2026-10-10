@@ -113,3 +113,32 @@ export type TestResult =
 			latencyMs: number;
 	  }
 	| { ok: false; error: ProblemInfo };
+
+/** A file or folder on OctoPrint (local storage or the printer's SD card). */
+export interface FileEntry {
+	origin: 'local' | 'sdcard';
+	/** Path within its origin, e.g. `parts/benchy.gcode`. */
+	path: string;
+	name: string;
+	/** Display name (OctoPrint keeps the original name of uploads with special characters). */
+	display: string;
+	type: 'folder' | 'machinecode' | 'model' | 'other';
+	size: number | null;
+	/** Upload time, epoch seconds. */
+	date: number | null;
+	/** From OctoPrint's G-code analysis, seconds. */
+	estimatedPrintTime: number | null;
+	/** Filament from the analysis, mm summed over tools. */
+	filamentMm: number | null;
+	/** Relative thumbnail path from a slicer-thumbnail plugin, for …/files/thumbnail?src=. */
+	thumbnail: string | null;
+	prints: { success: number; failure: number; lastSuccess: boolean | null; lastDate: number | null } | null;
+	children?: FileEntry[];
+}
+
+export interface FileListing {
+	files: FileEntry[];
+	/** Free and total bytes of OctoPrint's upload folder. */
+	free: number | null;
+	total: number | null;
+}
