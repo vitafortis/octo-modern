@@ -19,7 +19,7 @@ const SHOTS = join(ROOT, 'docs/screenshots');
 const APP_PORT = Number(process.env.E2E_APP_PORT ?? 3041);
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const OP_BASE = Number(process.env.E2E_OP_PORT_BASE ?? 5111);
-const OP_PREFIX = 'octo-modern-e2e-op';
+const OP_PREFIX = process.env.E2E_OP_PREFIX ?? 'octo-modern-e2e-op';
 const CAM_PORT = Number(process.env.E2E_CAM_PORT ?? 5191);
 const CAM = `http://127.0.0.1:${CAM_PORT}`;
 const OP = [1, 2].map((i) => ({ url: `http://127.0.0.1:${OP_BASE + i - 1}`, key: `ocm-dev-key-${i}` }));
