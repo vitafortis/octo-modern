@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { BadRequest, body, handler } from '#lib/server/http.ts';
-import { confirmRequired, controlTarget, refreshSoon, viewTarget } from '#lib/server/control.ts';
+import { confirmRequired, controlTarget, currentState, refreshSoon, viewTarget } from '#lib/server/control.ts';
 import { audit } from '#lib/server/permissions.ts';
-import { printers } from '#lib/server/octoprint/manager.ts';
 import { jobActive } from '#lib/printer.ts';
 import type { RequestHandler } from './$types';
 
@@ -30,7 +29,7 @@ export const POST: RequestHandler = handler(async ({ params, locals, request }) 
 		await client.connect(opts);
 		audit(locals, 'printer.connect', { printer, detail: `${opts.port ?? 'auto'} @ ${opts.baudrate ?? 'auto'}${opts.printerProfile ? `, profile ${opts.printerProfile}` : ''}` });
 	} else if (b.command === 'disconnect') {
-		const state = printers.snapshot(printer.id)?.state ?? 'unknown';
+		const state = await currentState(printer.id, client);
 		if (jobActive(state) && b.confirm !== true) return confirmRequired('A print is running. Disconnecting stops it. Send confirm: true to disconnect anyway.');
 		await client.disconnect();
 		audit(locals, 'printer.disconnect', { printer, detail: jobActive(state) ? `during a print (${state})` : undefined });

@@ -9,6 +9,8 @@ import { clientFor, printers } from './octoprint/manager.ts';
 import { requireControl, requirePrinter } from './permissions.ts';
 import type { OctoPrintClient } from './octoprint/client.ts';
 import type { Printer, User } from '#lib/types.ts';
+import type { PrinterState } from '#lib/printer.ts';
+import { parseJobResponse } from './octoprint/parse.ts';
 
 export interface Target {
 	printer: Printer;
@@ -25,6 +27,20 @@ export function controlTarget(user: User | null, id: string): Target {
 export function viewTarget(user: User | null, id: string): Target {
 	const printer = requirePrinter(user, id);
 	return { printer, client: clientFor(printer) };
+}
+
+/**
+ * The printer's state right now, for safety rules like "confirm while printing".
+ * Asks OctoPrint directly: the live snapshot can trail it by a second or two.
+ */
+export async function currentState(id: string, client: OctoPrintClient): Promise<PrinterState> {
+	try {
+		const state = parseJobResponse(await client.job()).state?.state;
+		if (state && state !== 'unknown') return state;
+	} catch {
+		// Fall back to what we last saw.
+	}
+	return printers.snapshot(id)?.state ?? 'unknown';
 }
 
 /** Polls soon after an action so watchers without a push connection see the effect. */

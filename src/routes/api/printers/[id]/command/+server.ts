@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { body, handler } from '#lib/server/http.ts';
-import { confirmRequired, controlTarget, isEmergencyStop, parseCommands, refreshSoon } from '#lib/server/control.ts';
+import { confirmRequired, controlTarget, currentState, isEmergencyStop, parseCommands, refreshSoon } from '#lib/server/control.ts';
 import { audit } from '#lib/server/permissions.ts';
-import { printers } from '#lib/server/octoprint/manager.ts';
 import { jobActive } from '#lib/printer.ts';
 import type { RequestHandler } from './$types';
 
@@ -15,7 +14,7 @@ export const POST: RequestHandler = handler(async ({ params, locals, request }) 
 	const b = await body(request);
 	const commands = parseCommands(b.commands);
 	const estop = commands.some(isEmergencyStop);
-	const state = printers.snapshot(printer.id)?.state ?? 'unknown';
+	const state = await currentState(printer.id, client);
 	if (b.confirm !== true) {
 		if (estop) return confirmRequired('M112 is an emergency stop: the printer halts immediately and needs a reset. Send confirm: true to send it.');
 		if (jobActive(state)) return confirmRequired('A print is running; G-code sent now is mixed into it. Send confirm: true to send anyway.');
