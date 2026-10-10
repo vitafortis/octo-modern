@@ -46,3 +46,19 @@ test('sessions end when a user is disabled or their role changes', () => {
 	store.createSession('hash-3', u.id, -1);
 	assert.equal(store.sessionUser('hash-3'), undefined, 'expired');
 });
+
+test('sign-in can be optional: visitors become guests with a non-admin role', async () => {
+	const auth = await import('../src/lib/server/auth.ts');
+	if (store.countUsers() === 0) store.createUser({ email: 'admin@x.io', role: 'admin' });
+	const cookies = { get: () => undefined } as unknown as Parameters<typeof auth.authenticate>[0];
+	assert.deepEqual(auth.accessSettings(), { requireSignIn: true, guestRole: 'viewer' });
+	assert.equal(auth.authenticate(cookies).state, 'anonymous');
+	auth.saveAccessSettings({ requireSignIn: false, guestRole: 'operator' });
+	const open = auth.authenticate(cookies);
+	assert.equal(open.state, 'open');
+	assert.equal(open.user?.role, 'operator');
+	assert.equal(open.user?.id, 'guest');
+	// A stored "admin" guest role is never honoured.
+	store.setKv('settings:access', { requireSignIn: false, guestRole: 'admin' });
+	assert.equal(auth.authenticate(cookies).user?.role, 'viewer');
+});

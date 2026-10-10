@@ -11,6 +11,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PUT: RequestHandler = handler(async ({ request, locals }) => {
 	const user = locals.user;
 	if (!user || user.id === 'open') throw new BadRequest('Accounts are disabled (OCM_AUTH=disabled)');
+	if (locals.auth !== 'authenticated') throw new BadRequest('Sign in to change your account');
 	const b = await body(request);
 	const patch: Parameters<typeof updateUser>[1] = {};
 

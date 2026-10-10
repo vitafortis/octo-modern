@@ -26,11 +26,13 @@
 <svelte:head><title>Sign in · octo·modern</title></svelte:head>
 
 <AuthCard
-	title="Welcome back"
-	subtitle="Sign in to your printers."
+	title="Sign in to octo·modern"
+	subtitle="Use your octo·modern account, not your OctoPrint login. Your printers stay connected either way."
 	cta="Sign in"
 	showForm={data.localLogin}
 	sso={data.sso ? { name: data.sso.name, href: `/auth/oidc/start?next=${encodeURIComponent(next)}` } : null}
 	error={data.error}
+	hint={data.guest ? `Or <a class="text-primary hover:underline" href="/">continue as a guest</a> (${data.guest === 'operator' ? 'can control printers' : 'watch only'}).` : undefined}
 	onsubmit={login}
 />
+

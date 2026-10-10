@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { KeyRound, ShieldCheck, Plug, ArrowRight, Archive, Download, Upload, TriangleAlert, Eye, RotateCcw } from '@lucide/svelte';
+	import { KeyRound, LogIn, ShieldCheck, Plug, ArrowRight, Archive, Download, Upload, TriangleAlert, Eye, RotateCcw } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import Switch from '#lib/components/Switch.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { refreshPrinters, toast } from '#lib/client/state.svelte.ts';
 
@@ -18,9 +19,22 @@
 
 	let env = $state<Env | null>(null);
 
+	type Access = { requireSignIn: boolean; guestRole: 'viewer' | 'operator' };
+	let access = $state<Access | null>(null);
+
 	onMount(async () => {
 		env = (await api.get<{ env: Env }>('/api/settings')).env;
+		access = await api.get<Access>('/api/settings/access');
 	});
+
+	async function saveAccess(next: Access) {
+		try {
+			access = await api.put<Access>('/api/settings/access', next);
+			toast('success', next.requireSignIn ? 'Sign-in required' : 'Sign-in optional', next.requireSignIn ? undefined : `Visitors can ${next.guestRole === 'operator' ? 'control printers' : 'watch printers'} without an account.`);
+		} catch (err) {
+			toast('error', 'Couldn’t save', errorMessage(err));
+		}
+	}
 
 	// --- backup & restore ------------------------------------------------------
 
@@ -166,13 +180,43 @@
 		</a>
 
 		<section class="card p-5">
+			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><LogIn class="size-4 text-primary" />Sign-in</h2>
+			<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+				octo·modern's own accounts, separate from OctoPrint's. Printers stay connected with their saved API keys whether or not anyone is signed in.
+			</p>
+			{#if env?.authDisabled}
+				<p class="mt-4 text-[13px]"><span class="badge badge-warning">OCM_AUTH=disabled</span> <span class="text-muted-foreground">Everyone gets full access; remove the variable to use the settings below.</span></p>
+			{:else if access}
+				<div class="mt-4 flex items-start justify-between gap-6">
+					<div>
+						<p class="text-[13px] font-medium">Require sign-in</p>
+						<p class="text-xs text-muted-foreground">Off: anyone who can reach octo·modern can use it as a guest. Admin pages still need an admin account.</p>
+					</div>
+					<Switch label="Require sign-in" checked={access.requireSignIn} onchange={(v) => saveAccess({ ...access!, requireSignIn: v })} />
+				</div>
+				{#if !access.requireSignIn}
+					<div class="mt-4 flex items-center justify-between gap-6">
+						<div>
+							<p class="text-[13px] font-medium">Guests can</p>
+							<p class="text-xs text-muted-foreground">Only use this on a trusted network.</p>
+						</div>
+						<select class="input w-56" value={access.guestRole} onchange={(e) => saveAccess({ ...access!, guestRole: e.currentTarget.value as Access['guestRole'] })}>
+							<option value="viewer">Watch printers</option>
+							<option value="operator">Control printers</option>
+						</select>
+					</div>
+				{/if}
+			{/if}
+		</section>
+
+		<section class="card p-5">
 			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><ShieldCheck class="size-4 text-primary" />Security</h2>
 			{#if env}
 				<div class="mt-4 grid gap-x-8 gap-y-3 text-[13px] md:grid-cols-2">
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Credential encryption</span><span class="font-mono text-xs">AES-256-GCM</span></div>
 					<div class="flex items-center justify-between gap-4"><span class="flex items-center gap-1.5 text-muted-foreground"><KeyRound class="size-3.5" />Master key</span><span class="font-mono text-xs">{env.keySource}</span></div>
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Data directory</span><span class="truncate font-mono text-xs">{env.dataDir}</span></div>
-					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Login</span>{#if env.authDisabled}<span class="badge badge-warning">disabled (OCM_AUTH)</span>{:else}<span class="badge badge-success">required</span>{/if}</div>
+					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Sign-in</span>{#if env.authDisabled}<span class="badge badge-warning">disabled (OCM_AUTH)</span>{:else if access && !access.requireSignIn}<span class="badge badge-warning">optional (guests: {access.guestRole})</span>{:else}<span class="badge badge-success">required</span>{/if}</div>
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Status poll (idle printers)</span><span class="font-mono text-xs">every {env.pollIntervalMs / 1000}s</span></div>
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Request timeout</span><span class="font-mono text-xs">{env.requestTimeoutMs / 1000}s</span></div>
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Live updates</span><span class="font-mono text-xs">every {(env.pushThrottle * 0.5).toFixed(1)}s</span></div>

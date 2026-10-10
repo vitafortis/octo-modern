@@ -1,13 +1,32 @@
 import type { Cookies } from '@sveltejs/kit';
 import { config } from './config.ts';
 import { hashPassword, randomToken, sha256 } from './crypto.ts';
-import { countUsers, createSession, createUser, deleteSession, sessionUser, touchUserLogin } from './store.ts';
-import type { User } from '#lib/types.ts';
+import { countUsers, createSession, createUser, deleteSession, getKv, sessionUser, setKv, touchUserLogin } from './store.ts';
+import type { Role, User } from '#lib/types.ts';
 
 export const SESSION_COOKIE = 'ocm_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-export type AuthState = 'disabled' | 'setup' | 'anonymous' | 'authenticated';
+/** `open`: sign-in isn't required, so visitors get the guest role (see accessSettings). */
+export type AuthState = 'disabled' | 'setup' | 'anonymous' | 'open' | 'authenticated';
+
+export interface AccessSettings {
+	/** Visitors must sign in to octo·modern. Printers stay connected with their saved keys either way. */
+	requireSignIn: boolean;
+	/** What visitors may do when sign-in isn't required. Admin always needs an account. */
+	guestRole: Exclude<Role, 'admin'>;
+}
+
+const ACCESS_KEY = 'settings:access';
+
+export function accessSettings(): AccessSettings {
+	const s = getKv<Partial<AccessSettings>>(ACCESS_KEY, {});
+	return { requireSignIn: s.requireSignIn !== false, guestRole: s.guestRole === 'operator' ? 'operator' : 'viewer' };
+}
+
+export function saveAccessSettings(s: AccessSettings) {
+	setKv(ACCESS_KEY, s);
+}
 
 /** Stand-in user when OCM_AUTH=disabled. */
 const OPEN_USER: User = {
@@ -22,6 +41,10 @@ const OPEN_USER: User = {
 	createdAt: new Date(0).toISOString(),
 	lastLoginAt: null
 };
+
+function guestUser(role: Exclude<Role, 'admin'>): User {
+	return { ...OPEN_USER, id: 'guest', email: 'guest', name: 'Guest', role };
+}
 
 let bootstrapped = false;
 
@@ -44,7 +67,9 @@ export function authenticate(cookies: Cookies): { state: AuthState; user: User |
 	if (countUsers() === 0) return { state: 'setup', user: null };
 	const token = cookies.get(SESSION_COOKIE);
 	const user = token ? sessionUser(sha256(token)) : undefined;
-	return user ? { state: 'authenticated', user } : { state: 'anonymous', user: null };
+	if (user) return { state: 'authenticated', user };
+	const access = accessSettings();
+	return access.requireSignIn ? { state: 'anonymous', user: null } : { state: 'open', user: guestUser(access.guestRole) };
 }
 
 export function startSession(cookies: Cookies, userId: string, secure: boolean) {

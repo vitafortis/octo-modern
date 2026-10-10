@@ -85,6 +85,13 @@ Dangerous actions ask for confirmation, and the server insists on it too (it ans
 
 The first admin is created by the setup wizard, or headlessly with `OCM_ADMIN_EMAIL` and `OCM_ADMIN_PASSWORD`. Everyone can change their name, email and password under **My account** (click your name in the sidebar).
 
+### Printer access vs. sign-in
+
+These are two separate layers:
+
+- **octo·modern → OctoPrint**: each printer's API key is saved (encrypted) in `/data`, so octo·modern stays connected, keeps watching temperatures and jobs, and survives restarts whether or not anyone is signed in. Nobody using octo·modern needs an OctoPrint login.
+- **You → octo·modern**: octo·modern's own accounts and roles (above). Under **Settings → Sign-in** you can make sign-in optional: visitors then use it as guests who can either watch or control printers, while admin pages still need an admin account. `OCM_AUTH=disabled` goes further and gives everyone full access (trusted networks only).
+
 ### OIDC
 
 Set up single sign-on under **Integrations**, or with `OCM_OIDC_*` variables (see [Configuration](#configuration)). Register `<your-url>/auth/oidc/callback` as the redirect URI with your provider. People whose email matches **Create accounts automatically for** get an account on first sign-in, as admin if they also match **…as admin when matching**, otherwise with the default role (viewer, unless you choose operator). Once SSO works you can turn off password sign-in; `OCM_LOCAL_LOGIN=enabled` brings it back if SSO breaks.
@@ -214,7 +221,7 @@ To build it yourself: `docker build -t octo-modern .`
 | `OCM_DATA_DIR` | `./data` (`/data` in the image) | Encrypted SQLite store and key file |
 | `OCM_SECRET_KEY` | — | Master secret. Unset means a random key is generated in `secret.key` |
 | `OCM_ADMIN_EMAIL`, `OCM_ADMIN_PASSWORD`, `OCM_ADMIN_NAME` | — | Create the first admin on start instead of using the setup wizard |
-| `OCM_AUTH` | — | `disabled` skips the login screen (trusted networks only) |
+| `OCM_AUTH` | — | `disabled` skips sign-in entirely and gives everyone admin access (trusted networks only). To keep admin accounts but let guests watch or control printers, use **Settings → Sign-in** instead |
 | `OCM_LOCAL_LOGIN` | — | `disabled` hides the email/password form (SSO only); `enabled` forces it back on |
 | `OCM_OIDC_ISSUER` | — | OIDC issuer URL; enables SSO (or configure it under Integrations) |
 | `OCM_OIDC_CLIENT_ID`, `OCM_OIDC_CLIENT_SECRET` | — | Client credentials from your identity provider |

@@ -3,7 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -199,6 +199,8 @@
 				{/if}
 				{#if data.auth === 'authenticated'}
 					<button class="btn btn-ghost btn-icon btn-sm {collapsed ? '' : 'ml-auto'}" title="Sign out" onclick={logout}><LogOut /></button>
+				{:else if data.auth === 'open'}
+					<a class="btn btn-ghost btn-icon btn-sm {collapsed ? '' : 'ml-auto'}" title="Sign in (browsing as a guest: {data.viewer?.role === 'operator' ? 'can control printers' : 'watch only'})" href="/login"><LogIn /></a>
 				{/if}
 			</div>
 		</aside>
