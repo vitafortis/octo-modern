@@ -11,7 +11,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "node --no-warnings --experimental-strip-types --test tests/*.test.ts",
-		"e2e": "node scripts/e2e/run.mjs"
+		"e2e": "node scripts/e2e/run.mjs",
+		"e2e:history": "node scripts/e2e/history.mjs"
 	},
 	"devDependencies": {
 		"@fontsource-variable/geist": "^5.3.0",

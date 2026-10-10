@@ -100,7 +100,9 @@ const PATCHABLE = {
 	estimatedS: 'estimated_s',
 	completion: 'completion',
 	notes: 'notes',
-	octoprintUser: 'octoprint_user'
+	octoprintUser: 'octoprint_user',
+	userId: 'user_id',
+	startedBy: 'started_by'
 } as const;
 
 export function updatePrint(id: number, patch: Partial<Record<keyof typeof PATCHABLE, string | number | null>>) {
@@ -204,14 +206,18 @@ export function countPrints(f: HistoryFilter & { printerIds?: string[] | null })
 	return Number((db().prepare(`SELECT count(*) AS n FROM prints ${sql}`).get(...values) as Row).n);
 }
 
-/** Who started a print on this printer through octo·modern since `since` (the newest such audit entry). */
-export function auditedStarter(printerId: string, since: string, fileNames: string[]): { userId: string | null; label: string } | null {
+/**
+ * Who started a print through octo·modern: the newest audited start of this file on this
+ * printer within `slackMs` of the print's start (the audit entry is written when OctoPrint
+ * answers, a moment after the print started).
+ */
+export function auditedStarter(printerId: string, startedAt: number, fileNames: string[], slackMs = 30_000): { userId: string | null; label: string } | null {
 	const rows = db()
 		.prepare(
 			`SELECT a.user_id, a.user_email, a.detail, u.name FROM audit a LEFT JOIN users u ON u.id = a.user_id
-			 WHERE a.printer_id = ? AND a.action IN ('job.start', 'job.restart') AND a.at >= ? ORDER BY a.id DESC LIMIT 10`
+			 WHERE a.printer_id = ? AND a.action IN ('job.start', 'job.restart') AND a.at BETWEEN ? AND ? ORDER BY a.id DESC LIMIT 10`
 		)
-		.all(printerId, since) as Row[];
+		.all(printerId, new Date(startedAt - slackMs).toISOString(), new Date(startedAt + slackMs).toISOString()) as Row[];
 	// Only an entry naming this file (start: its path; upload & print and restart: its name).
 	const names = fileNames.filter(Boolean);
 	const match = rows.find((r) => typeof r.detail === 'string' && names.some((n) => (r.detail as string).endsWith(n)));

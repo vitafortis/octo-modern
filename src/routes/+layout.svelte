@@ -3,7 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, History } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -44,6 +44,7 @@
 
 	const nav = $derived([
 		...(single ? [] : [{ href: '/', label: 'Overview', icon: LayoutDashboard }]),
+		{ href: '/history', label: 'History', icon: History },
 		...(isAdmin()
 			? [
 					{ href: '/users', label: 'Users', icon: Users },

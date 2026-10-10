@@ -68,6 +68,12 @@ const ACTIVE = new Set<PrinterState>(['printing', 'pausing', 'paused', 'resuming
 const IDLE = new Set<PrinterState>(['operational', 'error', 'disconnected']);
 /** An end event this long after the end we recorded still refers to that print. */
 const SAME_END_MS = 90_000;
+/**
+ * After an event starts or ends a print, state frames that contradict it are ignored
+ * this long: OctoPrint sends events at once but batches state updates (throttled), so
+ * an "Operational" frame from before a PrintStarted can arrive after it.
+ */
+const EVENT_GRACE_MS = 8_000;
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -95,6 +101,8 @@ export function fileFromPayload(payload: unknown): FileRef | null {
 export class PrintDetector {
 	active: ActiveJob | null;
 	private lastEnd: { file: FileRef; at: number; via: 'event' | 'observe'; result: EndResult | null } | null = null;
+	/** Until when observations may not start or end prints (see EVENT_GRACE_MS). */
+	private graceUntil = 0;
 
 	constructor(restore: ActiveJob | null = null) {
 		this.active = restore ? { ...restore } : null;
@@ -102,6 +110,15 @@ export class PrintDetector {
 
 	observe(o: Observation): HistoryAction[] {
 		const out: HistoryAction[] = [];
+		if (o.at < this.graceUntil) {
+			// Only progress of the print the event started.
+			const file = fileFromJob(o.job);
+			if (this.active && file && samePrint(this.active.file, file) && ACTIVE.has(o.state)) {
+				if (o.progress?.printTime != null) this.active.printTime = o.progress.printTime;
+				if (o.progress?.completion != null) this.active.completion = o.progress.completion;
+			}
+			return out;
+		}
 		if (ACTIVE.has(o.state)) {
 			const file = fileFromJob(o.job);
 			if (!file) return out;
@@ -154,6 +171,7 @@ export class PrintDetector {
 				if (this.active && samePrint(this.active.file, file) && at - this.active.startedAt < 60_000) return out;
 				if (this.active) out.push(this.end(at, null, null, null, 'event'));
 				this.active = { file, startedAt: at, printTime: 0, completion: 0, paused: false, cancelling: false };
+				this.graceUntil = at + EVENT_GRACE_MS;
 				out.push({ type: 'start', file, startedAt: at, job: null, user: str(p.user) ?? str(p.owner), via: 'event' });
 				return out;
 			}
@@ -178,6 +196,7 @@ export class PrintDetector {
 				const failReason = result === 'failed' ? (reason ?? 'error') : null;
 				if (this.active && (!file || samePrint(this.active.file, file))) {
 					if (result === 'success') this.active.completion = 100;
+					this.graceUntil = at + EVENT_GRACE_MS;
 					out.push(this.end(at, result, printTime, failReason, 'event'));
 					return out;
 				}

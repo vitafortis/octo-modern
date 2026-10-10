@@ -132,6 +132,22 @@ test('events: a cancel sends PrintCancelled and PrintFailed(cancelled): one entr
 	assert.deepEqual(d.observe(obs(12, 'operational', job('a.gcode'), progress(null, null))), []);
 });
 
+test('events win over stale state frames that arrive after them', () => {
+	const d = new PrintDetector();
+	d.observe(obs(0, 'operational', job('a.gcode'), progress(100, 14)));
+	assert.deepEqual(types(d.event('PrintStarted', payload('b.gcode'), T0 + 1_000)), ['start']);
+	// Batched frames from before the start: "Operational" with the new file selected.
+	assert.deepEqual(d.observe(obs(1.3, 'operational', job('b.gcode'), progress(null, null))), [], 'not an end');
+	assert.deepEqual(d.observe(obs(2, 'printing', job('b.gcode'), progress(3, 1))), []);
+	const [end] = d.event('PrintCancelled', payload('b.gcode', { time: 9 }), T0 + 10_000);
+	assert.ok(end.type === 'end' && end.result === 'cancelled' && end.printTime === 9);
+	// …and a "Printing" frame from before the cancel.
+	assert.deepEqual(d.observe(obs(10.2, 'printing', job('b.gcode'), progress(40, 9))), [], 'not a new print');
+	assert.deepEqual(d.observe(obs(19, 'operational', job('b.gcode'), progress(null, null))), []);
+	// After the grace period, observations count again.
+	assert.deepEqual(types(d.observe(obs(30, 'printing', job('b.gcode'), progress(1, 1)))), ['start']);
+});
+
 test('events: PrintFailed with an error reason', () => {
 	const d = new PrintDetector();
 	d.event('PrintStarted', payload('a.gcode'), T0);

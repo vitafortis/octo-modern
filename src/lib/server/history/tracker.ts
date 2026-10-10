@@ -136,6 +136,18 @@ class HistoryTracker {
 		return d;
 	}
 
+	/** Fills in who started a print, from the audit log, if it isn't known yet. */
+	private attribute(rowId: number) {
+		try {
+			const r = getPrint(rowId);
+			if (!r || r.startedBy || r.source !== 'live') return;
+			const who = auditedStarter(r.printerId, Date.parse(r.startedAt), [r.path.split('/').pop() ?? r.file, r.file]);
+			if (who) updatePrint(rowId, { userId: who.userId, startedBy: who.label });
+		} catch (err) {
+			console.error('[octo-modern] print history: attribution failed', err);
+		}
+	}
+
 	private onLive(id: string, e: LiveEvent) {
 		if (e.type !== 'update' && e.type !== 'event') return;
 		let actions: HistoryAction[] = [];
@@ -165,7 +177,7 @@ class HistoryTracker {
 				// The job's analysis: from the action (poll/push update) or the live snapshot.
 				const snapJob = printers.snapshot(id)?.job;
 				const job = a.job ?? (snapJob?.file?.path === a.file.path ? snapJob : null);
-				const who = auditedStarter(id, iso(a.startedAt - 2 * 60_000), [a.file.name, a.file.display]);
+				const who = auditedStarter(id, a.startedAt, [a.file.name, a.file.display]);
 				const rowId = insertPrint({
 					printerId: id,
 					printerName: printer.name,
@@ -182,7 +194,12 @@ class HistoryTracker {
 					startedBy: who?.label ?? null,
 					octoprintUser: a.user ?? job?.user ?? null
 				});
-				if (rowId != null) this.rows.set(id, rowId);
+				if (rowId != null) {
+					this.rows.set(id, rowId);
+					// The route that started it writes its audit entry after OctoPrint answers,
+					// which can be after OctoPrint's PrintStarted event: look again shortly.
+					if (!who) setTimeout(() => this.attribute(rowId), 3_000).unref?.();
+				}
 				this.hold(id);
 				return;
 			}
@@ -196,6 +213,7 @@ class HistoryTracker {
 				const rowId = this.rows.get(id);
 				this.rows.delete(id);
 				this.release(id);
+				if (rowId != null) this.attribute(rowId);
 				const row = rowId != null ? getPrint(rowId) : undefined;
 				const info = printer ? await fileInfo(printer, a.file.origin, a.file.path) : null;
 				// OctoPrint's own record of this print, if it's the one that just ended.

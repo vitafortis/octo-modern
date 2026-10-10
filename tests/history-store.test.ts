@@ -70,12 +70,14 @@ test('filters, paging and who sees what', () => {
 });
 
 test('the starter comes from the audit log, only for the same file', () => {
-	const since = new Date(Date.now() - 60_000).toISOString();
+	const now = Date.now();
 	store.addAudit({ userId: op.id, userEmail: op.email, action: 'job.start', printerId: a.id, printerName: 'a', detail: 'parts/gear.gcode', ip: null });
-	assert.deepEqual(hs.auditedStarter(a.id, since, ['gear.gcode']), { userId: op.id, label: 'Otto' });
-	assert.equal(hs.auditedStarter(a.id, since, ['other.gcode']), null, 'a start of another file says nothing about this one');
-	assert.equal(hs.auditedStarter(b.id, since, ['gear.gcode']), null);
-	assert.equal(hs.auditedStarter(a.id, new Date(Date.now() + 60_000).toISOString(), ['gear.gcode']), null, 'too old');
+	assert.deepEqual(hs.auditedStarter(a.id, now, ['gear.gcode']), { userId: op.id, label: 'Otto' });
+	assert.deepEqual(hs.auditedStarter(a.id, now - 5_000, ['gear.gcode']), { userId: op.id, label: 'Otto' }, 'written a moment after the start');
+	assert.equal(hs.auditedStarter(a.id, now, ['other.gcode']), null, 'a start of another file says nothing about this one');
+	assert.equal(hs.auditedStarter(b.id, now, ['gear.gcode']), null);
+	assert.equal(hs.auditedStarter(a.id, now + 60_000, ['gear.gcode']), null, 'an earlier start of the same file');
+	assert.equal(hs.auditedStarter(a.id, now - 60_000, ['gear.gcode']), null, 'a later one');
 });
 
 const printing = (completion: number, printTime: number) => ({
@@ -95,7 +97,7 @@ test('the tracker records prints from polls alone, with the user and the filamen
 	history.start();
 	const model = printers.model(a.id)!;
 	model.applyPoll(ready(null));
-	model.applyPoll(printing(25, 30));
+	model.applyPoll(printing(25, 10));
 	await history.idle();
 	const [open] = hs.openPrints(a.id);
 	assert.ok(open, 'an entry opens while printing');
@@ -103,7 +105,7 @@ test('the tracker records prints from polls alone, with the user and the filamen
 	assert.equal(open.startedBy, 'Otto', 'started through octo·modern by Otto (audit above)');
 	assert.equal(open.octoprintUser, 'admin');
 	assert.equal(open.filamentMm, 2000, 'the analysis total while it runs');
-	assert.ok(Math.abs(Date.parse(open.startedAt) - (Date.now() - 30_000)) < 5_000, 'start backdated by the print time');
+	assert.ok(Math.abs(Date.parse(open.startedAt) - (Date.now() - 10_000)) < 5_000, 'start backdated by the print time');
 
 	model.applyPoll(printing(50, 60));
 	model.applyPoll(ready(null));
