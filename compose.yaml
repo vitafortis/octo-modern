@@ -13,6 +13,13 @@ services:
     environment:
       # Time zone for ETAs and logs.
       TZ: Etc/UTC
+      # Optional: let Discover find OctoPrint containers through the read-only
+      # socket proxy below (uncomment it and depends_on too):
+      # OCM_DOCKER_HOSTS: tcp://docker-proxy:2375
+      # Optional: an Arcane instance for Discover (read-only key with
+      # environments:list, containers:list, containers:read), or connect it in the UI:
+      # OCM_ARCANE_URL: http://arcane.lan:3552
+      # OCM_ARCANE_API_KEY: ${OCM_ARCANE_API_KEY}
       # Optional: create the first admin here instead of in the setup wizard.
       # OCM_ADMIN_EMAIL: you@example.com
       # OCM_ADMIN_PASSWORD: ${OCM_ADMIN_PASSWORD}
@@ -35,6 +42,22 @@ services:
     extra_hosts:
       # Lets octo·modern reach an OctoPrint published on the Docker host itself.
       - host.docker.internal:host-gateway
+    # depends_on:
+    #   - docker-proxy
+    # mDNS discovery (OctoPi announcing itself) only works on the LAN itself:
+    # network_mode: host, or a macvlan network. On this bridge, use Discover's subnet scan.
+
+  # Optional, for Discover: a read-only Docker API, so octo·modern never gets the raw
+  # socket. It only lists and inspects containers; POST=0 keeps every write blocked.
+  # docker-proxy:
+  #   image: tecnativa/docker-socket-proxy:latest
+  #   container_name: octo-modern-docker-proxy
+  #   restart: unless-stopped
+  #   environment:
+  #     CONTAINERS: 1
+  #     POST: 0
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
 
 volumes:
   octo-modern-data:

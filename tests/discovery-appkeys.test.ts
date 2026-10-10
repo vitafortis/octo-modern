@@ -193,8 +193,8 @@ test('subnet input: CIDRs, ranges, addresses and limits', () => {
 test('subnet scan: probes every address × port with bounded concurrency, keeps OctoPrint only', async () => {
 	let inFlight = 0;
 	let peak = 0;
-	const open = new Set(['10.0.0.5:80', '10.0.0.5:5000', '10.0.0.7:80', '10.0.0.9:443']);
-	const scan = await scanSubnet('10.0.0.0/28', '80, 5000, 443', {
+	const open = new Set(['10.0.0.5:80', '10.0.0.5:443', '10.0.0.5:5001', '10.0.0.7:80', '10.0.0.9:443']);
+	const scan = await scanSubnet('10.0.0.0/28', '80, 5001, 443', {
 		concurrency: 8,
 		reverseDns: false,
 		probe: async (h, p) => {
@@ -204,7 +204,7 @@ test('subnet scan: probes every address × port with bounded concurrency, keeps 
 			return open.has(`${h}:${p}`);
 		},
 		fingerprint: async (url) => ({
-			confidence: url === 'http://10.0.0.5' || url === 'https://10.0.0.9' ? 'confirmed' : 'none',
+			confidence: ['http://10.0.0.5', 'http://10.0.0.5:5001', 'https://10.0.0.9'].includes(url) ? 'confirmed' : 'none',
 			version: null,
 			apiVersion: null,
 			appkeys: true,
@@ -214,8 +214,25 @@ test('subnet scan: probes every address × port with bounded concurrency, keeps 
 	});
 	assert.equal(scan.probed, 14 * 3);
 	assert.ok(peak <= 8, `concurrency stayed bounded (${peak})`);
-	assert.deepEqual(scan.candidates.map((c) => c.baseUrl), ['http://10.0.0.5', 'https://10.0.0.9'], 'the nginx on .7 is not listed');
-	assert.deepEqual(scan.candidates[0].alternates.map((a) => a.url), ['http://10.0.0.5:5000'], 'one candidate per host');
-	assert.equal(scan.candidates[1].insecureTls, true);
+	assert.deepEqual(scan.candidates.map((c) => c.baseUrl), ['http://10.0.0.5', 'http://10.0.0.5:5001', 'https://10.0.0.9'], 'the nginx on .7 is not listed');
+	assert.deepEqual(scan.candidates[0].alternates.map((a) => a.url), ['https://10.0.0.5'], '80 and 443 of one host are one candidate');
+	assert.equal(scan.candidates[1].name, '10.0.0.5:5001', 'another port is another instance');
+	assert.equal(scan.candidates[2].insecureTls, true);
 	assert.equal(scan.candidates[0].source.kind, 'subnet');
+});
+
+test('discovery is admin-only: pages and every /api/discover route', async () => {
+	const { adminOnlyApi, ADMIN_PAGES } = await import('../src/lib/server/access.ts');
+	assert.ok(ADMIN_PAGES.includes('/discover'));
+	for (const [m, p] of [
+		['GET', '/api/discover/docker'],
+		['POST', '/api/discover/subnet'],
+		['POST', '/api/discover/appkey'],
+		['GET', '/api/discover/appkey/abc'],
+		['POST', '/api/discover/import'],
+		['DELETE', '/api/discover/arcane/managers/x']
+	]) {
+		assert.equal(adminOnlyApi(m, p), true, `${m} ${p}`);
+	}
+	assert.equal(adminOnlyApi('GET', '/api/discovery-is-not-a-prefix'), false);
 });

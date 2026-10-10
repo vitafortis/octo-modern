@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { ArrowRight, Check, CircleAlert, CircleCheck, LoaderCircle, Printer, UserRound, X, Zap } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
+	import QuickDiscover from '#lib/components/discover/QuickDiscover.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import type { Printer as PrinterT, TestResult } from '#lib/types.ts';
 
@@ -82,7 +83,7 @@
 	<div class="dot-grid mask-fade pointer-events-none absolute inset-0 opacity-70"></div>
 	<div class="glow-top pointer-events-none absolute inset-x-0 top-0 h-[480px]"></div>
 
-	<div class="relative w-full max-w-lg">
+	<div class="relative w-full {step === 2 ? 'max-w-2xl' : 'max-w-lg'} transition-[max-width]">
 		<div class="mb-6 flex flex-col items-center text-center">
 			<Logo size={44} />
 			<h1 class="mt-4 text-lg font-semibold tracking-tight">Welcome to octo·modern</h1>
@@ -133,8 +134,16 @@
 					</button>
 				</form>
 			{:else if step === 2}
+				<h2 class="flex items-center gap-2 text-[15px] font-semibold"><Printer class="size-4 text-primary" />Add your first printer</h2>
+				<p class="mt-1 mb-4 text-xs text-muted-foreground">Pick one octo·modern found and approve it in OctoPrint, no key to copy.</p>
+				<QuickDiscover
+					onadded={(p) => {
+						added = p;
+						step = 3;
+					}}
+				/>
+				<div class="my-5 flex items-center gap-3 text-[11px] text-muted-foreground"><span class="h-px flex-1 bg-border"></span>or enter it yourself<span class="h-px flex-1 bg-border"></span></div>
 				<form onsubmit={addPrinter}>
-					<h2 class="flex items-center gap-2 text-[15px] font-semibold"><Printer class="size-4 text-primary" />Add your first printer</h2>
 					<p class="mt-1 text-xs text-muted-foreground">
 						The OctoPrint URL and an API key: in OctoPrint, open <b class="font-medium text-foreground">Settings → Application Keys</b> and generate one, or copy your user's key from <b class="font-medium text-foreground">User Settings → API key</b>.
 					</p>

@@ -33,6 +33,11 @@ export const discoveryEnv = {
 	dockerHosts: process.env.OCM_DOCKER_HOSTS === 'none' ? [] : process.env.OCM_DOCKER_HOSTS ? list(process.env.OCM_DOCKER_HOSTS) : defaultDockerHosts(),
 	/** Our own container name, when hostname/IP matching can't find it (custom hostname, macvlan…). */
 	selfContainer: process.env.OCM_SELF_CONTAINER?.trim() || undefined,
+	/** Development/tests: send mDNS queries to this `host:port` (a unicast responder) instead of multicast. */
+	mdnsTarget: (() => {
+		const m = /^(.+):(\d+)$/.exec(process.env.OCM_MDNS_TARGET?.trim() ?? '');
+		return m ? { host: m[1], port: Number(m[2]) } : undefined;
+	})(),
 	arcane: process.env.OCM_ARCANE_URL
 		? { url: process.env.OCM_ARCANE_URL.trim(), apiKey: process.env.OCM_ARCANE_API_KEY ?? '', name: process.env.OCM_ARCANE_NAME?.trim() || 'Arcane' }
 		: undefined

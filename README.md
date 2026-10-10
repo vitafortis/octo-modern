@@ -23,6 +23,7 @@
 - **Webcams**: the live MJPEG stream on the dashboard (with fullscreen) and its own tab, relayed by octo·modern so it works wherever octo·modern does, even when the camera is on a LAN address the browser can't reach. Several cameras per printer get a switcher; flip and rotation follow OctoPrint's settings; HLS and WebRTC cameras get an "Open stream" link.
 - **Control**: jog X/Y/Z in 0.1–100 mm steps (buttons or arrow keys, Page Up/Down and Home while the pad has focus), home, motors off, feed and flow rate overrides, part fan, extrude/retract and tool select. It follows the printer profile (axis inversion, build volume, extruder count, heated bed/chamber) and shows OctoPrint's custom controls (sections, commands, scripts, sliders and inputs, feedback lines). Movement is refused while a print runs, by the server too; jogs are coalesced in the audit log.
 - **Terminal**: the live serial log (virtualized, follows the bottom until you scroll up), filters for temperature reports, `ok`, SD status, `wait` and `busy`, search with highlighting, clear and copy. A G-code prompt with multi-line send, history (↑/↓, kept per user and printer), autocomplete with short descriptions, optional uppercasing, and an emergency stop button.
+- **Discover**: find OctoPrint in Docker (through a read-only socket proxy), in [Arcane](https://getarcane.app), over mDNS and with a subnet scan, see which serial port each container owns, and add one by approving octo·modern in OctoPrint (Application Keys), no key to copy. See [Discover](#discover).
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
@@ -55,7 +56,7 @@ docker run -d --name octo-modern \
   ghcr.io/vitafortis/octo-modern:latest
 ```
 
-The container runs as an unprivileged user and needs nothing but its `/data` volume. It doesn't use the Docker socket.
+The container runs as an unprivileged user and needs nothing but its `/data` volume. It never needs the Docker socket itself; [Discover](#discover) can read containers through an optional read-only socket proxy.
 
 ### Using Arcane?
 
@@ -69,6 +70,68 @@ You need two things from each OctoPrint:
 2. **An API key.** In OctoPrint, open **Settings → Application Keys** and generate one named "octo·modern", or copy a user's key from **User Settings → API key**. The key acts with the permissions of the OctoPrint user it belongs to, so a key of an admin user allows everything octo·modern does.
 
 **Test connection** shows OctoPrint's version, which user the key belongs to, and any permission the key lacks. Self-signed certificate on your LAN? Turn off **Verify TLS certificate** for that server.
+
+Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and **Discover** (in the sidebar) does the rest. You approve the key in OctoPrint instead of copying it.
+
+## Discover
+
+**Discover** (admins) finds OctoPrint servers and adds them in two clicks.
+
+![Discover](docs/screenshots/discover.png)
+
+It looks in three places, one tab each:
+
+- **Docker**: every container on each Docker endpoint. OctoPrint is recognized by image (`octoprint/octoprint`, `linuxserver/octoprint`, anything named `…/octoprint`), or by port 80/5000 plus OctoPrint environment variables, labels or container name; exporters, Obico and other companions are skipped. Each candidate shows its image, compose project, the **serial devices** mapped into it (`--device /dev/ttyACM0`, a bind-mounted `/dev/serial/by-id/…`, or a privileged container with `/dev`), so you can tell which printer it drives, and how octo·modern reaches it.
+- **Arcane**: the same, for every environment an [Arcane](https://getarcane.app) instance manages, through its API.
+- **Network**: mDNS (OctoPrint announces `_octoprint._tcp`) and a subnet scan, for OctoPi on a Raspberry Pi and anything else outside Docker.
+
+**Reaching it.** A container may be reachable on a published port, on its IP on a Docker network, by container name, or on the host network. Discover probes every address it knows and preselects the first that answers as OctoPrint; the others stay in the address menu. It also shows which networks the container is on, which of them octo·modern shares, and for a container octo·modern can't reach, the compose change that attaches octo·modern to the right network (or the port to publish). octo·modern finds its own container by hostname or IP; set `OCM_SELF_CONTAINER` if you gave it a custom hostname.
+
+**Recognizing OctoPrint without a key.** Since 1.5, OctoPrint answers its API with 403 until you log in, so Discover looks for markers only OctoPrint has: `GET /plugin/appkeys/probe` answers 204 (the bundled Application Keys plugin), `GET /` redirects to `/login/?redirect=…&permissions=…`, and the login page is titled "OctoPrint". The version comes from the mDNS record, the container image (`octoprint_ref`), or `/api/version` when anonymous access is allowed; with a key, **Test connection** always shows it.
+
+**Adding one.** **Add** opens a dialog that asks OctoPrint for an [Application Key](https://docs.octoprint.org/en/master/bundledplugins/appkeys.html): **Approve in OctoPrint** opens OctoPrint's own approval page (and OctoPrint admins who are signed in get a prompt too). Sign in there as the user whose permissions the key should have and click **Allow**. octo·modern picks the key up within a second, tests it and saves the printer. The key goes from OctoPrint to octo·modern's server and into the encrypted store; the browser never sees it. Prefer to paste a key? **Paste a key** does that. A key that fails the test isn't saved unless you say so.
+
+OctoPrint allows 3 key requests a minute, and drops a request nobody approves within 10 minutes (octo·modern stops waiting after 5).
+
+**Saved and moved printers.** Candidates that are already saved say so, matched by any of their addresses or by the container (or mDNS name) they were added from. When a saved container shows up at a new address (a new published port, a moved container), Discover flags it and **Use … → printer** points the saved printer at the new address, keeping its key, name and settings.
+
+![Discover: an address changed](docs/screenshots/discover-moved.png)
+
+### Docker, through a read-only socket proxy
+
+octo·modern only lists and inspects containers (`GET /containers/json` and `GET /containers/{id}/json`), so don't give it the raw socket. Run [tecnativa/docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) next to it with `CONTAINERS=1` and `POST=0` and point `OCM_DOCKER_HOSTS` at it. The commented `docker-proxy` service in [`compose.yaml`](compose.yaml) is ready to uncomment:
+
+```yaml
+services:
+  octo-modern:
+    environment:
+      OCM_DOCKER_HOSTS: tcp://docker-proxy:2375
+    depends_on: [docker-proxy]
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+More Docker hosts? Run a proxy on each and list them all: `OCM_DOCKER_HOSTS=tcp://docker-proxy:2375,tcp://nas.lan:2375`, or add them under **Discover → Docker → Docker endpoints**. Published ports are reached through the endpoint's host (`host.docker.internal` for the local socket).
+
+### Arcane, with a read-only key
+
+In Arcane, open **Settings → API Keys** and create a key with only read permissions: `environments:list`, `containers:list` and `containers:read` are what octo·modern uses (`projects:list` and `projects:read` don't hurt, so pg·modern's key works too). Then connect it under **Discover → Arcane**, or set `OCM_ARCANE_URL` and `OCM_ARCANE_API_KEY`. The key is stored encrypted. Published ports resolve to each environment's host address.
+
+### mDNS needs the LAN
+
+OctoPi announces itself over mDNS (`_octoprint._tcp.local`, with its version and model). octo·modern sends a plain DNS-SD query, no Avahi or extra packages needed, but multicast only reaches one network segment: inside Docker's default bridge network, nothing answers. To use it, run octo·modern with `network_mode: host`, or attach it to a macvlan/ipvlan network on your LAN. On a bridge network, use the subnet scan instead. (OctoPi advertises OctoPrint's own port 5000, which only listens on the Pi itself; Discover also tries 80 and 443, where OctoPi's proxy serves it.)
+
+### Subnet scan
+
+Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and ports (default `80, 5000, 443`). octo·modern opens TCP connections (128 at a time, 0.7 s timeout) and fingerprints whatever answers, without a key. Ports 80 and 443 of one host count as one server; any other port is listed separately, so several OctoPrint instances on one Pi each show up. Scans are limited to 4096 addresses, only admins can start one, and each is recorded in the audit log.
+
+![Discover: network](docs/screenshots/discover-network.png)
 
 ## Users and roles
 
@@ -215,6 +278,10 @@ To build it yourself: `docker build -t octo-modern .`
 | **Users**: admins, operators, viewers | **Audit log** |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
+| ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
+| **Discover**, light | **Setup** offers what it found |
+| ![Approve in OctoPrint](docs/screenshots/discover-approve.png) | ![Discover: Arcane](docs/screenshots/discover-arcane.png) |
+| **Application Keys**: approve in OctoPrint | **Arcane** environments |
 
 ## Configuration
 
@@ -233,6 +300,9 @@ To build it yourself: `docker build -t octo-modern .`
 | `OCM_OIDC_ADMIN_EMAILS` | — | Auto-created accounts matching these become admins |
 | `OCM_OIDC_DEFAULT_ROLE` | `viewer` | Role for other auto-created accounts (`viewer` or `operator`) |
 | `OCM_OIDC_REDIRECT_URI` | `<origin>/auth/oidc/callback` | Override when the public URL can't be inferred |
+| `OCM_DOCKER_HOSTS` | the local socket, if present | Docker endpoints for Discover, e.g. `tcp://docker-proxy:2375,tcp://nas.lan:2375`; `none` turns it off |
+| `OCM_SELF_CONTAINER` | — | octo·modern's own container name, when Discover can't find it by hostname or IP |
+| `OCM_ARCANE_URL`, `OCM_ARCANE_API_KEY`, `OCM_ARCANE_NAME` | — | An Arcane instance for Discover (or connect one in the UI) |
 | `OCM_POLL_INTERVAL_MS` | `10000` | Status poll for printers nobody is watching live |
 | `OCM_REQUEST_TIMEOUT_MS` | `10000` | Timeout for each request to OctoPrint |
 | `OCM_PUSH_THROTTLE` | `2` | Live updates arrive every 500 ms × this |
@@ -253,6 +323,7 @@ Under **Settings → Backup & restore**, admins download an encrypted file with 
 - **Access** is checked on the server for every printer-scoped page and API call. Viewers can't reach any route that changes a printer; operators can't reach server, user or settings routes. Confirmations for dangerous actions are enforced by the server.
 - **API tokens** (`ocm_` + 32 random bytes, SHA-256 hashed at rest) only work on `GET /api/status…`; they never become sessions, and repeated bad tokens from one address are throttled. Status responses omit OctoPrint URLs unless the token allows it, and report errors as codes only.
 - **Sign-in** is by OIDC or by local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies tied to a user and end when the user is disabled or their role changes. Writes from another origin are rejected.
+- **Discovery** is admin-only and read-only: Docker and Arcane are only read (`GET`), a socket proxy keeps writes blocked, and fingerprinting uses unauthenticated `GET`s. Keys from the Application Keys flow are polled for by octo·modern's server and go straight into the encrypted store; the browser only sees the request's state. Subnet scans need an admin, are capped at 4096 addresses and are audited.
 - **Backup files** hold decrypted API keys and the SSO client secret, re-encrypted with AES-256-GCM under a key derived from your passphrase (scrypt). Treat the file and its passphrase like a password manager export.
 
 ## Development
@@ -265,9 +336,12 @@ scripts/dev-octoprint.sh up 2         # two OctoPrint servers with virtual print
 node scripts/mjpeg-source.mjs 5190    # a fake MJPEG webcam on :5190
 pnpm e2e                              # end-to-end against real OctoPrint containers (needs Docker)
 pnpm e2e:control                      # the Control and Terminal tabs end-to-end (OctoPrint on :5131, app on :3150)
+pnpm e2e:discover                     # Discover end-to-end: real OctoPrint, mock Docker/Arcane/mDNS, Application Keys
 ```
 
 `scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards.
+
+`pnpm e2e:discover` starts three OctoPrint servers on `:5151`–`:5153` and has octo·modern discover them through a mock Docker API (fictional containers, devices and networks pointing at the real ports, on `:5251`), a mock Arcane (`:5252`), a unicast mDNS responder (`OCM_MDNS_TARGET=127.0.0.1:5253`), the real local Docker socket (read-only) and a subnet scan of `127.0.0.1`. It runs the setup wizard in Chromium, adds printers through the Application Keys flow (approving and denying in OctoPrint by logging in to its API as its admin), pastes a key, moves a published port and relinks the saved printer, then writes the Discover screenshots and cleans up.
 
 Requires Node 24+. The store uses the built-in `node:sqlite`, so there are no native modules.
 

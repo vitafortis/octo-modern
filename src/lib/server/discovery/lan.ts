@@ -6,6 +6,7 @@
 import { reverse } from 'node:dns/promises';
 import { isIPv4 } from 'node:net';
 import { urlFor, type Candidate, type NetworkScan } from '#lib/discovery.ts';
+import { discoveryEnv } from './config.ts';
 import { fingerprintUrl } from './fingerprint.ts';
 import { browse, type BrowseOptions, type MdnsService } from './mdns.ts';
 import { mapLimit, probe } from './probe.ts';
@@ -103,25 +104,31 @@ export async function scanSubnet(targetsInput: string, portsInput: string, opts:
 	const pairs = hosts.flatMap((host) => ports.map((port) => ({ host, port })));
 	const open = (await mapLimit(pairs, opts.concurrency ?? 128, async (x) => ((await tcp(x.host, x.port).catch(() => false)) ? x : null))).filter((x): x is { host: string; port: number } => !!x);
 
+	// 80 and 443 on one host are usually the same OctoPrint (OctoPi's proxy); any other port
+	// may be another instance (several printers on one Pi or Docker host), so it stays separate.
 	const byHost = new Map<string, number[]>();
-	for (const { host, port } of open) byHost.set(host, [...(byHost.get(host) ?? []), port]);
+	for (const { host, port } of open) {
+		const group = port === 80 || port === 443 ? `${host}|web` : `${host}|${port}`;
+		byHost.set(group, [...(byHost.get(group) ?? []), port]);
+	}
 	const fp = opts.fingerprint ?? ((url: string) => fingerprintUrl(url, { timeoutMs: 2500 }));
 
 	const candidates = (
-		await mapLimit([...byHost], 16, async ([host, hostPorts]): Promise<Candidate | null> => {
+		await mapLimit([...byHost], 16, async ([group, hostPorts]): Promise<Candidate | null> => {
+			const host = group.slice(0, group.lastIndexOf('|'));
 			const addresses: Address[] = hostPorts.sort((a, b) => portRank(a) - portRank(b)).map((port) => ({ host, port, label: `port ${port}` }));
 			const settled = await settle(addresses, { probe: async () => true, fingerprint: fp, maxFingerprints: addresses.length });
 			if (settled.fingerprint.confidence === 'none') return null;
 			const name = opts.reverseDns === false ? null : await reverseName(host);
 			return {
-				key: `subnet:${host}`,
-				name: name?.split('.')[0] ?? host,
+				key: `subnet:${settled.baseUrl}`,
+				name: `${name?.split('.')[0] ?? host}${settled.primary.port === 80 || settled.primary.port === 443 ? '' : `:${settled.primary.port}`}`,
 				baseUrl: settled.baseUrl,
 				alternates: settled.alternates,
 				reachable: true,
 				insecureTls: settled.primary.port === 443 || undefined,
 				fingerprint: settled.fingerprint,
-				source: { kind: 'subnet', ref: host, label: 'subnet scan' },
+				source: { kind: 'subnet', ref: settled.baseUrl, label: 'subnet scan' },
 				serial: [],
 				notes: name ? [`Reverse DNS: ${name}`] : []
 			};
@@ -183,7 +190,7 @@ export async function mdnsCandidates(services: MdnsService[], deps: SettleDeps =
 export async function scanMdns(opts: BrowseOptions & { settle?: SettleDeps } = {}): Promise<NetworkScan> {
 	const started = Date.now();
 	try {
-		const { services, responders, interfaces } = await browse('_octoprint._tcp.local', opts);
+		const { services, responders, interfaces } = await browse('_octoprint._tcp.local', { target: discoveryEnv.mdnsTarget, ...opts });
 		const candidates = await mdnsCandidates(services, opts.settle);
 		return {
 			kind: 'mdns',

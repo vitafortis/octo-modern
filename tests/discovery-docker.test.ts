@@ -157,9 +157,9 @@ test('a Docker endpoint scan finds OctoPrint containers with their devices and a
 		assert.deepEqual(mk4.alternates.map((a) => a.url), ['http://172.20.0.3']);
 		assert.equal(mk4.container?.project, 'printers');
 		assert.equal(ender.reachable, false);
-		assert.deepEqual(ender.notes, ['Container is exited.']);
+		assert.equal(ender.container?.state, 'exited');
 		assert.deepEqual(ender.serial.map((s) => s.host), ['/dev/ttyUSB0']);
-		assert.equal(ender.network?.via, 'none');
+		assert.equal(ender.network, undefined, 'no network path for a stopped container');
 	} finally {
 		server.close();
 	}

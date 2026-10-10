@@ -139,7 +139,6 @@ export async function containerCandidate(c: NormalizedContainer, det: Detection,
 	);
 	const settled = addresses.length && running ? await settle(addresses, ctx.settleDeps) : null;
 	const notes: string[] = [];
-	if (!running) notes.push(`Container is ${c.state}.`);
 	const fp = settled?.fingerprint ?? { confidence: 'none' as const, version: null, apiVersion: null, appkeys: false, loginRequired: true, signals: [] };
 	const fingerprint = { ...fp, version: fp.version ?? det.versionHint, signals: [`Docker: ${det.reason}`, ...fp.signals] };
 	const fallback = addresses[0] ?? { host: c.name, port, label: 'container name' };
@@ -156,7 +155,8 @@ export async function containerCandidate(c: NormalizedContainer, det: Detection,
 		source: { kind: ctx.kind, ref: `${ctx.refPrefix}#${c.name}`, label: ctx.label },
 		container: { id: c.id.slice(0, 12), name: c.name, image: c.image, state: c.state, status: c.status, project, service },
 		serial: serialDevices(c),
-		network,
+		// A stopped container has no networks or ports to explain.
+		network: running ? network : undefined,
 		notes
 	};
 }
