@@ -46,29 +46,36 @@ test('PrusaSlicer: stats and config from the footer, PNG + QOI thumbnails from t
 	assert.equal(meta.bedTemp, 85);
 	assert.equal(meta.printerModel, 'MK4');
 	assert.equal(meta.format, 'text');
-	// The 32×32 QOI (converted to PNG) beats the 16×16 PNG.
-	assert.deepEqual(meta.thumbnail, { width: 32, height: 32, format: 'png' });
+	// The 313×173 QOI (converted to PNG) beats the 16×16 PNG.
+	assert.deepEqual(meta.thumbnail, { width: 313, height: 173, format: 'png' });
 	assert.equal(thumbnail!.data.subarray(1, 4).toString(), 'PNG');
 });
 
 test('QOI thumbnails decode to the right pixels and re-encode as a valid PNG', () => {
-	const text = fixture('prusaslicer.gcode').toString();
-	const thumbs = gm.extractThumbnails(text);
+	const thumbs = gm.extractThumbnails(fixture('prusaslicer.gcode').toString());
 	assert.deepEqual(
 		thumbs.map((t) => [t.width, t.height, t.format]),
 		[
 			[16, 16, 'png'],
-			[32, 32, 'png']
+			[313, 173, 'png']
 		]
 	);
-	const b64 = /thumbnail_QOI begin 32x32 \d+\n([\s\S]*?); thumbnail_QOI end/.exec(text)![1].replace(/[;\s]/g, '');
-	const img = gm.decodeQoi(Buffer.from(b64, 'base64'));
-	assert.equal(img.width, 32);
-	assert.deepEqual([...img.pixels.subarray(0, 4)], [250, 104, 0, 255], 'left half is orange');
-	assert.deepEqual([...img.pixels.subarray(31 * 4, 32 * 4)], [255, 255, 255, 255], 'right half is white');
 	const png = thumbs[1].data;
-	assert.equal(png.readUInt32BE(16), 32, 'IHDR width');
-	assert.equal(png.readUInt32BE(20), 32, 'IHDR height');
+	assert.equal(png.readUInt32BE(16), 313, 'IHDR width');
+	assert.equal(png.readUInt32BE(20), 173, 'IHDR height');
+	// A hand-made 4×1 QOI: RGB, a run of 1, an index hit, a diff and an RGBA op.
+	const qoi = Buffer.concat([
+		Buffer.from('qoif'),
+		Buffer.from([0, 0, 0, 4, 0, 0, 0, 1, 4, 0]),
+		Buffer.from([0xfe, 250, 104, 0]), // OP_RGB: orange
+		Buffer.from([0xc0]), // OP_RUN of 1: orange again
+		Buffer.from([0x40 | (3 << 4) | (2 << 2) | 1]), // OP_DIFF: r+1, g+0, b-1
+		Buffer.from([0xff, 10, 20, 30, 128]), // OP_RGBA
+		Buffer.from([0, 0, 0, 0, 0, 0, 0, 1])
+	]);
+	const img = gm.decodeQoi(qoi);
+	assert.deepEqual([...img.pixels], [250, 104, 0, 255, 250, 104, 0, 255, 251, 104, 255, 255, 10, 20, 30, 128]);
+	assert.throws(() => gm.decodeQoi(Buffer.from('nope')));
 });
 
 test('SuperSlicer: multi-extruder sums, JPG thumbnail, day-long durations', async () => {
@@ -83,7 +90,13 @@ test('SuperSlicer: multi-extruder sums, JPG thumbnail, day-long durations', asyn
 	assert.equal(meta.nozzle, 0.6);
 	assert.equal(meta.nozzleTemp, 215);
 	assert.equal(meta.printerModel, null, 'empty values are null');
-	assert.equal(thumbnail!.format, 'jpg');
+	const thumbs = gm.extractThumbnails(fixture('superslicer.gcode').toString());
+	assert.deepEqual(
+		thumbs.map((t) => t.format),
+		['jpg', 'png'],
+		'JPG thumbnails are recognised'
+	);
+	assert.deepEqual([thumbnail!.format, thumbnail!.width], ['png', 220], 'the bigger one wins');
 });
 
 test('OrcaSlicer: a thumbnail that runs past the first 64 KB is read without reading the whole file', async () => {
@@ -118,7 +131,7 @@ test('Cura: ;TIME, metres of filament, layer height, machine name and the post-p
 	assert.equal(meta.layerHeight, 0.2);
 	assert.equal(meta.layers, 61);
 	assert.equal(meta.printerModel, 'Creality Ender-3 Pro');
-	assert.deepEqual([thumbnail!.width, thumbnail!.height], [24, 24]);
+	assert.deepEqual([thumbnail!.width, thumbnail!.height], [200, 200]);
 });
 
 /** A Prusa binary G-code file: file/printer/print metadata, a thumbnail, then G-code. */

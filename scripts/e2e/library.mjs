@@ -31,6 +31,13 @@ const ADMIN = { email: 'admin@example.com', name: 'Ada Admin', password: 'e2e-ad
 const OPERATOR = { email: 'operator@example.com', name: 'Otto Operator', password: 'e2e-operator-password' };
 const VIEWER = { email: 'viewer@example.com', name: 'Vera Viewer', password: 'e2e-viewer-password' };
 const BIG_MB = Number(process.env.E2E_BIG_MB ?? 150);
+/** The slicer fixtures, under the names they get in the demo library. */
+const DEMO = {
+	'prusaslicer.gcode': 'bracket_PETG_0.15mm_MK4.gcode',
+	'orcaslicer.gcode': 'cable-clip-ring_PLA_0.2mm.gcode',
+	'cura.gcode': 'spool-hub_PLA_Ender3.gcode',
+	'superslicer.gcode': 'control-knob_PLA_0.6n.gcode'
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log('•', ...a);
@@ -116,7 +123,7 @@ async function writeBigGcode(file, megabytes) {
 /** Fills a library folder: the slicer fixtures, a nested folder, a non-G-code file and a printable test job. */
 function fillLibrary(dir) {
 	mkdirSync(join(dir, 'Functional/Clips'), { recursive: true });
-	for (const f of ['prusaslicer.gcode', 'orcaslicer.gcode', 'cura.gcode', 'superslicer.gcode']) copyFileSync(join(FIXTURES, f), join(dir, f));
+	for (const [fixture, name] of Object.entries(DEMO)) copyFileSync(join(FIXTURES, fixture), join(dir, name));
 	copyFileSync(join(FIXTURES, 'orcaslicer.gcode'), join(dir, 'Functional/Clips/cable-clip_PLA_0.2mm.gcode'));
 	copyFileSync(join(FIXTURES, 'superslicer.gcode'), join(dir, 'Functional/spool-holder.gcode'));
 	writeFileSync(join(dir, 'Functional/notes.txt'), 'not G-code');
@@ -262,27 +269,27 @@ async function main() {
 	for (const s of [folder, sftp, smb, dav]) {
 		const root = (await viewer.get(`/api/library/${s.id}/list`)).data;
 		const names = root.entries.map((e) => e.name);
-		for (const n of ['prusaslicer.gcode', 'cura.gcode', 'Functional', 'README.md']) assert.ok(names.includes(n), `${s.name}: ${n} in ${names}`);
+		for (const n of ['bracket_PETG_0.15mm_MK4.gcode', 'spool-hub_PLA_Ender3.gcode', 'Functional', 'README.md']) assert.ok(names.includes(n), `${s.name}: ${n} in ${names}`);
 		for (const n of ['.DS_Store', '@eaDir']) assert.ok(!names.includes(n), `${s.name}: ${n} hidden`);
 		assert.equal(root.entries.find((e) => e.name === 'Functional').type, 'folder');
-		const meta = (await viewer.get(`/api/library/${s.id}/meta?path=prusaslicer.gcode`)).data;
+		const meta = (await viewer.get(`/api/library/${s.id}/meta?path=bracket_PETG_0.15mm_MK4.gcode`)).data;
 		assert.equal(meta.meta.slicer, 'PrusaSlicer', `${s.name}: ${JSON.stringify(meta)}`);
 		assert.equal(meta.meta.estimatedTime, 5103);
-		assert.deepEqual(meta.meta.thumbnail, { width: 32, height: 32, format: 'png' });
-		const orca = (await viewer.get(`/api/library/${s.id}/meta?path=orcaslicer.gcode`)).data.meta;
+		assert.deepEqual(meta.meta.thumbnail, { width: 313, height: 173, format: 'png' });
+		const orca = (await viewer.get(`/api/library/${s.id}/meta?path=cable-clip-ring_PLA_0.2mm.gcode`)).data.meta;
 		assert.deepEqual(orca.thumbnail, { width: 300, height: 300, format: 'png' }, `${s.name}: large thumbnails past the first 64 KB`);
-		const thumb = await viewer.get(`/api/library/${s.id}/thumbnail?path=prusaslicer.gcode&v=${meta.version}`, { raw: true });
+		const thumb = await viewer.get(`/api/library/${s.id}/thumbnail?path=bracket_PETG_0.15mm_MK4.gcode&v=${meta.version}`, { raw: true });
 		assert.equal(thumb.status, 200);
 		assert.equal(thumb.headers.get('content-type'), 'image/png');
 		assert.match(thumb.headers.get('cache-control'), /immutable/);
-		const cached = (await viewer.get(`/api/library/${s.id}/list`)).data.entries.find((e) => e.name === 'prusaslicer.gcode');
+		const cached = (await viewer.get(`/api/library/${s.id}/list`)).data.entries.find((e) => e.name === 'bracket_PETG_0.15mm_MK4.gcode');
 		assert.equal(cached.meta.slicer, 'PrusaSlicer', 'the listing carries cached metadata');
 		const nested = (await viewer.get(`/api/library/${s.id}/list?path=Functional`)).data.entries.map((e) => e.path).sort();
 		assert.deepEqual(nested, ['Functional/Clips', 'Functional/notes.txt', 'Functional/spool-holder.gcode']);
 		const found = (await viewer.get(`/api/library/${s.id}/search?q=clip`)).data;
 		assert.deepEqual(
-			found.results.map((r) => r.path),
-			['Functional/Clips', 'Functional/Clips/cable-clip_PLA_0.2mm.gcode'],
+			found.results.map((r) => r.path).sort(),
+			['Functional/Clips', 'Functional/Clips/cable-clip_PLA_0.2mm.gcode', 'cable-clip-ring_PLA_0.2mm.gcode'],
 			`${s.name}: recursive search`
 		);
 		assert.equal((await viewer.get(`/api/library/${s.id}/search?q=notes`)).data.results.length, 0, 'search hides non-G-code by default');
@@ -298,8 +305,8 @@ async function main() {
 
 	// --- sending ----------------------------------------------------------------------------
 	log('sending: roles, printer restrictions, overwrite and busy-printer questions');
-	assert.equal((await viewer.post(`/api/library/${folder.id}/send`, { path: 'cura.gcode', printerId: p1.id })).status, 403, 'viewers can’t send');
-	assert.equal((await operator.post(`/api/library/${dav.id}/send`, { path: 'cura.gcode', printerId: p1.id })).status, 403, 'the WebDAV source is only for the Voron');
+	assert.equal((await viewer.post(`/api/library/${folder.id}/send`, { path: 'spool-hub_PLA_Ender3.gcode', printerId: p1.id })).status, 403, 'viewers can’t send');
+	assert.equal((await operator.post(`/api/library/${dav.id}/send`, { path: 'spool-hub_PLA_Ender3.gcode', printerId: p1.id })).status, 403, 'the WebDAV source is only for the Voron');
 	assert.equal((await operator.post(`/api/library/${folder.id}/send`, { path: '../x.gcode', printerId: p1.id })).status, 400);
 
 	const follow = async (c, id) =>
@@ -325,20 +332,20 @@ async function main() {
 
 	// Into a folder on OctoPrint, from WebDAV, to the Voron.
 	await admin.post(`/api/printers/${p2.id}/files/folder`, { name: 'Library', parent: '' });
-	const toFolder = await operator.post(`/api/library/${dav.id}/send`, { path: 'cura.gcode', printerId: p2.id, folder: 'Library' });
+	const toFolder = await operator.post(`/api/library/${dav.id}/send`, { path: 'spool-hub_PLA_Ender3.gcode', printerId: p2.id, folder: 'Library' });
 	assert.equal(toFolder.status, 202, JSON.stringify(toFolder.data));
-	assert.equal((await follow(operator, toFolder.data.id)).storedPath, 'Library/cura.gcode');
+	assert.equal((await follow(operator, toFolder.data.id)).storedPath, 'Library/spool-hub_PLA_Ender3.gcode');
 
 	log('send & print, then the busy-printer confirmation');
-	const sp = await operator.post(`/api/library/${sftp.id}/send`, { path: 'prusaslicer.gcode', printerId: p1.id, print: true });
+	const sp = await operator.post(`/api/library/${sftp.id}/send`, { path: 'bracket_PETG_0.15mm_MK4.gcode', printerId: p1.id, print: true });
 	assert.equal(sp.status, 202, JSON.stringify(sp.data));
 	const printed = await follow(operator, sp.data.id);
 	assert.equal(printed.printing, true, JSON.stringify(printed));
 	await waitFor(async () => (await opState(OP[0])).startsWith('Printing'), 'printing from the library');
-	const busy = await operator.post(`/api/library/${folder.id}/send`, { path: 'cura.gcode', printerId: p1.id, print: true });
+	const busy = await operator.post(`/api/library/${folder.id}/send`, { path: 'spool-hub_PLA_Ender3.gcode', printerId: p1.id, print: true });
 	assert.equal(busy.status, 409);
 	assert.equal(busy.data.confirmRequired, true, 'asks before sending without printing');
-	const busyOk = await operator.post(`/api/library/${folder.id}/send`, { path: 'cura.gcode', printerId: p1.id, print: true, confirm: true });
+	const busyOk = await operator.post(`/api/library/${folder.id}/send`, { path: 'spool-hub_PLA_Ender3.gcode', printerId: p1.id, print: true, confirm: true });
 	assert.equal(busyOk.status, 202);
 	const busyDone = await follow(operator, busyOk.data.id);
 	assert.equal(busyDone.printing, false, 'uploaded without starting');
@@ -391,13 +398,13 @@ async function main() {
 	assert.equal(await opFile(OP[1], 'big-sftp.gcode'), null, 'no partial file on OctoPrint');
 
 	log('save to library: writable sources only');
-	const saved = await operator.post(`/api/printers/${p1.id}/files/library`, { path: 'cura.gcode', sourceId: folder.id, folder: 'From printers' });
+	const saved = await operator.post(`/api/printers/${p1.id}/files/library`, { path: 'spool-hub_PLA_Ender3.gcode', sourceId: folder.id, folder: 'From printers' });
 	assert.equal(saved.status, 201, JSON.stringify(saved.data));
-	assert.ok(existsSync(join(libDir, 'From printers', 'cura.gcode')));
-	assert.equal(readFileSync(join(libDir, 'From printers', 'cura.gcode'), 'utf8'), readFileSync(join(FIXTURES, 'cura.gcode'), 'utf8'));
-	assert.equal((await operator.post(`/api/printers/${p1.id}/files/library`, { path: 'cura.gcode', sourceId: folder.id, folder: 'From printers' })).status, 409, 'asks before replacing');
-	assert.equal((await operator.post(`/api/printers/${p1.id}/files/library`, { path: 'cura.gcode', sourceId: sftp.id })).status, 403, "read-only source");
-	assert.equal((await viewer.post(`/api/printers/${p1.id}/files/library`, { path: 'cura.gcode', sourceId: folder.id })).status, 403);
+	assert.ok(existsSync(join(libDir, 'From printers', 'spool-hub_PLA_Ender3.gcode')));
+	assert.equal(readFileSync(join(libDir, 'From printers', 'spool-hub_PLA_Ender3.gcode'), 'utf8'), readFileSync(join(FIXTURES, 'cura.gcode'), 'utf8'));
+	assert.equal((await operator.post(`/api/printers/${p1.id}/files/library`, { path: 'spool-hub_PLA_Ender3.gcode', sourceId: folder.id, folder: 'From printers' })).status, 409, 'asks before replacing');
+	assert.equal((await operator.post(`/api/printers/${p1.id}/files/library`, { path: 'spool-hub_PLA_Ender3.gcode', sourceId: sftp.id })).status, 403, "read-only source");
+	assert.equal((await viewer.post(`/api/printers/${p1.id}/files/library`, { path: 'spool-hub_PLA_Ender3.gcode', sourceId: folder.id })).status, 403);
 
 	log('audit');
 	const audit = (await admin.get('/api/audit?action=library.&limit=100')).data;
@@ -410,8 +417,8 @@ async function main() {
 
 	// --- browser ------------------------------------------------------------------------------
 	log('browser: library page, send dialog, files tab picker, screenshots');
-	await opDelete(OP[0], 'prusaslicer.gcode');
-	await opDelete(OP[0], 'cura.gcode');
+	await opDelete(OP[0], 'bracket_PETG_0.15mm_MK4.gcode');
+	await opDelete(OP[0], 'spool-hub_PLA_Ender3.gcode');
 	browser = await chromium.launch();
 	const shot = async (page, name) => {
 		await page.screenshot({ path: join(SHOTS, `${name}.png`) });
@@ -443,9 +450,9 @@ async function main() {
 		pages.push(page);
 		await signIn(page, ADMIN);
 		await page.goto(`${APP}/library?source=${folder.id}`);
-		await page.waitForSelector('tr[data-entry="prusaslicer.gcode"]');
-		await page.waitForSelector('tr[data-entry="orcaslicer.gcode"] img');
-		await page.click('tr[data-entry="orcaslicer.gcode"]');
+		await page.waitForSelector('tr[data-entry="bracket_PETG_0.15mm_MK4.gcode"]');
+		await page.waitForSelector('tr[data-entry="cable-clip-ring_PLA_0.2mm.gcode"] img');
+		await page.click('tr[data-entry="cable-clip-ring_PLA_0.2mm.gcode"]');
 		await page.waitForSelector('[data-testid=library-details] img');
 		await sleep(600);
 		await shot(page, `library${suffix}`);
@@ -459,7 +466,7 @@ async function main() {
 			await page.click('dialog[open] [role=switch][aria-label="Start printing"]');
 			await page.click('dialog[open] button:has-text("Send")');
 			await page.waitForSelector('dialog[open]', { state: 'detached', timeout: 30_000 }).catch(() => {});
-			await waitFor(async () => !!(await opFile(OP[1], 'orcaslicer.gcode')), 'the UI send');
+			await waitFor(async () => !!(await opFile(OP[1], 'cable-clip-ring_PLA_0.2mm.gcode')), 'the UI send');
 			// Search, the sources page.
 			await page.fill('input[aria-label="Search the library"]', 'clip');
 			await page.waitForSelector('tr[data-entry="Functional/Clips/cable-clip_PLA_0.2mm.gcode"]');
@@ -471,7 +478,7 @@ async function main() {
 			await page.click('dialog[open] button:has-text("Test")');
 			await page.waitForSelector('[data-testid=source-test] >> text=Connected');
 			await page.waitForSelector('[data-testid=source-test] >> text=pinned');
-			await sleep(300);
+			await sleep(800);
 			await shot(page, 'library-source-edit');
 			await page.keyboard.press('Escape');
 		}
@@ -485,24 +492,24 @@ async function main() {
 	await op.click('button:has-text("From library")');
 	await op.waitForSelector('dialog[open] >> text=Print from the library');
 	await op.click(`dialog[open] [role=tab]:has-text("NAS prints")`);
-	await op.click('dialog[open] tr[data-entry="superslicer.gcode"]');
+	await op.click('dialog[open] tr[data-entry="control-knob_PLA_0.6n.gcode"]');
 	await sleep(400);
 	await shot(op, 'library-picker');
 	await op.click('dialog[open] button:has-text("Send")');
-	await op.waitForSelector('tr[data-file="superslicer.gcode"]', { timeout: 30_000 });
+	await op.waitForSelector('tr[data-file="control-knob_PLA_0.6n.gcode"]', { timeout: 30_000 });
 	// Save it back to the library from the row.
-	await op.click('button[aria-label="Save superslicer.gcode to library"]');
+	await op.click('button[aria-label="Save control-knob_PLA_0.6n.gcode to library"]');
 	await op.waitForSelector('dialog[open] >> text=Save to library');
 	await op.fill('#save-folder', 'saved-from-ui');
 	await op.click('dialog[open] button:has-text("Save")');
-	await waitFor(() => existsSync(join(libDir, 'saved-from-ui', 'superslicer.gcode')), 'the UI save');
+	await waitFor(() => existsSync(join(libDir, 'saved-from-ui', 'control-knob_PLA_0.6n.gcode')), 'the UI save');
 
 	// A viewer browses but gets no send buttons.
 	const view = await newPage('dark');
 	pages.push(view);
 	await signIn(view, VIEWER);
 	await view.goto(`${APP}/library?source=${folder.id}`);
-	await view.click('tr[data-entry="prusaslicer.gcode"]');
+	await view.click('tr[data-entry="bracket_PETG_0.15mm_MK4.gcode"]');
 	await view.waitForSelector('[data-testid=library-details]');
 	assert.equal(await view.locator('button:has-text("Send & print")').count(), 0, 'viewers get no send buttons');
 

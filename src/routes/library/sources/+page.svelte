@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import { ArrowLeft, CircleAlert, CircleCheck, LoaderCircle, Lock, Pencil, Pin, Plus, Save, Trash2, Zap } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -119,6 +119,8 @@
 		} finally {
 			testing = false;
 		}
+		await tick();
+		document.querySelector('[data-testid=source-test]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}
 
 	async function save(e: SubmitEvent) {
@@ -293,12 +295,17 @@
 				{@render secret('password', 'Password', form.kind === 'sftp' ? 'or use a private key' : '')}
 			{/if}
 			{#if form.kind === 'sftp'}
-				{@render secret('privateKey', 'Private key (optional)', '-----BEGIN OPENSSH PRIVATE KEY-----')}
-				{@render secret('passphrase', 'Key passphrase (optional)', '')}
-				<div>
+				<div class="sm:col-span-2">
 					<label class="label" for="src-hostkey">Pinned host key (optional)</label>
-					<input id="src-hostkey" class="input font-mono text-[11px]" placeholder="SHA256:…" bind:value={form.hostKey} />
+					<input id="src-hostkey" class="input font-mono text-[11px]" placeholder="SHA256:… — Test shows the server’s key" bind:value={form.hostKey} />
 				</div>
+				<details class="sm:col-span-2" open={!!editing?.hasPrivateKey}>
+					<summary class="cursor-pointer text-xs text-muted-foreground select-none hover:text-foreground">Sign in with a private key</summary>
+					<div class="mt-3 grid gap-3 sm:grid-cols-2">
+						{@render secret('privateKey', 'Private key', '-----BEGIN OPENSSH PRIVATE KEY-----')}
+						{@render secret('passphrase', 'Key passphrase (optional)', '')}
+					</div>
+				</details>
 			{/if}
 			{#if form.kind === 'smb'}
 				<div>
