@@ -34,6 +34,7 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"dependencies": {
+		"jpeg-js": "^0.4.4",
 		"openid-client": "^6.8.8",
 		"undici": "^7.16.0"
 	},

@@ -114,6 +114,39 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 				revoked_at TEXT
 			);
 		`)
+	],
+	[
+		'history-001-prints',
+		(h) =>
+			h.exec(`
+			-- Print history (see history/store.ts). No foreign key: entries outlive their printer.
+			CREATE TABLE IF NOT EXISTS prints (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				printer_id TEXT NOT NULL,
+				printer_name TEXT NOT NULL,
+				file_name TEXT NOT NULL,
+				file_path TEXT NOT NULL,
+				origin TEXT NOT NULL DEFAULT 'local',
+				started_at TEXT NOT NULL,
+				ended_at TEXT,
+				duration_s REAL,
+				result TEXT NOT NULL,
+				reason TEXT,
+				filament_mm REAL,
+				estimated_s REAL,
+				completion REAL,
+				user_id TEXT,
+				started_by TEXT,
+				octoprint_user TEXT,
+				source TEXT NOT NULL DEFAULT 'live',
+				thumbnail BLOB,
+				thumbnail_type TEXT,
+				notes TEXT,
+				external_key TEXT UNIQUE
+			);
+			CREATE INDEX IF NOT EXISTS prints_time ON prints(started_at DESC);
+			CREATE INDEX IF NOT EXISTS prints_printer ON prints(printer_id, started_at DESC);
+		`)
 	]
 ];
 

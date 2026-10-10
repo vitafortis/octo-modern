@@ -3,5 +3,6 @@
  * Feature modules add one import line here.
  */
 import './printer-status.ts';
+import './history.ts';
 
 export {};

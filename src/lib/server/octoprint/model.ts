@@ -32,6 +32,8 @@ export class LiveModel {
 	/** Files OctoPrint is printing or otherwise using (can't be deleted). */
 	busyFiles: { origin: string; path: string }[] = [];
 	private listeners = new Set<LiveListener>();
+	/** Sees every event, like a listener, but isn't moved to a replacement model (the manager sets it per model). */
+	observer: LiveListener | null = null;
 
 	constructor(id: string, historyMinutes = 30) {
 		this.id = id;
@@ -61,6 +63,13 @@ export class LiveModel {
 	}
 
 	private emit(e: LiveEvent) {
+		if (this.observer) {
+			try {
+				this.observer(e);
+			} catch (err) {
+				console.error('[octo-modern] live observer failed', err);
+			}
+		}
 		for (const fn of this.listeners) {
 			try {
 				fn(e);
