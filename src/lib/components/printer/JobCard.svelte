@@ -81,7 +81,7 @@
 	{#if canControl}
 		<div class="flex flex-wrap items-center gap-2 border-t border-border bg-surface px-4 py-2.5 {s.state === 'printing' || s.state === 'resuming' ? 'max-sm:hidden' : ''}">
 			<!-- On phones while printing, Pause and Cancel are in the bar at the bottom of the screen instead. -->
-			{#if s.state === 'operational' && file}
+			{#if s.state === 'operational' && file && !s.preparing}
 				<button class="btn btn-primary btn-sm" disabled={busy} onclick={() => run('start')}><CirclePlay />Print</button>
 			{/if}
 			{#if s.state === 'printing' || s.state === 'resuming'}

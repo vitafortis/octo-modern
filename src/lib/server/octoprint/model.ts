@@ -200,6 +200,12 @@ export class LiveModel {
 		this.emit({ type: 'event', name, payload });
 	}
 
+	/** Pre-print steps running (or done: null), shown with the printer's state. */
+	setPreparing(preparing: LiveSnapshot['preparing'], now = Date.now()) {
+		if (!preparing && !this.snapshot.preparing) return;
+		this.commit({ preparing: preparing ?? null }, [], now);
+	}
+
 	/** OctoPrint can't be reached: keep the last job info, but mark it offline. */
 	setProblem(err: Pick<OctoPrintError, 'message' | 'hint' | 'code'>, now = Date.now()) {
 		const problem = { message: err.message, hint: err.hint, code: err.code };

@@ -5,6 +5,7 @@
 	import PowerConfigDialog from './power/PowerConfigDialog.svelte';
 	import Switch from './Switch.svelte';
 	import BedMeshHint from './bedmesh/BedMeshHint.svelte';
+	import PrinterPrePrint from './preprint/PrinterPrePrint.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { COLORS } from '#lib/client/format.ts';
 	import { removePrinter } from '#lib/client/printers.ts';
@@ -27,6 +28,7 @@
 	let saving = $state(false);
 	let testing = $state(false);
 	let test = $state<TestResult | null>(null);
+	let prepSection = $state<PrinterPrePrint>();
 
 	const editing = $derived(editor.target && editor.target !== 'new' ? editor.target : null);
 	const open = $derived(editor.target !== null);
@@ -83,8 +85,14 @@
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
+		const prepProblem = prepSection?.problem();
+		if (prepProblem) {
+			toast('error', 'Check “Before each print”', prepProblem);
+			return;
+		}
 		saving = true;
 		try {
+			if (editing) await prepSection?.save();
 			const saved = editing ? await api.put<Printer>(`/api/printers/${editing.id}`, payload()) : await api.post<Printer>('/api/printers', payload());
 			await refreshPrinters();
 			void refreshStatuses();
@@ -198,6 +206,7 @@
 				<button type="button" class="btn btn-secondary btn-sm shrink-0" onclick={setUpPlug} data-testid="power-setup"><PlugZap />{plugs[editing.id] ? 'Change' : 'Set up'}</button>
 			</div>
 			<BedMeshHint printerId={editing.id} />
+			<PrinterPrePrint bind:this={prepSection} printerId={editing.id} />
 		{/if}
 
 		{#if test}

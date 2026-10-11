@@ -147,7 +147,8 @@
 		for (const file of good) {
 			uploadFile(printer.id, file, { path: origin === 'sdcard' ? '' : folder, origin: 'local', print }, track)
 				.then((r) => {
-					if (print) toast(r.printing ? 'success' : 'info', r.printing ? 'Uploaded and printing' : 'Uploaded', r.printing ? file.name : `${file.name}: the printer wasn’t ready, so it didn’t start.`);
+					if (print && r.preparing) toast('info', 'Uploaded; preparing the printer', `${file.name} starts once the pre-print steps have finished.`);
+					else if (print) toast(r.printing ? 'success' : 'info', r.printing ? 'Uploaded and printing' : 'Uploaded', r.printing ? file.name : `${file.name}: the printer wasn’t ready, so it didn’t start.`);
 					else toast('success', 'Uploaded', file.name);
 					void load();
 				})

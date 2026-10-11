@@ -32,6 +32,8 @@ import { toLibraryError } from './library/drivers.ts';
 import { boundaryOf, MultipartError, parseMultipart } from './multipart.ts';
 import { tempUploadPath, uploadFileToPrinter } from './queue/files.ts';
 import { addUploadJob, uploadName } from './queue/service.ts';
+import { prep } from './preprint/service.ts';
+import { prepConfigured } from './preprint/settings.ts';
 import { cleanRelPath, isPrintable, joinPath } from '#lib/library.ts';
 import type { TokenPrincipal } from './api-tokens.ts';
 import type { UploadTarget } from '#lib/queue.ts';
@@ -163,14 +165,29 @@ export async function handleUpload(request: Request, url: URL, principal: TokenP
 			case 'printer': {
 				const printer = getPrinter(target.printerId)!;
 				const doPrint = print && target.allowPrint;
-				const r = await uploadFileToPrinter(backendFor(printer), { file: tmp, name, folder, select: select && target.allowPrint, print: doPrint });
+				const backend = backendFor(printer);
+				// Pre-print steps set up for the printer: store and select it, then start it through them.
+				const viaPrep = doPrint && prepConfigured(printer);
+				const r = await uploadFileToPrinter(backend, { file: tmp, name, folder, select: (select && target.allowPrint) || viaPrep, print: doPrint && !viaPrep });
+				let printing = r.printing;
+				let preparing = false;
+				let note = '';
+				if (viaPrep) {
+					try {
+						const b = await prep.begin({ printer, backend, origin: 'local', path: r.path, how: 'select', locals, via: 'slicer' });
+						preparing = b.preparing;
+						printing = true;
+					} catch (err) {
+						note = `: ${(err as Error).message}`;
+					}
+				}
 				audit(locals, 'file.upload', {
 					printer,
-					detail: `${who}: ${r.path} (${size})${print ? (!target.allowPrint ? ', print requested but this key may not start prints' : r.printing ? ', printing' : ', print requested but the printer wasn’t ready') : ''}`
+					detail: `${who}: ${r.path} (${size})${print ? (!target.allowPrint ? ', print requested but this key may not start prints' : preparing ? ', preparing to print' : printing ? ', printing' : `, print requested but the printer wasn’t ready${note}`) : ''}`
 				});
 				if (r.printing) audit(locals, 'job.start', { printer, detail: r.path });
 				refreshSoon(printer.id);
-				return uploaded(ctx.base, r.path, name, { select: r.selected, print: r.printing });
+				return uploaded(ctx.base, r.path, name, { select: r.selected || viaPrep, print: printing });
 			}
 		}
 		return opError(500, 'Unknown destination');

@@ -38,7 +38,7 @@ export function uploadFile(
 	file: File,
 	opts: { path: string; origin?: 'local' | 'sdcard'; print?: boolean },
 	onprogress: (u: Upload) => void
-): Promise<{ printing: boolean; path: string | null }> {
+): Promise<{ printing: boolean; preparing: boolean; path: string | null }> {
 	const xhr = new XMLHttpRequest();
 	const u: Upload = { id: nextUpload++, name: file.name, size: file.size, loaded: 0, state: 'uploading', abort: () => xhr.abort() };
 	const q = new URLSearchParams({ origin: opts.origin ?? 'local', name: file.name });
@@ -53,7 +53,7 @@ export function uploadFile(
 			onprogress(u);
 		};
 		xhr.onload = () => {
-			let data: { message?: string; hint?: string; printing?: boolean; path?: string | null } = {};
+			let data: { message?: string; hint?: string; printing?: boolean; preparing?: boolean; path?: string | null } = {};
 			try {
 				data = JSON.parse(xhr.responseText);
 			} catch {}
@@ -61,7 +61,7 @@ export function uploadFile(
 				u.state = 'done';
 				u.loaded = u.size;
 				onprogress(u);
-				resolve({ printing: !!data.printing, path: data.path ?? null });
+				resolve({ printing: !!data.printing, preparing: !!data.preparing, path: data.path ?? null });
 			} else {
 				u.state = 'error';
 				u.error = data.message ? `${data.message}${data.hint ? `. ${data.hint}` : ''}` : `HTTP ${xhr.status}`;

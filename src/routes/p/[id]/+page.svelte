@@ -15,6 +15,7 @@
 	import { isConnected, jobActive, progressPercent } from '#lib/printer.ts';
 	import { phone } from '#lib/client/viewport.svelte.ts';
 	import BedClearBanner from '#lib/components/queue/BedClearBanner.svelte';
+	import PreparingBanner from '#lib/components/printer/PreparingBanner.svelte';
 	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import type { PageProps } from './$types';
 
@@ -127,6 +128,9 @@
 			</div>
 		</div>
 	{/if}
+
+	<!-- Pre-print steps (leveling, G-code) running before a print starts. -->
+	<PreparingBanner class="mx-4 mt-3 sm:mx-6 lg:mx-8" printerId={printer.id} preparing={s.preparing} {canControl} />
 
 	<!-- Print queue: waiting for someone to clear the bed (above the scrolling content, so it's in reach on phones). -->
 	{#if tab.id !== 'queue'}

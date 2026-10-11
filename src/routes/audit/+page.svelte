@@ -67,6 +67,13 @@
 		'job.resume': 'Resumed print',
 		'job.cancel': 'Cancelled print',
 		'job.restart': 'Restarted print',
+		'preprint.start': 'Preparing print',
+		'preprint.done': 'Prepared print',
+		'preprint.skip': 'Skipped pre-print steps',
+		'preprint.fail': 'Pre-print steps failed',
+		'preprint.cancel': 'Cancelled preparation',
+		'settings.preprint': 'Changed pre-print defaults',
+		'printer.preprint': 'Changed pre-print settings',
 		'temperature.set': 'Set temperature',
 		'gcode.send': 'Sent G-code',
 		'user.create': 'Added user',
@@ -93,6 +100,7 @@
 	const GROUPS = [
 		{ value: '', label: 'All actions' },
 		{ value: 'job.', label: 'Print jobs' },
+		{ value: 'preprint.', label: 'Pre-print steps' },
 		{ value: 'temperature.', label: 'Temperatures' },
 		{ value: 'gcode.', label: 'G-code' },
 		{ value: 'printer.', label: 'Printers' },
@@ -101,7 +109,7 @@
 		{ value: 'auth.', label: 'Sign-ins' }
 	];
 	const tone = (a: string) =>
-		/failed|delete|cancel|emergency/.test(a) ? 'text-danger' : /gcode|disconnect|restore|revoke/.test(a) ? 'text-warning' : 'text-foreground';
+		/fail|delete|cancel|emergency/.test(a) ? 'text-danger' : /gcode|disconnect|restore|revoke/.test(a) ? 'text-warning' : 'text-foreground';
 </script>
 
 <svelte:head><title>Audit · octo·modern</title></svelte:head>

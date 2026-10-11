@@ -4,6 +4,7 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Switch from '#lib/components/Switch.svelte';
 	import DetectionSettings from '#lib/components/detect/DetectionSettings.svelte';
+	import PrePrintSettings from '#lib/components/preprint/PrePrintSettings.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { refreshPrinters, toast } from '#lib/client/state.svelte.ts';
 
@@ -44,7 +45,7 @@
 	const CATEGORIES: { key: Category; label: string; hint: string }[] = [
 		{ key: 'printers', label: 'Printers', hint: 'OctoPrint servers with their API keys and smart plugs' },
 		{ key: 'users', label: 'Users', hint: 'roles, password hashes, SSO links, printer access' },
-		{ key: 'settings', label: 'Settings', hint: 'single sign-on, failure detection' },
+		{ key: 'settings', label: 'Settings', hint: 'single sign-on, failure detection, before each print' },
 		{ key: 'notifications', label: 'Notifications', hint: 'channels with their tokens, rules, quiet hours' },
 		{ key: 'queue', label: 'Print queue', hint: 'jobs and printer tags; files uploaded to the queue aren’t included' },
 		{ key: 'filament', label: 'Spools & maintenance', hint: 'Spoolman connection, costs, spool per printer, maintenance tasks and log' },
@@ -256,6 +257,8 @@
 				</div>
 			{/if}
 		</section>
+
+		<PrePrintSettings />
 
 		<DetectionSettings />
 

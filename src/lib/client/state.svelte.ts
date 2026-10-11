@@ -96,7 +96,11 @@ type ConfirmRequest = {
 	detail?: string;
 	confirmLabel?: string;
 	danger?: boolean;
-	resolve: (ok: boolean) => void;
+	/** Steps to list (the pre-print plan): what runs and why. */
+	steps?: { label: string; run: boolean; reason: string; commands: string[] }[];
+	/** A checkbox under the body; its value comes back with the answer. */
+	option?: { label: string; hint?: string };
+	resolve: (ok: boolean, option?: boolean) => void;
 };
 
 /** The open confirmation dialog, rendered once by the root layout. */
@@ -105,5 +109,11 @@ export const confirmation = $state<{ request: ConfirmRequest | null }>({ request
 /** Asks the user to confirm; resolves false if they cancel or dismiss. */
 export function confirmAction(opts: Omit<ConfirmRequest, 'resolve'>): Promise<boolean> {
 	confirmation.request?.resolve(false);
-	return new Promise((resolve) => (confirmation.request = { ...opts, resolve }));
+	return new Promise((resolve) => (confirmation.request = { ...opts, resolve: (ok) => resolve(ok) }));
+}
+
+/** Like confirmAction, with the state of `opts.option`'s checkbox. */
+export function confirmWithOption(opts: Omit<ConfirmRequest, 'resolve'>): Promise<{ ok: boolean; option: boolean }> {
+	confirmation.request?.resolve(false);
+	return new Promise((resolve) => (confirmation.request = { ...opts, resolve: (ok, option) => resolve({ ok, option: !!option }) }));
 }

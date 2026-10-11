@@ -3,9 +3,9 @@ import type { ProblemInfo } from '#lib/types.ts';
 /** A failed API call: the server's message, status, and any hint/confirm flag it sent. */
 export class ApiError extends Error {
 	status: number;
-	detail?: ProblemInfo & { confirmRequired?: boolean; title?: string; confirmLabel?: string };
+	detail?: ProblemInfo & { confirmRequired?: boolean; title?: string; confirmLabel?: string; preprint?: unknown };
 
-	constructor(message: string, status: number, detail?: ProblemInfo & { confirmRequired?: boolean; title?: string; confirmLabel?: string }) {
+	constructor(message: string, status: number, detail?: ProblemInfo & { confirmRequired?: boolean; title?: string; confirmLabel?: string; preprint?: unknown }) {
 		super(message);
 		this.status = status;
 		this.detail = detail;

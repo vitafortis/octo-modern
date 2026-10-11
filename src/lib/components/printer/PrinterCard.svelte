@@ -2,6 +2,7 @@
 	import { CircleAlert, CirclePause, CirclePlay, CircleStop, Clock, FileBox, Settings2, Unplug } from '@lucide/svelte';
 	import StateBadge from './StateBadge.svelte';
 	import BedClearBanner from '../queue/BedClearBanner.svelte';
+	import PreparingBanner from './PreparingBanner.svelte';
 	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import WebcamThumb from './WebcamThumb.svelte';
 	import PowerStrip from '../power/PowerStrip.svelte';
@@ -70,6 +71,7 @@
 		{/if}
 		</div>
 	</a>
+	<PreparingBanner class="relative mx-3 mb-3" compact printerId={printer.id} preparing={s?.preparing} canControl={!!printer.access?.control} />
 	<!-- Print queue: the bed needs clearing before the next job. -->
 	<BedClearBanner class="relative mx-3 mb-3" compact printerId={printer.id} name={printer.name} state={s?.state} canControl={!!printer.access?.control} />
 	{#if printer.access?.control && s && jobActive(s.state)}

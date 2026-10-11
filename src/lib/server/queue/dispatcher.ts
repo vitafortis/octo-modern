@@ -17,6 +17,9 @@
  *   job is held (status `held`, the reason in its `error`) and a `spool.low`
  *   notification goes out. "Check again" requeues it; "Print anyway" requeues it
  *   with the check skipped for its next start.
+ * - Pre-print steps (preprint/service.ts): with leveling or pre-print G-code set up for
+ *   the printer, the file is transferred without printing and started through them; the
+ *   job stays `starting` while they run, and fails (holding the printer) when they do.
  */
 import { printers } from '../octoprint/manager.ts';
 import { backendFor } from '../backend/index.ts';
@@ -31,6 +34,8 @@ import { getSource } from '../library/sources.ts';
 import { power } from '../power/service.ts';
 import { fileMeta, readMetaFrom, sourceAllowsPrinter, withDriver } from '../library/service.ts';
 import { startSend } from '../library/send.ts';
+import { prep } from '../preprint/service.ts';
+import { prepConfigured } from '../preprint/settings.ts';
 import { printerFileSize, stagedPath, stagedSize, uploadFileToPrinter } from './files.ts';
 import { filamentOverride, finishRun, getJob, getQueuePrinter, insertRun, isPaused, listJobs, setAwaitingClear, setFilamentOverride, setHeld, transition, type StoredJob, type StoredQueuePrinter } from './store.ts';
 import { filamentWarning, needForFile, needFromMeta, wantsFilamentCheck } from '../spools/check.ts';
@@ -238,7 +243,8 @@ class Dispatcher {
 				state: printers.snapshot(printer.id)?.state,
 				// Reachable at all: OctoPrint needs a key, Moonraker may not.
 				hasApiKey: canReach(printer),
-				busy: jobs.some((j) => j.activePrinterId === printer.id && (j.status === 'starting' || j.status === 'printing')),
+				// A queued job is starting or printing on it, or it's being prepared for a print (leveling…).
+				busy: prep.isPreparing(printer.id) || jobs.some((j) => j.activePrinterId === printer.id && (j.status === 'starting' || j.status === 'printing')),
 				tracking: openPrints(printer.id).length > 0
 			};
 		});
@@ -358,11 +364,13 @@ class Dispatcher {
 				}
 			}
 			insertRun(job.id, printer);
+			// Pre-print steps set up for the printer: transfer without printing, then start through them.
+			const viaPrep = prepConfigured(printer);
 			let path: string;
+			/** The transfer itself started the print (no pre-print steps). */
+			let started = false;
 			if (job.source === 'printer') {
 				path = job.path;
-				await backend.selectFile('local', path, true);
-				audit(locals, 'job.start', { printer, detail: path });
 			} else if (job.source === 'library') {
 				const src = job.sourceId ? getSource(job.sourceId) : undefined;
 				if (!src) throw new Error('The library source was removed');
@@ -371,15 +379,14 @@ class Dispatcher {
 				if (have != null && have === st.size) {
 					// Already on the printer (an earlier copy): just print it.
 					path = name;
-					await backend.selectFile('local', path, true);
-					audit(locals, 'job.start', { printer, detail: path });
 				} else {
-					const send = await startSend(locals, { src, path: job.path, printer, backend, folder: '', print: true });
-					const started = Date.now();
-					while (!send.finishedAt && Date.now() - started < SEND_TIMEOUT_MS) await new Promise((r) => setTimeout(r, 500));
+					const send = await startSend(locals, { src, path: job.path, printer, backend, folder: '', print: !viaPrep });
+					const began = Date.now();
+					while (!send.finishedAt && Date.now() - began < SEND_TIMEOUT_MS) await new Promise((r) => setTimeout(r, 500));
 					if (send.state !== 'done') throw new Error(send.error ?? 'The transfer didn’t finish');
-					if (!send.printing) throw new Error('Sent, but the printer wasn’t ready to print');
+					if (!viaPrep && !send.printing) throw new Error('Sent, but the printer wasn’t ready to print');
 					path = send.storedPath ?? name;
+					started = !viaPrep;
 				}
 			} else {
 				const file = stagedPath(job.id);
@@ -388,13 +395,18 @@ class Dispatcher {
 				const have = await printerFileSize(backend, job.name);
 				if (have != null && have === size) {
 					path = job.name;
-					await backend.selectFile('local', path, true);
 				} else {
-					const r = await uploadFileToPrinter(backend, { file, name: job.name, print: true });
-					if (!r.printing) throw new Error('Uploaded, but the printer wasn’t ready to print');
+					const r = await uploadFileToPrinter(backend, { file, name: job.name, print: !viaPrep, select: viaPrep });
+					if (!viaPrep && !r.printing) throw new Error('Uploaded, but the printer wasn’t ready to print');
 					path = r.path;
+					started = !viaPrep;
+					if (started) audit(locals, 'job.start', { printer, detail: path });
 				}
-				audit(locals, 'job.start', { printer, detail: path });
+			}
+			if (!started) {
+				// Waits for leveling and the pre-print G-code, when they run first.
+				const r = await prep.begin({ printer, backend, origin: 'local', path, how: 'select', locals, via: 'queue' });
+				await r.done;
 			}
 			transition(job.id, 'starting', { status: 'printing', activePath: path });
 			setFilamentOverride(job.id, false);

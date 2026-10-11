@@ -10,6 +10,8 @@ import { audit } from '../permissions.ts';
 import { refreshSoon } from '../control.ts';
 import { toOctoPrintError } from '../octoprint/errors.ts';
 import type { PrinterBackend } from '../backend/types.ts';
+import { prep } from '../preprint/service.ts';
+import { prepConfigured } from '../preprint/settings.ts';
 import { bytesLabel } from '../octoprint/files-util.ts';
 import { LibraryError, pullStream, toLibraryError } from './drivers.ts';
 import { openRead, withDriver } from './service.ts';
@@ -97,6 +99,7 @@ export async function startSend(
 		error: null,
 		storedPath: null,
 		printing: false,
+		preparing: false,
 		startedAt: new Date().toISOString(),
 		finishedAt: null,
 		userId: locals.user?.id ?? null
@@ -123,6 +126,8 @@ export async function startSend(
 	}
 
 	const where = `${src.name}: ${path} → ${printer.name}${folder ? ` /${folder}` : ''}`;
+	// Pre-print steps set up for the printer: store it, then start it through them.
+	const viaPrep = print && prepConfigured(printer);
 
 	void (async () => {
 		try {
@@ -134,7 +139,7 @@ export async function startSend(
 					length: head.length + size + tail.length,
 					folder,
 					select: print,
-					print,
+					print: print && !viaPrep,
 					signal: abort.signal,
 					timeoutMs: 5 * 60_000
 				});
@@ -145,12 +150,22 @@ export async function startSend(
 			send.storedPath = result.path ?? joinPath(folder, name);
 			send.printing = result.printing;
 			send.sent = size;
+			let note = '';
+			if (viaPrep) {
+				try {
+					const r = await prep.begin({ printer, backend, origin: 'local', path: send.storedPath, how: 'select', locals, via: 'library' });
+					send.preparing = r.preparing;
+					send.printing = !r.preparing;
+				} catch (err) {
+					note = `: ${(err as Error).message}`;
+				}
+			}
 			send.state = 'done';
 			audit(locals, 'library.send', {
 				printer,
-				detail: `${where} (${bytesLabel(size)})${print ? (send.printing ? ', printing' : ', print requested but the printer wasn’t ready') : ''}`
+				detail: `${where} (${bytesLabel(size)})${print ? (send.preparing ? ', preparing to print' : send.printing ? ', printing' : `, print requested but the printer wasn’t ready${note}`) : ''}`
 			});
-			if (send.printing) audit(locals, 'job.start', { printer, detail: send.storedPath });
+			if (result.printing) audit(locals, 'job.start', { printer, detail: send.storedPath });
 			refreshSoon(printer.id);
 		} catch (err) {
 			file.destroy();
