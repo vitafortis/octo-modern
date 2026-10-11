@@ -69,7 +69,7 @@
 			<div class="card p-6 text-center text-[13px] text-muted-foreground">This file is on the printer’s SD card; OctoPrint can’t send it to octo·modern, so there’s no preview.</div>
 		{:else}
 			{#key target.key}
-				<GcodeViewer url={urls.printerFile(printer.id, target.path)} cacheKey={target.key} live={isLive} filepos={isLive ? (s.progress?.filepos ?? null) : null} />
+				<GcodeViewer class="h-[max(26rem,calc(100dvh-17rem))]" url={urls.printerFile(printer.id, target.path)} cacheKey={target.key} live={isLive} filepos={isLive ? (s.progress?.filepos ?? null) : null} />
 			{/key}
 		{/if}
 	</div>

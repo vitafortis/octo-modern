@@ -134,9 +134,11 @@ class Store {
 	get cap() {
 		return this.kinds.length;
 	}
-	grow(min: number) {
+	/** Grows to at least `min` points (by 1.6×), never past `max`. */
+	grow(min: number, max: number) {
 		let cap = this.cap;
 		while (cap < min) cap = Math.ceil(cap * 1.6);
+		cap = Math.min(cap, max);
 		const p = new Float32Array(cap * 3);
 		p.set(this.pos.subarray(0, this.n * 3));
 		const k = new Uint8Array(cap);
@@ -580,7 +582,7 @@ export class GcodeParser {
 				if (s.n >= this.maxPoints) return;
 				return this.point(x, y, z, extruding, offset);
 			}
-			s.grow(Math.min(this.maxPoints, n + 1));
+			s.grow(n + 1, this.maxPoints);
 		}
 		this.write(n, x, y, z, kind, offset);
 		s.n = n + 1;

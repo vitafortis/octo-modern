@@ -63,9 +63,13 @@ export async function octoprintDownload(client: OctoPrintClient, path: string, r
 	if (range) headers.range = range;
 	let res: Response;
 	try {
-		res = await client.request('GET', `/downloads/files/local/${encodePath(path)}`, { headers, allow: [206, 416], timeoutMs: 60 * 60_000, signal });
+		res = await client.request('GET', `/downloads/files/local/${encodePath(path)}`, { headers, allow: [206, 404, 416], timeoutMs: 60 * 60_000, signal });
 	} catch (err) {
 		throw toOctoPrintError(err, client.host);
+	}
+	if (res.status === 404) {
+		await res.body?.cancel().catch(() => {});
+		return Response.json({ message: 'File not found on OctoPrint', code: 'NOT_FOUND' }, { status: 404 });
 	}
 	const out: Record<string, string> = { ...BASE_HEADERS };
 	for (const k of ['content-length', 'content-range', 'last-modified', 'etag']) {

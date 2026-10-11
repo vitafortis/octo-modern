@@ -21,6 +21,12 @@ export function pointBudget(): number {
 	return 3_000_000;
 }
 
+/** Segments drawn per frame at full quality (the GPU side of the budget). */
+export function frameBudget(): number {
+	const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+	return coarse ? 600_000 : 2_000_000;
+}
+
 const cache = new Map<string, Loaded>();
 const MAX_CACHED = 2;
 

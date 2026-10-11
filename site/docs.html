@@ -94,6 +94,8 @@
 								<li><a href="#configuration">Configuration</a></li>
 								<li><a href="#status-api">Status API</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
+								<li><a href="#preview">G-code preview</a></li>
+								<li><a href="#cameras">Camera wall</a></li>
 								<li><a href="#images">Images</a></li>
 								<li><a href="#security">Security model</a></li>
 								<li><a href="#backup">Backup &amp; restore</a></li>
@@ -165,6 +167,7 @@
 								<tr><td>Watch printers: state, temperatures, webcam, files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
 								<tr><td>Start, pause, resume, cancel prints</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Set temperatures, connect/disconnect, G-code, emergency stop</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>G-code preview (printer and library files), camera wall</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
 								<tr><td>Upload, print and delete files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Add, edit and remove printers (and their API keys)</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Users, Integrations, Audit log, Settings, backups</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
@@ -300,6 +303,27 @@
 							<li><strong>HLS and WebRTC</strong> streams get a snapshot (if there is one) and an <strong>Open stream</strong> link, which the browser must be able to reach.</li>
 						</ul>
 						<p>Uploads go to OctoPrint's local storage and are streamed as they arrive, so memory use doesn't grow with the file; the image allows up to 4 GB (<code>BODY_SIZE_LIMIT</code>). A reverse proxy in front may have its own limit (nginx: <code>client_max_body_size</code>).</p>
+					</section>
+
+					<section id="preview">
+						<h2>G-code preview</h2>
+						<p>The <strong>Preview</strong> tab on a printer shows the job's toolpath; the cube button next to a file in <strong>Files</strong> or the <strong>Library</strong> previews any other. Drag to orbit (right-drag or Shift to pan), scroll or pinch to zoom, double-tap to reset; the slider and ↑/↓ change the layer. <strong>Layer</strong> shows one layer from above; <strong>Travel</strong> adds moves without extrusion; the legend hides feature types.</p>
+						<ul>
+							<li><strong>Live</strong>: during a print, the preview follows OctoPrint's position in the file: the layer being printed, what's done and what's left, and the nozzle.</li>
+							<li><strong>Understood</strong>: G0/G1, G2/G3 arcs, G90/G91, M82/M83, G92, G20/G21. Layers from slicer comments (<code>;LAYER_CHANGE</code>, <code>;LAYER:n</code>) or from Z; colours from <code>;TYPE:</code>/<code>;FEATURE:</code> (PrusaSlicer, OrcaSlicer, Bambu Studio, Cura). Not <code>.bgcode</code> or SD card files.</li>
+							<li><strong>Big files</strong> stream in 16 MB ranges and are parsed in a Web Worker as they arrive; memory is capped (3 million moves on computers, 1.5 million on phones) by merging short segments, and drawing is capped per frame.</li>
+							<li>Files are fetched by the server with the printer's key or the source's credentials; anyone who can see the printer or source can preview, viewers included.</li>
+						</ul>
+					</section>
+
+					<section id="cameras">
+						<h2>Camera wall</h2>
+						<p><strong>Cameras</strong> shows every camera you may see, one column on a phone and as many as fit on wider screens, with state, progress and temperatures on each. Tap one for full screen.</p>
+						<ul>
+							<li><strong>Auto</strong> streams live up to four cameras and refreshes snapshots for more (browsers allow six connections per host, and a wall of streams is a lot of bandwidth). Cameras pause when scrolled away, when the tab is hidden and while one is open full screen.</li>
+							<li><strong>Kiosk</strong> hides everything else, hides the cursor, keeps the screen awake and can rotate through the cameras.</li>
+							<li>Options are in the URL, e.g. <code>/cameras?kiosk=1&amp;layout=3&amp;mode=snapshot&amp;every=5&amp;rotate=20</code>, so a wall tablet can open a bookmark.</li>
+						</ul>
 					</section>
 
 					<section id="images">

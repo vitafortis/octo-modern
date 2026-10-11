@@ -335,7 +335,7 @@ html {
 	--gc-custom: #5c7cfa;
 	--gc-extrusion: oklch(62% 0.2 292.717);
 	--gc-travel: oklch(55% 0.12 240);
-	--gc-grid: oklch(85% 0.01 292);
+	--gc-grid: oklch(90% 0.008 292);
 	--gc-nozzle: oklch(60% 0.25 25);
 }
 :root[data-theme='dark'] {

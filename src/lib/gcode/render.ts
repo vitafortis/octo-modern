@@ -112,6 +112,7 @@ uniform vec3 uPalette[${KIND_COUNT}];
 uniform uint uHidden;
 uniform bool uShowTravel;
 uniform int uBase;
+uniform int uStride;
 uniform int uCurrent;
 uniform int uGhostFrom;     // points at or after this are ghosts (alpha)
 uniform float uAlpha;
@@ -119,7 +120,7 @@ uniform vec2 uZRange;
 uniform bool uShade;
 out vec4 vColor;
 void main() {
-	int idx = uBase + gl_InstanceID;
+	int idx = uBase + gl_InstanceID * uStride;
 	bool travel = aKind == ${TRAVEL}u;
 	if ((uHidden & (1u << aKind)) != 0u || (travel && !uShowTravel)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
 	vec4 a = uMVP * vec4(aA, 1.0);
@@ -201,6 +202,39 @@ export function cssColor(value: string): [number, number, number] {
 	return [d[0] / 255, d[1] / 255, d[2] / 255];
 }
 
+/**
+ * What to frame: the extrusions without outliers (a purge line along the bed's edge would
+ * otherwise shrink the part to a corner). 1st–99th percentile in X and Y of a sample of
+ * extrusion points, widened back to the real extents when they're close.
+ */
+export function partBounds(tp: Pick<Toolpath, 'positions' | 'kinds' | 'bounds'>): Toolpath['bounds'] {
+	const n = tp.kinds.length;
+	const step = Math.max(1, Math.floor(n / 50_000));
+	const xs: number[] = [];
+	const ys: number[] = [];
+	for (let i = 0; i < n; i += step) {
+		if (tp.kinds[i] === TRAVEL) continue;
+		xs.push(tp.positions[i * 3]);
+		ys.push(tp.positions[i * 3 + 1]);
+	}
+	if (xs.length < 20) return tp.bounds;
+	xs.sort((a, b) => a - b);
+	ys.sort((a, b) => a - b);
+	const q = (a: number[], f: number) => a[Math.min(a.length - 1, Math.max(0, Math.round(f * (a.length - 1))))];
+	const pick = (lo: number, hi: number, full: number, side: 'min' | 'max') => {
+		const v = side === 'min' ? lo : hi;
+		// Keep the true extent unless it's far beyond the percentile (an outlier).
+		const span = Math.max(1, hi - lo);
+		return Math.abs(full - v) < span * 0.1 ? full : v;
+	};
+	const [x0, x1, y0, y1] = [q(xs, 0.01), q(xs, 0.99), q(ys, 0.01), q(ys, 0.99)];
+	const { min, max } = tp.bounds;
+	return {
+		min: [pick(x0, x1, min[0], 'min'), pick(y0, y1, min[1], 'min'), min[2]],
+		max: [pick(x0, x1, max[0], 'max'), pick(y0, y1, max[1], 'max'), max[2]]
+	};
+}
+
 export interface Camera3D {
 	target: [number, number, number];
 	distance: number;
@@ -232,6 +266,7 @@ export class ToolpathRenderer {
 	private attrB = 0;
 	private attrKind = 0;
 	private tp: Toolpath | null = null;
+	private frameBounds: Toolpath['bounds'] | null = null;
 	private palette = new Float32Array(KIND_COUNT * 3);
 	private gridColor: [number, number, number, number] = [0.5, 0.5, 0.5, 1];
 	private frame = 0;
@@ -239,12 +274,20 @@ export class ToolpathRenderer {
 	cam3: Camera3D = { target: [0, 0, 0], distance: 200, yaw: -Math.PI / 3, pitch: Math.PI / 5 };
 	cam2: Camera2D = { center: [0, 0], scale: 0.5 };
 	state: DrawState = { mode: '3d', layer: 0, minLayer: 0, showTravel: false, hidden: 0, current: -1, ghost: true };
+	/** Segments per frame at rest (a quarter of it while the view moves). */
+	budget: number;
+	private moving = 0;
+	private settle: ReturnType<typeof setTimeout> | undefined;
+	/** Segments drawn in the last frame, and the coarsest stride used. */
+	drawn = 0;
+	stride = 1;
 	/** Called after each frame (e.g. to place HTML overlays). */
 	onframe?: () => void;
 	lost = false;
 
-	constructor(canvas: HTMLCanvasElement) {
+	constructor(canvas: HTMLCanvasElement, opts: { budget?: number } = {}) {
 		this.canvas = canvas;
+		this.budget = opts.budget ?? 2_000_000;
 		const gl = canvas.getContext('webgl2', { antialias: true, premultipliedAlpha: true, alpha: true, preserveDrawingBuffer: false });
 		if (!gl) throw new Error('This browser has no WebGL2');
 		this.gl = gl;
@@ -265,7 +308,7 @@ export class ToolpathRenderer {
 		const gl = this.gl;
 		this.seg = compile(gl, SEG_VS, SEG_FS);
 		this.grid = compile(gl, GRID_VS, GRID_FS);
-		for (const n of ['uMVP', 'uViewport', 'uProjScale', 'uMinWidth', 'uLineWidth', 'uPalette', 'uHidden', 'uShowTravel', 'uBase', 'uCurrent', 'uGhostFrom', 'uAlpha', 'uZRange', 'uShade'])
+		for (const n of ['uMVP', 'uViewport', 'uProjScale', 'uMinWidth', 'uLineWidth', 'uPalette', 'uHidden', 'uShowTravel', 'uBase', 'uStride', 'uCurrent', 'uGhostFrom', 'uAlpha', 'uZRange', 'uShade'])
 			this.loc[n] = gl.getUniformLocation(this.seg, n);
 		this.loc.gMVP = gl.getUniformLocation(this.grid, 'uMVP');
 		this.loc.gColor = gl.getUniformLocation(this.grid, 'uColor');
@@ -303,6 +346,7 @@ export class ToolpathRenderer {
 	upload(tp: Toolpath, frame = true) {
 		const gl = this.gl;
 		this.tp = tp;
+		this.frameBounds = null;
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf);
 		gl.bufferData(gl.ARRAY_BUFFER, tp.positions, gl.STATIC_DRAW);
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.kindBuf);
@@ -333,12 +377,12 @@ export class ToolpathRenderer {
 	resetView() {
 		const tp = this.tp;
 		if (!tp) return;
-		const { min, max } = tp.bounds;
+		const { min, max } = this.frameBounds ?? (this.frameBounds = partBounds(tp));
 		const cx = (min[0] + max[0]) / 2;
 		const cy = (min[1] + max[1]) / 2;
 		const cz = (min[2] + max[2]) / 2;
 		const size = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2], 10);
-		this.cam3 = { target: [cx, cy, cz * 0.6], distance: size * 1.9, yaw: -Math.PI / 3, pitch: Math.PI / 5 };
+		this.cam3 = { target: [cx, cy, cz * 0.5], distance: size * 1.45, yaw: -Math.PI / 3, pitch: Math.PI / 5 };
 		const w = this.canvas.clientWidth || 1;
 		const h = this.canvas.clientHeight || 1;
 		const span = Math.max(max[0] - min[0], max[1] - min[1], 10) * 1.15;
@@ -398,21 +442,46 @@ export class ToolpathRenderer {
 		}
 	}
 
-	private segments(first: number, last: number, uniforms: { alpha: number; ghostFrom: number }) {
-		// Segment i joins point i-1 to point i; draw points [first, last).
+	/**
+	 * Draws points [first, last) (segment i joins point i-1 to point i). With `stride` k > 1,
+	 * only every k-th point is used: a coarser polyline for big files and while moving.
+	 */
+	private segments(first: number, last: number, uniforms: { alpha: number; ghostFrom: number }, stride = 1) {
 		const gl = this.gl;
 		first = Math.max(1, first);
-		const count = last - first;
-		if (count <= 0) return;
-		gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf);
-		gl.vertexAttribPointer(this.attrA, 3, gl.FLOAT, false, 12, (first - 1) * 12);
-		gl.vertexAttribPointer(this.attrB, 3, gl.FLOAT, false, 12, first * 12);
-		gl.bindBuffer(gl.ARRAY_BUFFER, this.kindBuf);
-		gl.vertexAttribIPointer(this.attrKind, 1, gl.UNSIGNED_BYTE, 1, first);
-		gl.uniform1i(this.loc.uBase, first);
-		gl.uniform1f(this.loc.uAlpha, uniforms.alpha);
-		gl.uniform1i(this.loc.uGhostFrom, uniforms.ghostFrom);
-		gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, count);
+		if (last - first <= 0) return;
+		const k = Math.max(1, Math.floor(stride));
+		const count = Math.floor((last - first) / k);
+		if (count > 0) {
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf);
+			gl.vertexAttribPointer(this.attrA, 3, gl.FLOAT, false, 12 * k, (first - 1) * 12);
+			gl.vertexAttribPointer(this.attrB, 3, gl.FLOAT, false, 12 * k, (first - 1 + k) * 12);
+			gl.bindBuffer(gl.ARRAY_BUFFER, this.kindBuf);
+			gl.vertexAttribIPointer(this.attrKind, 1, gl.UNSIGNED_BYTE, k, first - 1 + k);
+			gl.uniform1i(this.loc.uBase, first - 1 + k);
+			gl.uniform1i(this.loc.uStride, k);
+			gl.uniform1f(this.loc.uAlpha, uniforms.alpha);
+			gl.uniform1i(this.loc.uGhostFrom, uniforms.ghostFrom);
+			gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, count);
+			this.drawn += count;
+		}
+		// The remainder at full detail, so the strided polyline ends where the range does.
+		if (k > 1 && first + count * k < last) this.segments(first + count * k, last, uniforms, 1);
+	}
+
+	/** [lo, hi) within the frame budget: the top layers at full detail, the rest coarser if need be. */
+	private budgeted(tp: Toolpath, lo: number, hi: number, top: number, uniforms: { alpha: number; ghostFrom: number }) {
+		const budget = performance.now() - this.moving < 200 ? this.budget / 4 : this.budget;
+		if (budget < this.budget) {
+			clearTimeout(this.settle);
+			this.settle = setTimeout(() => this.redraw(), 220);
+		}
+		const full = Math.max(lo, Math.min(hi, tp.layerStart[Math.max(0, top - 1)]));
+		const rest = full - lo;
+		const k = rest > budget ? Math.ceil(rest / Math.max(1, budget - (hi - full))) : 1;
+		this.stride = Math.max(this.stride, k);
+		this.segments(lo, full, uniforms, k);
+		this.segments(full, hi, uniforms, 1);
 	}
 
 	private draw() {
@@ -424,6 +493,8 @@ export class ToolpathRenderer {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		const tp = this.tp;
 		if (!tp || !tp.stats.points) return;
+		this.drawn = 0;
+		this.stride = 1;
 		const { mvp, projScale } = this.matrices();
 		const s = this.state;
 		const layers = tp.layerStart.length - 1;
@@ -469,21 +540,24 @@ export class ToolpathRenderer {
 			if (s.current >= 0 && s.current + 1 < hi) {
 				// Printed part solid, the rest of the shown layers as a ghost.
 				gl.depthMask(true);
-				this.segments(lo, s.current + 1, { alpha: 1, ghostFrom: noGhost });
+				this.budgeted(tp, lo, s.current + 1, L, { alpha: 1, ghostFrom: noGhost });
 				if (s.ghost) {
 					gl.depthMask(false);
-					this.segments(Math.max(lo, s.current + 1), hi, { alpha: 1, ghostFrom: 0 });
+					this.budgeted(tp, Math.max(lo, s.current + 1), hi, L + 1, { alpha: 1, ghostFrom: 0 });
 					gl.depthMask(true);
 				}
-			} else this.segments(lo, hi, { alpha: 1, ghostFrom: noGhost });
+			} else this.budgeted(tp, lo, hi, L, { alpha: 1, ghostFrom: noGhost });
 		}
 		gl.bindVertexArray(null);
+		this.canvas.dataset.drawn = String(this.drawn);
+		this.canvas.dataset.stride = String(this.stride);
 		this.onframe?.();
 	}
 
 	// --- interaction --------------------------------------------------------------------
 
 	orbit(dx: number, dy: number) {
+		this.moving = performance.now();
 		const c = this.cam3;
 		c.yaw -= dx * 0.008;
 		c.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, c.pitch + dy * 0.008));
@@ -492,6 +566,7 @@ export class ToolpathRenderer {
 
 	/** Pans by a CSS-pixel delta. */
 	pan(dx: number, dy: number) {
+		this.moving = performance.now();
 		if (this.state.mode === '2d') {
 			this.cam2.center[0] -= dx * this.cam2.scale;
 			this.cam2.center[1] += dy * this.cam2.scale;
@@ -513,6 +588,7 @@ export class ToolpathRenderer {
 
 	/** Zooms by a factor (>1 zooms in), around a CSS-pixel point in 2D. */
 	zoom(factor: number, at?: [number, number]) {
+		this.moving = performance.now();
 		if (this.state.mode === '2d') {
 			const c = this.cam2;
 			const next = Math.max(0.005, Math.min(5, c.scale / factor));
@@ -530,6 +606,7 @@ export class ToolpathRenderer {
 	/** Frees the GPU buffers. */
 	dispose() {
 		cancelAnimationFrame(this.frame);
+		clearTimeout(this.settle);
 		const gl = this.gl;
 		gl.deleteBuffer(this.posBuf);
 		gl.deleteBuffer(this.kindBuf);

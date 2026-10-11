@@ -157,6 +157,9 @@ test('a point cap decimates short extrusion segments and keeps layers intact', (
 	const capped = parseGcode(src, { maxPoints: 20_000 });
 	assert.ok(full.stats.points > 20_000);
 	assert.ok(capped.stats.points <= 20_000, `${capped.stats.points}`);
+	// A cap that isn't a multiple of the growth steps holds too.
+	const odd = parseGcode(src, { maxPoints: 33_333 });
+	assert.ok(odd.stats.points <= 33_333 && odd.stats.minSegment > 0, `${odd.stats.points}`);
 	assert.ok(capped.stats.minSegment > 0);
 	assert.equal(capped.stats.layers, full.stats.layers);
 	assert.deepEqual(Array.from(capped.layerZ), Array.from(full.layerZ));
@@ -200,4 +203,13 @@ test('a streaming parser reports consumed bytes', () => {
 	p.push(new TextEncoder().encode(' Y1\n'));
 	const tp = p.finish();
 	assert.deepEqual(pt(tp, 0), [1, 1, 0]);
+});
+
+test('framing ignores a purge line along the bed edge', async () => {
+	const { partBounds } = await import('../src/lib/gcode/render.ts');
+	const tp = parseGcode(sample('prusa', { layers: 6 }));
+	assert.equal(tp.bounds.min[1], 5, 'the purge line is part of the raw bounds');
+	const b = partBounds(tp);
+	assert.ok(b.min[1] > 70 && b.max[1] <= 145.01, `framed y ${b.min[1]}–${b.max[1]}`);
+	assert.ok(b.min[0] > 70, `framed x from ${b.min[0]}`);
 });

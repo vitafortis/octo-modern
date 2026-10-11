@@ -41,6 +41,16 @@
 		class?: string;
 	} = $props();
 
+	/** Removing a streaming <img> doesn't always end its request; pointing it elsewhere does. */
+	function endStream(node: HTMLImageElement) {
+		return {
+			destroy() {
+				node.removeAttribute('src');
+				node.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+			}
+		};
+	}
+
 	let shown = $state(false);
 	let failed = $state(false);
 	let attempt = $state(0);
@@ -107,7 +117,7 @@
 >
 	<button class="absolute inset-0 z-0 block size-full cursor-pointer" aria-label="Open {printer.name}{multi ? ` – ${cam.label}` : ''} full screen" onclick={onopen}>
 		{#if src}
-			<img {src} alt="{printer.name} live" class="size-full {fill ? 'object-cover' : 'object-contain'}" style:transform={webcamTransform(cam)} onerror={() => (failed = true)} />
+			<img {src} use:endStream alt="{printer.name} live" class="size-full {fill ? 'object-cover' : 'object-contain'}" style:transform={webcamTransform(cam)} onerror={(e) => e.currentTarget.isConnected && (failed = true)} />
 		{:else if frame && (!streaming || !running)}
 			<img src={frame} alt="{printer.name} snapshot" class="size-full {fill ? 'object-cover' : 'object-contain'} {running ? '' : 'opacity-70'}" style:transform={webcamTransform(cam)} />
 		{:else if !cam.snapshot && !canStream}

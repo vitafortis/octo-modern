@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { Box, ChevronDown, ChevronUp, CircleAlert, Crosshair, Eye, EyeOff, Layers, LoaderCircle, Maximize2, Minimize2, Navigation, RotateCcw, Route } from '@lucide/svelte';
-	import { loadToolpath, type Loaded } from '#lib/gcode/load.ts';
+	import { frameBudget, loadToolpath, type Loaded } from '#lib/gcode/load.ts';
 	import { EXTRUSION, FEATURES, TRAVEL, locate, type Toolpath } from '#lib/gcode/parse.ts';
 	import { ToolpathRenderer, cssColor, type ViewMode } from '#lib/gcode/render.ts';
 	import { bytes, compact, duration } from '#lib/client/format.ts';
@@ -63,7 +63,7 @@
 
 	onMount(() => {
 		try {
-			renderer = new ToolpathRenderer(canvas!);
+			renderer = new ToolpathRenderer(canvas!, { budget: frameBudget() });
 		} catch (err) {
 			error = (err as Error).message;
 			return;
@@ -166,7 +166,9 @@
 	}
 
 	function onpointerdown(e: PointerEvent) {
-		canvas!.setPointerCapture(e.pointerId);
+		try {
+			canvas!.setPointerCapture(e.pointerId);
+		} catch {}
 		pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, button: e.button, shift: e.shiftKey || e.ctrlKey || e.metaKey });
 		if (pointers.size === 2) pinch = pinchState();
 		if (e.pointerType === 'touch' && pointers.size === 1) {
@@ -246,7 +248,7 @@
 
 <div
 	bind:this={wrap}
-	class="flex min-h-0 flex-col overflow-hidden border border-border bg-card {full ? 'fixed inset-0 z-50 rounded-none' : 'rounded-xl'} {cls}"
+	class="flex min-h-0 flex-col overflow-hidden border border-border bg-card {full ? 'fixed inset-0 z-50 rounded-none' : `rounded-xl ${cls || 'h-[min(75vh,48rem)]'}`}"
 	data-testid="gcode-viewer"
 >
 	<!-- Toolbar -->
@@ -281,7 +283,7 @@
 	</div>
 
 	<!-- Canvas -->
-	<div class="relative min-h-0 flex-1 {full ? '' : 'h-[min(62vh,40rem)] min-h-72'}" style="background: radial-gradient(120% 90% at 50% 0%, var(--surface), var(--card));">
+	<div class="relative min-h-64 flex-1" style="background: radial-gradient(120% 90% at 50% 0%, var(--surface), var(--card));">
 		<canvas
 			bind:this={canvas}
 			class="absolute inset-0 size-full touch-none outline-none select-none"
