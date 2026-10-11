@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Docs · octo·modern</title>
+		<meta
+			name="description"
+			content="Adding printers, Discover, users and roles, configuration variables, the status API for Homepage, Glance and Home Assistant, and the security model of octo·modern."
+		/>
+		<link rel="canonical" href="https://vitafortis.github.io/octo-modern/docs.html" />
+		<meta name="color-scheme" content="dark light" />
+		<meta name="theme-color" content="#0d0b12" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#fcfbfe" media="(prefers-color-scheme: light)" />
+		<script>
+			try {
+				var t = localStorage.getItem('ocm-site-theme');
+				if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+			} catch (e) {}
+		</script>
+		<link rel="icon" href="logo.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+		<link rel="preload" href="assets/fonts/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+		<link rel="stylesheet" href="assets/site.css" />
+
+		<meta property="og:type" content="article" />
+		<meta property="og:site_name" content="octo·modern" />
+		<meta property="og:title" content="octo·modern docs" />
+		<meta property="og:description" content="Install, configure and secure octo·modern, a self-hosted UI for OctoPrint." />
+		<meta property="og:url" content="https://vitafortis.github.io/octo-modern/docs.html" />
+		<meta property="og:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+	</head>
+	<body>
+		<a class="btn btn-primary skip" href="#main">Skip to content</a>
+
+		<header class="site-header">
+			<div class="wrap">
+				<a class="brand" href="./" aria-label="octo·modern home">
+					<img src="logo.svg" width="28" height="28" alt="" />
+					<span>octo<span class="text-primary">·</span>modern</span>
+				</a>
+				<nav class="nav-links" aria-label="Primary">
+					<a href="./#features">Features</a>
+					<a href="./#screenshots">Screenshots</a>
+					<a href="./#install">Install</a>
+					<a href="docs.html" aria-current="page">Docs</a>
+				</nav>
+				<a class="btn btn-ghost btn-icon" href="https://github.com/vitafortis/octo-modern" aria-label="octo·modern on GitHub">
+					<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3"/></svg>
+				</a>
+				<button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch to light theme">
+					<svg class="ico only-dark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+					<svg class="ico only-light" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+				</button>
+				<button class="btn btn-ghost btn-icon menu-btn" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open menu">
+					<svg class="ico i-menu" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
+					<svg class="ico i-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+				</button>
+			</div>
+			<nav class="mobile-nav" id="mobile-nav" aria-label="Primary" hidden>
+				<div class="wrap">
+					<a href="./#features">Features</a>
+					<a href="./#screenshots">Screenshots</a>
+					<a href="./#install">Install</a>
+					<a href="./#faq">FAQ</a>
+					<a href="docs.html">Docs</a>
+					<a href="https://github.com/vitafortis/octo-modern">GitHub</a>
+				</div>
+			</nav>
+		</header>
+
+		<main id="main">
+			<div class="docs-hero">
+				<div class="wrap">
+					<span class="eyebrow">Documentation</span>
+					<h1>Set up and run octo·modern</h1>
+					<p>Everything beyond <a href="./#install">the quick start</a>: adding printers, discovery, roles, configuration, dashboards and the security model.</p>
+				</div>
+			</div>
+
+			<div class="wrap docs-layout">
+				<nav class="toc" aria-label="On this page">
+					<div class="toc-inner">
+						<details>
+							<summary>On this page<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<ul>
+								<li><a href="#printers">Adding a printer</a></li>
+								<li><a href="#discover">Discover</a></li>
+								<li><a href="#roles">Users and roles</a></li>
+								<li><a href="#configuration">Configuration</a></li>
+								<li><a href="#status-api">Status API</a></li>
+								<li><a href="#webcams">Webcams and files</a></li>
+								<li><a href="#images">Images</a></li>
+								<li><a href="#security">Security model</a></li>
+								<li><a href="#backup">Backup &amp; restore</a></li>
+							</ul>
+						</details>
+					</div>
+				</nav>
+
+				<div class="prose">
+					<section id="printers">
+						<h2>Adding a printer</h2>
+						<p>You need two things from each OctoPrint.</p>
+						<ul>
+							<li>
+								<strong>Its URL, as octo·modern's server reaches it.</strong> Usually <code>http://&lt;pi-ip&gt;</code> or <code>http://octopi.lan</code>. Behind a reverse proxy at a path, include the path (<code>https://print.example.com/octoprint</code>). Inside Docker, <code>localhost</code> is octo·modern's own container: use the host's IP, or <code>host.docker.internal</code> for an OctoPrint on the same Docker host. <code>.local</code> (mDNS) names usually don't resolve inside containers.
+							</li>
+							<li>
+								<strong>An API key.</strong> In OctoPrint, open <strong>Settings → Application Keys</strong> and generate one named "octo·modern", or copy a user's key from <strong>User Settings → API key</strong>. The key acts with the permissions of the OctoPrint user it belongs to.
+							</li>
+						</ul>
+						<p><strong>Test connection</strong> shows OctoPrint's version, which user the key belongs to, and any permission the key lacks. Self-signed certificate on your LAN? Turn off <strong>Verify TLS certificate</strong> for that server.</p>
+						<p>Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and <a href="#discover">Discover</a> does the rest. You approve the key in OctoPrint instead of copying it.</p>
+					</section>
+
+					<section id="discover">
+						<h2>Discover</h2>
+						<p><strong>Discover</strong> (admins) finds OctoPrint servers and adds them in two clicks. It looks in three places:</p>
+						<ul>
+							<li><strong>Docker</strong>: every container on each Docker endpoint, recognized by image or by port plus OctoPrint markers. Each candidate shows its image, compose project and the <strong>serial devices</strong> mapped into it, so you can tell which printer it drives.</li>
+							<li><strong>Arcane</strong>: the same, for every environment an <a href="https://getarcane.app">Arcane</a> instance manages, through its API with a read-only key (<code>environments:list</code>, <code>containers:list</code>, <code>containers:read</code>).</li>
+							<li><strong>Network</strong>: mDNS (<code>_octoprint._tcp</code>) and a subnet scan for OctoPi and anything else outside Docker.</li>
+						</ul>
+						<p><strong>Add</strong> asks OctoPrint for an <a href="https://docs.octoprint.org/en/master/bundledplugins/appkeys.html">Application Key</a>: <strong>Approve in OctoPrint</strong> opens OctoPrint's approval page; sign in as the user whose permissions the key should have and click <strong>Allow</strong>. octo·modern picks the key up, tests it and saves the printer. OctoPrint allows 3 key requests a minute and drops requests nobody approves within 10 minutes.</p>
+
+						<h3>Docker, through a read-only socket proxy</h3>
+						<p>octo·modern only lists and inspects containers, so don't give it the raw socket. Run <a href="https://github.com/Tecnativa/docker-socket-proxy">docker-socket-proxy</a> next to it with <code>CONTAINERS=1</code> and <code>POST=0</code>:</p>
+						<div class="code">
+							<div class="code-head"><span>compose.yaml</span></div>
+							<pre><code data-lang="yaml">services:
+  octo-modern:
+    environment:
+      OCM_DOCKER_HOSTS: tcp://docker-proxy:2375
+    depends_on: [docker-proxy]
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro</code></pre>
+						</div>
+						<p>More Docker hosts? Run a proxy on each and list them all: <code>OCM_DOCKER_HOSTS=tcp://docker-proxy:2375,tcp://nas.lan:2375</code>.</p>
+
+						<h3>mDNS needs the LAN</h3>
+						<p>Multicast only reaches one network segment: inside Docker's default bridge network, nothing answers. Run octo·modern with <code>network_mode: host</code>, or attach it to a macvlan/ipvlan network on your LAN. On a bridge network, use the subnet scan instead.</p>
+
+						<h3>Subnet scan</h3>
+						<p>Enter a CIDR (<code>192.168.4.0/24</code>), a range (<code>192.168.4.20-40</code>) or addresses, and ports (default <code>80, 5000, 443</code>). Scans are limited to 4096 addresses, need an admin and are recorded in the audit log.</p>
+					</section>
+
+					<section id="roles">
+						<h2>Users and roles</h2>
+						<table class="table matrix stack">
+							<thead>
+								<tr><th scope="col">Can</th><th scope="col">Admin</th><th scope="col">Operator</th><th scope="col">Viewer</th></tr>
+							</thead>
+							<tbody>
+								<tr><td>Watch printers: state, temperatures, webcam, files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Start, pause, resume, cancel prints</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Set temperatures, connect/disconnect, G-code, emergency stop</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Upload, print and delete files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Add, edit and remove printers (and their API keys)</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Users, Integrations, Audit log, Settings, backups</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+							</tbody>
+						</table>
+						<p style="margin-top: 16px">Operators and viewers see every printer, or only the ones you pick under <strong>Users → Printers</strong>. Roles are enforced on the server for every route, not just hidden in the UI.</p>
+						<p>Dangerous actions ask for confirmation, and the server insists on it too: cancelling a print, deleting a file, an emergency stop, disconnecting during a print, sending G-code while printing, and G-code that stops the machine or touches stored settings and firmware.</p>
+						<h3>Guests and single sign-on</h3>
+						<p>Under <strong>Settings → Sign-in</strong> you can make sign-in optional: visitors use it as guests who can either watch or control printers, while admin pages still need an admin account. Single sign-on works with any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …); register <code>&lt;your-url&gt;/auth/oidc/callback</code> as the redirect URI.</p>
+					</section>
+
+					<section id="configuration">
+						<h2>Configuration</h2>
+						<p>Everything is optional; the defaults run fine. Set these as environment variables on the container.</p>
+						<table class="table stack">
+							<thead>
+								<tr><th scope="col">Variable</th><th scope="col">Default</th><th scope="col">What it does</th></tr>
+							</thead>
+							<tbody>
+								<tr><td class="var"><code>OCM_DATA_DIR</code></td><td data-label="Default"><code>/data</code> in the image</td><td data-label="What it does">Encrypted SQLite store and key file</td></tr>
+								<tr><td class="var"><code>OCM_SECRET_KEY</code></td><td data-label="Default">—</td><td data-label="What it does">Master secret. Unset means a random key is generated in <code>secret.key</code></td></tr>
+								<tr><td class="var"><code>OCM_ADMIN_EMAIL</code>, <code>OCM_ADMIN_PASSWORD</code>, <code>OCM_ADMIN_NAME</code></td><td data-label="Default">—</td><td data-label="What it does">Create the first admin on start instead of using the setup wizard</td></tr>
+								<tr><td class="var"><code>OCM_AUTH</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> skips sign-in and gives everyone admin access (trusted networks only). For guests, use <strong>Settings → Sign-in</strong> instead</td></tr>
+								<tr><td class="var"><code>OCM_LOCAL_LOGIN</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> hides the email/password form (SSO only); <code>enabled</code> forces it back on</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_ISSUER</code></td><td data-label="Default">—</td><td data-label="What it does">OIDC issuer URL; enables SSO (or configure it under Integrations)</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_CLIENT_ID</code>, <code>OCM_OIDC_CLIENT_SECRET</code></td><td data-label="Default">—</td><td data-label="What it does">Client credentials from your identity provider</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_NAME</code></td><td data-label="Default"><code>SSO</code></td><td data-label="What it does">Login button label</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_SCOPES</code></td><td data-label="Default"><code>openid email profile</code></td><td data-label="What it does">Requested scopes</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_AUTO_CREATE</code></td><td data-label="Default">—</td><td data-label="What it does">Emails that get an account on first login: <code>*@example.com</code>, <code>bob@gmail.com</code>, <code>*</code></td></tr>
+								<tr><td class="var"><code>OCM_OIDC_ADMIN_EMAILS</code></td><td data-label="Default">—</td><td data-label="What it does">Auto-created accounts matching these become admins</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_DEFAULT_ROLE</code></td><td data-label="Default"><code>viewer</code></td><td data-label="What it does">Role for other auto-created accounts (<code>viewer</code> or <code>operator</code>)</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_REDIRECT_URI</code></td><td data-label="Default"><code>&lt;origin&gt;/auth/oidc/callback</code></td><td data-label="What it does">Override when the public URL can't be inferred</td></tr>
+								<tr><td class="var"><code>OCM_DOCKER_HOSTS</code></td><td data-label="Default">the local socket, if present</td><td data-label="What it does">Docker endpoints for Discover, e.g. <code>tcp://docker-proxy:2375</code>; <code>none</code> turns it off</td></tr>
+								<tr><td class="var"><code>OCM_SELF_CONTAINER</code></td><td data-label="Default">—</td><td data-label="What it does">octo·modern's own container name, when Discover can't find it by hostname or IP</td></tr>
+								<tr><td class="var"><code>OCM_ARCANE_URL</code>, <code>OCM_ARCANE_API_KEY</code>, <code>OCM_ARCANE_NAME</code></td><td data-label="Default">—</td><td data-label="What it does">An Arcane instance for Discover (or connect one in the UI)</td></tr>
+								<tr><td class="var"><code>OCM_POLL_INTERVAL_MS</code></td><td data-label="Default"><code>10000</code></td><td data-label="What it does">Status poll for printers nobody is watching live</td></tr>
+								<tr><td class="var"><code>OCM_REQUEST_TIMEOUT_MS</code></td><td data-label="Default"><code>10000</code></td><td data-label="What it does">Timeout for each request to OctoPrint</td></tr>
+								<tr><td class="var"><code>OCM_PUSH_THROTTLE</code></td><td data-label="Default"><code>2</code></td><td data-label="What it does">Live updates arrive every 500 ms × this</td></tr>
+								<tr><td class="var"><code>OCM_TEMP_HISTORY_MINUTES</code></td><td data-label="Default"><code>30</code></td><td data-label="What it does">Temperature history kept in memory per printer</td></tr>
+								<tr><td class="var"><code>BODY_SIZE_LIMIT</code></td><td data-label="Default"><code>4G</code> in the image</td><td data-label="What it does">Largest upload</td></tr>
+								<tr><td class="var"><code>TZ</code></td><td data-label="Default"><code>UTC</code></td><td data-label="What it does">Time zone for logs</td></tr>
+								<tr><td class="var"><code>PROTOCOL_HEADER</code>, <code>HOST_HEADER</code></td><td data-label="Default">—</td><td data-label="What it does">Set to <code>x-forwarded-proto</code> / <code>x-forwarded-host</code> behind a TLS reverse proxy</td></tr>
+							</tbody>
+						</table>
+					</section>
+
+					<section id="status-api">
+						<h2>Status API for dashboards</h2>
+						<p>Create a token under <strong>Integrations → Status API tokens</strong> (admins). It's shown once; only its SHA-256 is stored. Tokens open these routes only, and only for <code>GET</code>.</p>
+						<table class="table stack">
+							<thead>
+								<tr><th scope="col">Route</th><th scope="col">Returns</th></tr>
+							</thead>
+							<tbody>
+								<tr><td class="var"><code>GET /api/status</code></td><td data-label="Returns"><code>{ printers, online, printing, checkedAt, items: [...] }</code></td></tr>
+								<tr><td class="var"><code>GET /api/status/&lt;id&gt;</code></td><td data-label="Returns">One item; add <code>?strict=1</code> to get HTTP 503 while it's unreachable or in an error state</td></tr>
+								<tr><td class="var"><code>GET /api/status/badge/&lt;id&gt;.svg</code></td><td data-label="Returns">A shields-style badge, e.g. <code>printing 42%</code></td></tr>
+							</tbody>
+						</table>
+						<p style="margin-top: 16px">Send the token as <code>Authorization: Bearer ocm_…</code>. Widgets that can't set headers can use <code>?token=ocm_…</code>; give such a widget its own token.</p>
+						<div class="code">
+							<div class="code-head"><span>shell</span></div>
+							<pre><code data-lang="sh">curl -H "Authorization: Bearer $OCM_TOKEN" http://octo-modern.lan:3040/api/status</code></pre>
+						</div>
+
+						<h3>Homepage</h3>
+						<div class="code">
+							<div class="code-head"><span>services.yaml</span></div>
+							<pre><code data-lang="yaml">- 3D printing:
+    - octo·modern:
+        href: http://octo-modern.lan:3040
+        widget:
+          type: customapi
+          url: http://octo-modern.lan:3040/api/status
+          refreshInterval: 30000
+          headers:
+            Authorization: Bearer ocm_xxxxxxxx
+          mappings:
+            - field: printing
+              label: Printing
+            - field: online
+              label: Online
+            - field: printers
+              label: Printers</code></pre>
+						</div>
+
+						<h3>Glance</h3>
+						<div class="code">
+							<div class="code-head"><span>glance.yml</span></div>
+							<pre><code data-lang="yaml">- type: custom-api
+  title: Printers
+  cache: 30s
+  url: http://octo-modern.lan:3040/api/status
+  headers:
+    Authorization: Bearer ocm_xxxxxxxx
+  template: |
+    &lt;ul class="list list-gap-10"&gt;
+    {{ range .JSON.Array "items" }}
+      &lt;li class="flex justify-between"&gt;
+        &lt;span&gt;{{ .String "name" }}&lt;/span&gt;
+        &lt;span&gt;{{ .String "stateLabel" }}&lt;/span&gt;
+      &lt;/li&gt;
+    {{ end }}
+    &lt;/ul&gt;</code></pre>
+						</div>
+
+						<h3>Home Assistant</h3>
+						<div class="code">
+							<div class="code-head"><span>configuration.yaml</span></div>
+							<pre><code data-lang="yaml">rest:
+  - resource: http://octo-modern.lan:3040/api/status/&lt;printer id&gt;
+    headers:
+      Authorization: Bearer ocm_xxxxxxxx
+    scan_interval: 30
+    sensor:
+      - name: Prusa state
+        value_template: "{{ value_json.stateLabel }}"
+      - name: Prusa progress
+        value_template: "{{ value_json.progress or 0 }}"
+        unit_of_measurement: "%"
+      - name: Prusa time left
+        value_template: "{{ value_json.printTimeLeftSeconds or 0 }}"
+        unit_of_measurement: s</code></pre>
+						</div>
+						<p style="margin-top: 16px"><strong>Uptime Kuma</strong>: an HTTP monitor on <code>/api/status/&lt;id&gt;?strict=1&amp;token=ocm_…</code> goes down when OctoPrint is unreachable or the printer reports an error.</p>
+					</section>
+
+					<section id="webcams">
+						<h2>Webcams and files</h2>
+						<p>octo·modern reads each printer's cameras from OctoPrint's webcam settings: the classic webcam and any camera a webcam plugin adds. To use a different camera, put its stream or snapshot URL in the server's <strong>Webcam</strong> field.</p>
+						<ul>
+							<li><strong>MJPEG</strong> streams are relayed through octo·modern, with snapshots for the overview cards. The relay closes the camera connection as soon as the last viewer leaves; streams pause while the page is hidden.</li>
+							<li><strong>HLS and WebRTC</strong> streams get a snapshot (if there is one) and an <strong>Open stream</strong> link, which the browser must be able to reach.</li>
+						</ul>
+						<p>Uploads go to OctoPrint's local storage and are streamed as they arrive, so memory use doesn't grow with the file; the image allows up to 4 GB (<code>BODY_SIZE_LIMIT</code>). A reverse proxy in front may have its own limit (nginx: <code>client_max_body_size</code>).</p>
+					</section>
+
+					<section id="images">
+						<h2>Images</h2>
+						<p>Published to the GitHub Container Registry for <code>linux/amd64</code> and <code>linux/arm64</code>.</p>
+						<table class="table stack">
+							<thead>
+								<tr><th scope="col">Tag</th><th scope="col">Tracks</th></tr>
+							</thead>
+							<tbody>
+								<tr><td class="var"><code>ghcr.io/vitafortis/octo-modern:latest</code></td><td data-label="Tracks">The latest build of <code>main</code></td></tr>
+								<tr><td class="var"><code>ghcr.io/vitafortis/octo-modern:0.1.&lt;run&gt;</code></td><td data-label="Tracks">Every build of <code>main</code> (the version shown in the sidebar)</td></tr>
+								<tr><td class="var"><code>:1</code>, <code>:1.2</code>, <code>:1.2.3</code></td><td data-label="Tracks">Releases (<code>v*</code> tags)</td></tr>
+							</tbody>
+						</table>
+					</section>
+
+					<section id="security">
+						<h2>Security model</h2>
+						<ul>
+							<li><strong>API keys</strong> are sealed with AES-256-GCM, bound to their printer's id, and never sent to the browser, not even to admins. The SQLite file and key file are created with mode <code>0600</code>. Back up <code>secret.key</code>, or set <code>OCM_SECRET_KEY</code>; without it, stored keys can't be recovered.</li>
+							<li><strong>The browser never talks to OctoPrint.</strong> Status, the push connection, webcam images and streams, thumbnails and uploads all go through octo·modern. Camera URLs of relayed cameras aren't sent to the browser either.</li>
+							<li><strong>Least privilege</strong>: an OctoPrint Application Key acts as the user who approved it. Use a key of a user with only the permissions you want octo·modern to have; <strong>Test connection</strong> lists what it lacks.</li>
+							<li><strong>Access</strong> is checked on the server for every printer-scoped page and API call. Confirmations for dangerous actions are enforced by the server.</li>
+							<li><strong>API tokens</strong> (<code>ocm_</code> + 32 random bytes, SHA-256 hashed at rest) only work on <code>GET /api/status…</code>; they never become sessions, and repeated bad tokens from one address are throttled.</li>
+							<li><strong>Sign-in</strong> is by OIDC or local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies that end when the user is disabled or their role changes. Writes from another origin are rejected.</li>
+							<li><strong>Discovery</strong> is admin-only and read-only: Docker and Arcane are only read, a socket proxy keeps writes blocked, and subnet scans are capped at 4096 addresses and audited.</li>
+							<li><strong>Backup files</strong> hold decrypted API keys and the SSO client secret, re-encrypted with AES-256-GCM under a key derived from your passphrase (scrypt). Treat them like a password manager export.</li>
+						</ul>
+					</section>
+
+					<section id="backup">
+						<h2>Backup &amp; restore</h2>
+						<p>Under <strong>Settings → Backup &amp; restore</strong>, admins download an encrypted file with printers (and their API keys), users and settings. It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; nothing is deleted. The audit log and API tokens aren't included.</p>
+						<p>Something missing? The <a href="https://github.com/vitafortis/octo-modern#readme">README</a> has every detail, and <a href="https://github.com/vitafortis/octo-modern/issues">issues</a> are welcome.</p>
+					</section>
+				</div>
+			</div>
+		</main>
+
+		<footer class="site-footer">
+			<div class="wrap">
+				<div class="footer-grid">
+					<div>
+						<a class="brand" href="./">
+							<img src="logo.svg" width="28" height="28" alt="" />
+							<span>octo<span class="text-primary">·</span>modern</span>
+						</a>
+						<p style="margin-top: 6px">A modern, self-hosted web UI for one or more OctoPrint servers.</p>
+						<div class="badges">
+							<a href="https://github.com/vitafortis/octo-modern/pkgs/container/octo-modern"><img src="https://img.shields.io/github/package-json/v/vitafortis/octo-modern?label=version&amp;color=7c3aed" width="88" height="20" alt="Version from package.json" loading="lazy" /></a>
+							<a href="https://github.com/vitafortis/octo-modern/actions/workflows/image.yml"><img src="https://img.shields.io/github/actions/workflow/status/vitafortis/octo-modern/image.yml?branch=main&amp;label=image" width="104" height="20" alt="Container image build status" loading="lazy" /></a>
+						</div>
+					</div>
+					<div>
+						<h2>Project</h2>
+						<ul>
+							<li><a href="https://github.com/vitafortis/octo-modern">GitHub</a></li>
+							<li><a href="https://github.com/vitafortis/octo-modern/pkgs/container/octo-modern">Container images (GHCR)</a></li>
+							<li><a href="https://github.com/vitafortis/octo-modern/issues">Issues</a></li>
+							<li><a href="https://github.com/vitafortis/pg-modern">pg·modern, its sibling</a></li>
+						</ul>
+					</div>
+					<div>
+						<h2>Docs</h2>
+						<ul>
+							<li><a href="./#install">Install</a></li>
+							<li><a href="#configuration">Configuration</a></li>
+							<li><a href="#status-api">Status API</a></li>
+							<li><a href="#security">Security model</a></li>
+						</ul>
+					</div>
+				</div>
+				<p class="footnote">octo·modern is an independent project, not affiliated with OctoPrint. Its look follows <a href="https://getarcane.app">Arcane</a>.</p>
+			</div>
+		</footer>
+
+		<script src="assets/site.js" defer></script>
+	</body>
+</html>

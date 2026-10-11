@@ -9,6 +9,8 @@
   Live state, webcams, files and jobs for every printer in one place, with the API keys kept on the server.
 </p>
 
+<p align="center"><a href="https://vitafortis.github.io/octo-modern/"><b>Website</b></a> · <a href="https://vitafortis.github.io/octo-modern/docs.html">Docs</a></p>
+
 <p align="center">
   <img src="docs/screenshots/overview.png" alt="octo·modern overview" />
 </p>

@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>octo·modern: a modern, self-hosted UI for OctoPrint</title>
+		<meta
+			name="description"
+			content="A self-hosted, containerized web UI for one or more OctoPrint servers. Live state, webcams, files and jobs for every printer in one place, with the API keys kept on the server."
+		/>
+		<link rel="canonical" href="https://vitafortis.github.io/octo-modern/" />
+		<meta name="color-scheme" content="dark light" />
+		<meta name="theme-color" content="#0d0b12" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#fcfbfe" media="(prefers-color-scheme: light)" />
+		<script>
+			try {
+				var t = localStorage.getItem('ocm-site-theme');
+				if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+			} catch (e) {}
+		</script>
+		<link rel="icon" href="logo.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+		<link rel="preload" href="assets/fonts/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+		<link rel="stylesheet" href="assets/site.css" />
+
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="octo·modern" />
+		<meta property="og:title" content="octo·modern: a modern, self-hosted UI for OctoPrint" />
+		<meta
+			property="og:description"
+			content="Every OctoPrint printer in one place: live temperatures, webcams, files, jobs, roles and SSO. One Docker container; API keys never reach the browser."
+		/>
+		<meta property="og:url" content="https://vitafortis.github.io/octo-modern/" />
+		<meta property="og:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="octo·modern logo next to its printer dashboard" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="octo·modern: a modern, self-hosted UI for OctoPrint" />
+		<meta
+			name="twitter:description"
+			content="Every OctoPrint printer in one place: live temperatures, webcams, files, jobs, roles and SSO. One Docker container."
+		/>
+		<meta name="twitter:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+	</head>
+	<body>
+		<a class="btn btn-primary skip" href="#main">Skip to content</a>
+
+		<header class="site-header">
+			<div class="wrap">
+				<a class="brand" href="./" aria-label="octo·modern home">
+					<img src="logo.svg" width="28" height="28" alt="" />
+					<span>octo<span class="text-primary">·</span>modern</span>
+				</a>
+				<nav class="nav-links" aria-label="Primary">
+					<a href="#features">Features</a>
+					<a href="#screenshots">Screenshots</a>
+					<a href="#install">Install</a>
+					<a href="docs.html">Docs</a>
+				</nav>
+				<a class="btn btn-ghost btn-icon" href="https://github.com/vitafortis/octo-modern" aria-label="octo·modern on GitHub">
+					<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3"/></svg>
+				</a>
+				<button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch to light theme">
+					<svg class="ico only-dark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+					<svg class="ico only-light" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+				</button>
+				<button class="btn btn-ghost btn-icon menu-btn" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open menu">
+					<svg class="ico i-menu" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
+					<svg class="ico i-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+				</button>
+			</div>
+			<nav class="mobile-nav" id="mobile-nav" aria-label="Primary" hidden>
+				<div class="wrap">
+					<a href="#features">Features</a>
+					<a href="#screenshots">Screenshots</a>
+					<a href="#install">Install</a>
+					<a href="#faq">FAQ</a>
+					<a href="docs.html">Docs</a>
+					<a href="https://github.com/vitafortis/octo-modern">GitHub</a>
+				</div>
+			</nav>
+		</header>
+
+		<main id="main">
+			<!-- ============ hero ============ -->
+			<section class="hero">
+				<div class="wrap">
+					<div class="hero-copy">
+						<img class="hero-logo" src="logo.svg" width="64" height="64" alt="" />
+						<span class="badge badge-primary"><span class="dot dot-live"></span>Self-hosted · one Docker container</span>
+						<h1>octo<span class="text-primary">·</span>modern</h1>
+						<p class="pitch">
+							A modern web UI for one or more OctoPrint servers. Live state, webcams, files and jobs for every printer
+							in one place, with the API keys kept on the server.
+						</p>
+						<div class="cta">
+							<a class="btn btn-primary" href="#install">
+								Get started
+								<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+							</a>
+							<a class="btn btn-secondary" href="https://github.com/vitafortis/octo-modern">
+								<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3"/></svg>
+								GitHub
+							</a>
+						</div>
+						<div class="hero-meta">
+							<span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>amd64 &amp; arm64</span>
+							<span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Works in Arcane</span>
+							<span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Light &amp; dark</span>
+						</div>
+					</div>
+
+					<div class="frame card">
+						<div class="frame-bar" aria-hidden="true">
+							<span class="frame-dots"><i></i><i></i><i></i></span>
+							<span class="frame-url mono">octo-modern.lan:3040</span>
+						</div>
+						<img
+							class="only-dark"
+							src="screenshots/printer.png"
+							width="1440"
+							height="900"
+							fetchpriority="high"
+							alt="The octo·modern printer dashboard in the dark theme: a live webcam, the current job at 31.7%, a temperature chart and the sidebar with two printers"
+						/>
+						<img
+							class="only-light"
+							src="screenshots/printer-light.png"
+							width="1440"
+							height="900"
+							loading="lazy"
+							alt="The octo·modern printer dashboard in the light theme: a live webcam, the current job, a temperature chart and the sidebar with two printers"
+						/>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============ features ============ -->
+			<section id="features" class="border-t">
+				<div class="wrap">
+					<div class="section-head">
+						<span class="eyebrow">Features</span>
+						<h2>Everything you do in OctoPrint, for every printer at once</h2>
+						<p>One push connection per printer you're watching, fanned out to every browser. Printers nobody is looking at get a light status poll.</p>
+					</div>
+					<div class="grid grid-3">
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg></span>
+							<div>
+								<h3>Live dashboard &amp; temperatures</h3>
+								<p>Job progress, time left and ETA, and a live chart per hotend, bed and chamber. Set targets or use OctoPrint's presets.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span>
+							<div>
+								<h3>Webcam streams</h3>
+								<p>MJPEG relayed through octo·modern, so cameras on a LAN address work anywhere. Fullscreen, several cameras, flip and rotation.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="m9 13 3-3 3 3"/></svg></span>
+							<div>
+								<h3>Files &amp; uploads</h3>
+								<p>Local storage and SD card, thumbnails, search and sort. Drag in G-code of hundreds of MB; it streams to OctoPrint, then prints if you like.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
+							<div>
+								<h3>Print control that asks first</h3>
+								<p>Print, pause, resume, restart and cancel. Cancelling, deleting, emergency stop and risky G-code always confirm, enforced by the server too.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg></span>
+							<div>
+								<h3>Control &amp; Terminal</h3>
+								<p>Jog, home, fans, feed and flow, custom controls. A live serial log with filters and search, and a G-code prompt with history and autocomplete.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6h.01"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/><path d="M12 18h.01"/><path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/><circle cx="12" cy="12" r="2"/><path d="m13.41 10.59 5.66-5.66"/></svg></span>
+							<div>
+								<h3>Discover + Application Keys</h3>
+								<p>Finds OctoPrint in Docker, Arcane, over mDNS or a subnet scan. Approve octo·modern in OctoPrint; there's no key to copy.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg></span>
+							<div>
+								<h3>Every printer in one place</h3>
+								<p>Add any number of OctoPrint servers. State and progress in the sidebar, an overview card per printer, and <span class="kbd">⌘K</span> to jump anywhere.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M6.376 18.91a6 6 0 0 1 11.249.003"/><circle cx="12" cy="11" r="4"/></svg></span>
+							<div>
+								<h3>Roles, SSO &amp; audit log</h3>
+								<p>Admins, operators and viewers, per-printer access, any OIDC provider, and a log of every print, upload and G-code with who and where.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22v-5"/><path d="M15 8V2"/><path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"/><path d="M9 8V2"/></svg></span>
+							<div>
+								<h3>Status API for dashboards</h3>
+								<p>Read-only tokens for Homepage, Glance, Uptime Kuma and Home Assistant, plus SVG badges. Polling never reaches OctoPrint.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg></span>
+							<div>
+								<h3>Keys stay on the server</h3>
+								<p>OctoPrint API keys are sealed with AES-256-GCM and never sent to a browser. Every request, stream and upload goes through octo·modern.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z"/><path d="M10 21.9V14L2.1 9.1"/><path d="m10 14 11.9-6.9"/><path d="M14 19.8v-8.1"/><path d="M18 17.5V9.4"/></svg></span>
+							<div>
+								<h3>One small container</h3>
+								<p>amd64 and arm64 images, an unprivileged user and a single <code>/data</code> volume. No Docker socket, no native modules.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span>
+							<div>
+								<h3>Encrypted backup &amp; restore</h3>
+								<p>Printers, keys, users and SSO settings in one passphrase-sealed file that restores on a fresh install.</p>
+							</div>
+						</article>
+					</div>
+					<p class="soon">
+						<span class="badge">Coming soon</span>
+						<span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></svg><strong>NAS library</strong>&nbsp;for your G-code</span>
+						<span><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><strong>Print history</strong>&nbsp;&amp; timelapses</span>
+					</p>
+				</div>
+			</section>
+
+			<!-- ============ screenshots ============ -->
+			<section id="screenshots" class="border-t">
+				<div class="wrap">
+					<div class="section-head">
+						<span class="eyebrow">Screenshots</span>
+						<h2>See it in action</h2>
+						<p>Demo data from virtual printers. Tap any screenshot to enlarge it.</p>
+					</div>
+					<div class="gallery">
+						<a class="shot" href="screenshots/overview.png" data-caption="Overview: progress, ETA, temperatures and a webcam snapshot per printer">
+							<span class="thumb"><img src="screenshots/overview.png" width="1440" height="900" loading="lazy" decoding="async" alt="Overview of two printers with progress, temperatures and webcam snapshots" /></span>
+							<span class="cap">Overview<small>Every printer at a glance</small></span>
+						</a>
+						<a class="shot" href="screenshots/printer.png" data-caption="Dashboard: live webcam, job and temperatures">
+							<span class="thumb"><img src="screenshots/printer.png" width="1440" height="900" loading="lazy" decoding="async" alt="Printer dashboard with webcam, job progress and temperature chart" /></span>
+							<span class="cap">Dashboard<small>Webcam, job, temperatures</small></span>
+						</a>
+						<a class="shot" href="screenshots/files.png" data-caption="Files: upload, print, delete">
+							<span class="thumb"><img src="screenshots/files.png" width="1440" height="900" loading="lazy" decoding="async" alt="Files tab listing G-code with print times and upload dates" /></span>
+							<span class="cap">Files<small>Upload, print, delete</small></span>
+						</a>
+						<a class="shot" href="screenshots/control.png" data-caption="Control: jog, home, fans, feed and flow, custom controls">
+							<span class="thumb"><img src="screenshots/control.png" width="1440" height="900" loading="lazy" decoding="async" alt="Control tab with jog pad, step sizes and fan, feed and flow controls" /></span>
+							<span class="cap">Control<small>Jog, fans, custom controls</small></span>
+						</a>
+						<a class="shot" href="screenshots/terminal.png" data-caption="Terminal: the live serial log, filters and a G-code prompt">
+							<span class="thumb"><img src="screenshots/terminal.png" width="1440" height="900" loading="lazy" decoding="async" alt="Terminal tab with a serial log and G-code prompt" /></span>
+							<span class="cap">Terminal<small>Serial log and G-code</small></span>
+						</a>
+						<a class="shot" href="screenshots/webcam.png" data-caption="Webcam, relayed through octo·modern">
+							<span class="thumb"><img src="screenshots/webcam.png" width="1440" height="900" loading="lazy" decoding="async" alt="Webcam tab showing a live camera stream" /></span>
+							<span class="cap">Webcam<small>Relayed, works off-LAN</small></span>
+						</a>
+						<a class="shot" href="screenshots/confirm-cancel.png" data-caption="Cancelling a print always asks first">
+							<span class="thumb"><img src="screenshots/confirm-cancel.png" width="1440" height="900" loading="lazy" decoding="async" alt="Confirmation dialog before cancelling a print" /></span>
+							<span class="cap">Confirmations<small>Cancel always asks first</small></span>
+						</a>
+						<a class="shot" href="screenshots/discover.png" data-caption="Discover: OctoPrint in Docker, Arcane and on the network">
+							<span class="thumb"><img src="screenshots/discover.png" width="1440" height="900" loading="lazy" decoding="async" alt="Discover page listing OctoPrint containers with their serial devices" /></span>
+							<span class="cap">Discover<small>Docker, Arcane, network</small></span>
+						</a>
+						<a class="shot" href="screenshots/discover-approve.png" data-caption="Application Keys: approve octo·modern in OctoPrint">
+							<span class="thumb"><img src="screenshots/discover-approve.png" width="1440" height="900" loading="lazy" decoding="async" alt="Dialog waiting for approval of an Application Key in OctoPrint" /></span>
+							<span class="cap">Application Keys<small>Approve, nothing to paste</small></span>
+						</a>
+						<a class="shot" href="screenshots/discover-network.png" data-caption="Discover: mDNS and a subnet scan">
+							<span class="thumb"><img src="screenshots/discover-network.png" width="1440" height="900" loading="lazy" decoding="async" alt="Network tab of Discover with mDNS results and a subnet scan" /></span>
+							<span class="cap">Network scan<small>mDNS and subnets</small></span>
+						</a>
+						<a class="shot" href="screenshots/setup-discover.png" data-caption="Setup offers the OctoPrint servers it found">
+							<span class="thumb"><img src="screenshots/setup-discover.png" width="1440" height="900" loading="lazy" decoding="async" alt="Setup wizard listing discovered OctoPrint servers" /></span>
+							<span class="cap">Setup<small>Offers what it found</small></span>
+						</a>
+						<a class="shot" href="screenshots/users.png" data-caption="Users: admins, operators, viewers">
+							<span class="thumb"><img src="screenshots/users.png" width="1440" height="900" loading="lazy" decoding="async" alt="Users page with roles and printer access" /></span>
+							<span class="cap">Users<small>Roles and printer access</small></span>
+						</a>
+						<a class="shot" href="screenshots/audit.png" data-caption="Audit log: who did what, from where">
+							<span class="thumb"><img src="screenshots/audit.png" width="1440" height="900" loading="lazy" decoding="async" alt="Audit log listing actions with user and address" /></span>
+							<span class="cap">Audit log<small>Who, what, where</small></span>
+						</a>
+						<a class="shot" href="screenshots/integrations.png" data-caption="Integrations: single sign-on and status API tokens">
+							<span class="thumb"><img src="screenshots/integrations.png" width="1440" height="900" loading="lazy" decoding="async" alt="Integrations page with OIDC settings and status API tokens" /></span>
+							<span class="cap">Integrations<small>SSO and API tokens</small></span>
+						</a>
+						<a class="shot" href="screenshots/settings.png" data-caption="Settings: sign-in, security and backup">
+							<span class="thumb"><img src="screenshots/settings.png" width="1440" height="900" loading="lazy" decoding="async" alt="Settings page with sign-in options and backup" /></span>
+							<span class="cap">Settings<small>Sign-in and backup</small></span>
+						</a>
+						<a class="shot" href="screenshots/overview-light.png" data-caption="Overview in the light theme">
+							<span class="thumb"><img src="screenshots/overview-light.png" width="1440" height="900" loading="lazy" decoding="async" alt="Overview page in the light theme" /></span>
+							<span class="cap">Light theme<small>Overview</small></span>
+						</a>
+						<a class="shot" href="screenshots/terminal-light.png" data-caption="Terminal in the light theme">
+							<span class="thumb"><img src="screenshots/terminal-light.png" width="1440" height="900" loading="lazy" decoding="async" alt="Terminal tab in the light theme" /></span>
+							<span class="cap">Light theme<small>Terminal</small></span>
+						</a>
+						<a class="shot" href="screenshots/login.png" data-caption="Sign in with a local account or SSO">
+							<span class="thumb"><img src="screenshots/login.png" width="1440" height="900" loading="lazy" decoding="async" alt="Sign-in page" /></span>
+							<span class="cap">Sign in<small>Local accounts or SSO</small></span>
+						</a>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============ install ============ -->
+			<section id="install" class="border-t">
+				<div class="wrap">
+					<div class="section-head">
+						<span class="eyebrow">Install</span>
+						<h2>Running in a minute</h2>
+						<p>octo·modern is one container with one volume. It needs nothing installed on your OctoPrint machines.</p>
+					</div>
+					<div class="steps">
+						<div class="card step">
+							<h3 class="step-title">Start it with Docker Compose</h3>
+							<p>Fetch the ready-made <code>compose.yaml</code> and start it:</p>
+							<div class="code">
+								<div class="code-head"><span>shell</span></div>
+								<pre><code data-lang="sh">mkdir octo-modern && cd octo-modern
+curl -fsSLO https://raw.githubusercontent.com/vitafortis/octo-modern/main/compose.yaml
+docker compose up -d</code></pre>
+							</div>
+							<p>Or write it yourself. This is all it needs:</p>
+							<div class="code">
+								<div class="code-head"><span>compose.yaml</span></div>
+								<pre><code data-lang="yaml">services:
+  octo-modern:
+    image: ghcr.io/vitafortis/octo-modern:latest
+    container_name: octo-modern
+    restart: unless-stopped
+    ports:
+      - "3040:3000"
+    environment:
+      TZ: Etc/UTC
+    volumes:
+      - octo-modern-data:/data
+    extra_hosts:
+      # reach an OctoPrint published on the Docker host itself
+      - host.docker.internal:host-gateway
+
+volumes:
+  octo-modern-data:</code></pre>
+							</div>
+							<div class="callout">
+								<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z"/><path d="M10 21.9V14L2.1 9.1"/><path d="m10 14 11.9-6.9"/><path d="M14 19.8v-8.1"/><path d="M18 17.5V9.4"/></svg>
+								<p><strong>Using Arcane?</strong> Add <code>compose.yaml</code> as a new project in <a href="https://getarcane.app">Arcane</a> and deploy it. Everything octo·modern stores lives in the <code>octo-modern-data</code> volume.</p>
+							</div>
+						</div>
+
+						<div class="step-col">
+							<div class="card step">
+								<h3 class="step-title">Create the admin</h3>
+								<p>Open <code>http://&lt;your-host&gt;:3040</code>. A short setup wizard creates the admin account and offers any OctoPrint servers it found in Docker or over mDNS.</p>
+							</div>
+							<div class="card step">
+								<h3 class="step-title">Add your printer</h3>
+								<div class="options">
+									<div class="option">
+										<h4><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6h.01"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/><path d="M12 18h.01"/><path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/><circle cx="12" cy="12" r="2"/><path d="m13.41 10.59 5.66-5.66"/></svg>Discover &amp; approve</h4>
+										<ol>
+											<li>Open <strong>Discover</strong> and pick the printer from Docker, Arcane or the network.</li>
+											<li><strong>Add</strong> → <strong>Approve in OctoPrint</strong>, sign in there and click <strong>Allow</strong>.</li>
+											<li>octo·modern picks up the key, tests it and saves the printer.</li>
+										</ol>
+									</div>
+									<div class="option">
+										<h4><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>URL + Application Key</h4>
+										<ol>
+											<li>The URL as the server reaches it, e.g. <code>http://octopi.lan</code> or <code>http://host.docker.internal:5000</code>.</li>
+											<li>A key from OctoPrint's <strong>Settings → Application Keys</strong>.</li>
+											<li><strong>Test connection</strong> shows the version and any missing permission.</li>
+										</ol>
+									</div>
+								</div>
+								<p>More in the <a href="docs.html#printers">docs</a>: reverse proxies, self-signed certificates and Docker networking.</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============ security ============ -->
+			<section id="security" class="border-t">
+				<div class="wrap">
+					<div class="section-head">
+						<span class="eyebrow">Security</span>
+						<h2>Your printers, not the whole internet's</h2>
+						<p>octo·modern sits between the browser and OctoPrint, so the things that matter never leave the server.</p>
+					</div>
+					<div class="grid grid-2">
+						<article class="card sec-item">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg></span>
+							<div>
+								<h3>Keys sealed at rest</h3>
+								<p>AES-256-GCM, bound to each printer, never sent to a browser, not even an admin's. Store and key file are mode <code>0600</code>.</p>
+							</div>
+						</article>
+						<article class="card sec-item">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg></span>
+							<div>
+								<h3>The browser never talks to OctoPrint</h3>
+								<p>Status, push updates, webcam streams, thumbnails and uploads all go through octo·modern. Camera URLs stay server-side too.</p>
+							</div>
+						</article>
+						<article class="card sec-item">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></span>
+							<div>
+								<h3>Checked on the server</h3>
+								<p>Roles and printer access are enforced on every route. Dangerous actions answer <code>409</code> until the request confirms.</p>
+							</div>
+						</article>
+						<article class="card sec-item">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
+							<div>
+								<h3>Read-only where it can be</h3>
+								<p>Discovery only reads Docker (through a socket proxy) and Arcane. Status tokens are hashed, <code>GET</code>-only and never become sessions.</p>
+							</div>
+						</article>
+					</div>
+					<p style="margin-top: 20px">
+						<a href="docs.html#security">Read the full security model →</a>
+					</p>
+				</div>
+			</section>
+
+			<!-- ============ FAQ ============ -->
+			<section id="faq" class="border-t">
+				<div class="wrap">
+					<div class="section-head">
+						<span class="eyebrow">FAQ</span>
+						<h2>Questions</h2>
+					</div>
+					<div class="faq">
+						<details>
+							<summary>Why doesn't Discover find my OctoPi over mDNS?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<div class="answer">
+								<p>Multicast only reaches one network segment, and inside Docker's default bridge network nothing answers. Run octo·modern with <code>network_mode: host</code> or on a macvlan/ipvlan network to use mDNS.</p>
+								<p>On a bridge network, use Discover's subnet scan instead (e.g. <code>192.168.4.0/24</code>); it fingerprints OctoPrint without a key.</p>
+							</div>
+						</details>
+						<details>
+							<summary>My camera is on a LAN address. Will the webcam work remotely?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<div class="answer">
+								<p>Yes, for MJPEG cameras (mjpg-streamer, ustreamer, camera-streamer): octo·modern relays the stream, so it works wherever octo·modern does. The relay closes the camera connection when the last viewer leaves.</p>
+								<p>HLS and WebRTC streams can't be relayed as an image; you get a snapshot and an <strong>Open stream</strong> link the browser must be able to reach.</p>
+							</div>
+						</details>
+						<details>
+							<summary>Does my browser ever see the OctoPrint API key?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<div class="answer">
+								<p>No. Keys are stored encrypted on the server and every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern. With the Application Keys flow, the key goes from OctoPrint straight to octo·modern's server.</p>
+							</div>
+						</details>
+						<details>
+							<summary>Can people watch printers without an account?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<div class="answer">
+								<p>Yes. Under <strong>Settings → Sign-in</strong>, make sign-in optional: visitors become guests who can either watch or control printers, while admin pages still need an admin account.</p>
+								<p><code>OCM_AUTH=disabled</code> goes further and gives everyone full access; only use it on a trusted network.</p>
+							</div>
+						</details>
+						<details>
+							<summary>Does it replace OctoPrint?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<div class="answer">
+								<p>No. Each printer keeps running OctoPrint; octo·modern is a front end that talks to its API. Nothing gets installed on the Pi, and OctoPrint's own UI keeps working.</p>
+							</div>
+						</details>
+						<details>
+							<summary>Can it run behind a reverse proxy?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<div class="answer">
+								<p>Yes. Behind TLS, set <code>PROTOCOL_HEADER=x-forwarded-proto</code> and <code>HOST_HEADER=x-forwarded-host</code> so secure cookies and SSO callbacks work, and raise the proxy's upload limit (nginx: <code>client_max_body_size</code>) for big G-code files.</p>
+							</div>
+						</details>
+					</div>
+				</div>
+			</section>
+
+			<section class="border-t">
+				<div class="wrap">
+					<div class="card cta-band">
+						<h2>Give your printers a modern home</h2>
+						<p>Free, self-hosted and one <code>docker compose up</code> away.</p>
+						<div class="cta">
+							<a class="btn btn-primary" href="#install">Get started</a>
+							<a class="btn btn-secondary" href="docs.html">Read the docs</a>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer class="site-footer">
+			<div class="wrap">
+				<div class="footer-grid">
+					<div>
+						<a class="brand" href="./">
+							<img src="logo.svg" width="28" height="28" alt="" />
+							<span>octo<span class="text-primary">·</span>modern</span>
+						</a>
+						<p style="margin-top: 6px">A modern, self-hosted web UI for one or more OctoPrint servers.</p>
+						<div class="badges">
+							<a href="https://github.com/vitafortis/octo-modern/pkgs/container/octo-modern"><img src="https://img.shields.io/github/package-json/v/vitafortis/octo-modern?label=version&amp;color=7c3aed" width="88" height="20" alt="Version from package.json" loading="lazy" /></a>
+							<a href="https://github.com/vitafortis/octo-modern/actions/workflows/image.yml"><img src="https://img.shields.io/github/actions/workflow/status/vitafortis/octo-modern/image.yml?branch=main&amp;label=image" width="104" height="20" alt="Container image build status" loading="lazy" /></a>
+						</div>
+					</div>
+					<div>
+						<h2>Project</h2>
+						<ul>
+							<li><a href="https://github.com/vitafortis/octo-modern">GitHub</a></li>
+							<li><a href="https://github.com/vitafortis/octo-modern/pkgs/container/octo-modern">Container images (GHCR)</a></li>
+							<li><a href="https://github.com/vitafortis/octo-modern/issues">Issues</a></li>
+							<li><a href="https://github.com/vitafortis/pg-modern">pg·modern, its sibling</a></li>
+						</ul>
+					</div>
+					<div>
+						<h2>Docs</h2>
+						<ul>
+							<li><a href="#install">Install</a></li>
+							<li><a href="docs.html#configuration">Configuration</a></li>
+							<li><a href="docs.html#status-api">Status API</a></li>
+							<li><a href="docs.html#security">Security model</a></li>
+						</ul>
+					</div>
+				</div>
+				<p class="footnote">octo·modern is an independent project, not affiliated with OctoPrint. Its look follows <a href="https://getarcane.app">Arcane</a>.</p>
+			</div>
+		</footer>
+
+		<dialog class="lightbox" id="lightbox" aria-label="Screenshot viewer">
+			<div class="lb-inner">
+				<div class="lb-top">
+					<span class="lb-count mono"></span>
+					<button class="btn btn-icon lb-btn" type="button" data-lb="close" aria-label="Close">
+						<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+					</button>
+				</div>
+				<div class="lb-stage"><img alt="" /></div>
+				<div class="lb-bottom">
+					<button class="btn btn-icon lb-btn" type="button" data-lb="prev" aria-label="Previous screenshot">
+						<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+					</button>
+					<p class="lb-caption"></p>
+					<button class="btn btn-icon lb-btn" type="button" data-lb="next" aria-label="Next screenshot">
+						<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+					</button>
+				</div>
+			</div>
+		</dialog>
+
+		<script src="assets/site.js" defer></script>
+	</body>
+</html>
