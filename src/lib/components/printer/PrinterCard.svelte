@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { CircleAlert, CirclePause, CirclePlay, CircleStop, Clock, FileBox, Settings2, Unplug } from '@lucide/svelte';
 	import StateBadge from './StateBadge.svelte';
+	import BedClearBanner from '../queue/BedClearBanner.svelte';
+	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import WebcamThumb from './WebcamThumb.svelte';
+	import PowerStrip from '../power/PowerStrip.svelte';
 	import { COLORS } from '#lib/client/format.ts';
 	import { editor, isAdmin } from '#lib/client/state.svelte.ts';
 	import { jobCommand } from '#lib/client/actions.ts';
@@ -10,6 +13,7 @@
 
 	let { printer, snapshot }: { printer: Printer; snapshot: LiveSnapshot | undefined } = $props();
 
+	$effect(() => pollQueue());
 	const color = $derived(COLORS[printer.color] ?? COLORS.violet);
 	const s = $derived(snapshot);
 	const active = $derived(s ? jobActive(s.state) : false);
@@ -25,14 +29,14 @@
 		<div class="flex flex-1 flex-col p-4">
 		<div class="flex items-start gap-3">
 			<div class="min-w-0 flex-1">
-				<h3 class="truncate text-[15px] font-semibold tracking-tight">{printer.name}</h3>
-				<p class="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{printer.baseUrl.replace(/^https?:\/\//, '')}</p>
+				<h3 class="truncate text-[0.9375rem] font-semibold tracking-tight">{printer.name}</h3>
+				<p class="mt-0.5 truncate font-mono text-[0.6875rem] text-muted-foreground">{printer.baseUrl.replace(/^https?:\/\//, '')}</p>
 			</div>
 			{#if s}<StateBadge state={s.state} text={s.stateText} />{:else}<span class="badge animate-pulse">Loading</span>{/if}
 		</div>
 
 		{#if s?.state === 'offline'}
-			<div class="mt-4 flex items-start gap-2 rounded-lg border border-danger/20 bg-danger/5 p-2.5 text-[11px]">
+			<div class="mt-4 flex items-start gap-2 rounded-lg border border-danger/20 bg-danger/5 p-2.5 text-[0.6875rem]">
 				<CircleAlert class="mt-px size-3.5 shrink-0 text-danger" />
 				<div class="min-w-0"><p class="font-medium text-foreground">{s.problem?.message ?? 'Unreachable'}</p>{#if s.problem?.hint}<p class="mt-0.5 line-clamp-2 text-muted-foreground">{s.problem.hint}</p>{/if}</div>
 			</div>
@@ -43,10 +47,10 @@
 		{#if active && s}
 			<div class="mt-4">
 				<div class="min-w-0">
-					<p class="flex items-start gap-1.5 text-[13px] font-medium" title={s.job?.file?.display}><FileBox class="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span class="min-w-0 line-clamp-2 [overflow-wrap:anywhere] sm:truncate">{s.job?.file?.display ?? 'Unknown file'}</span></p>
+					<p class="flex items-start gap-1.5 text-[0.8125rem] font-medium" title={s.job?.file?.display}><FileBox class="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span class="min-w-0 line-clamp-2 [overflow-wrap:anywhere] sm:truncate">{s.job?.file?.display ?? 'Unknown file'}</span></p>
 					<div class="mt-2 flex flex-wrap items-baseline justify-between gap-x-3">
 						<span class="text-2xl font-semibold tracking-tight tabular-nums">{pct != null ? `${pct.toFixed(pct >= 10 ? 0 : 1)}%` : '—'}</span>
-						{#if s.progress?.printTimeLeft != null}<span class="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock class="size-3" />{formatDuration(s.progress.printTimeLeft)} left · {formatEta(s.progress.printTimeLeft)}</span>{/if}
+						{#if s.progress?.printTimeLeft != null}<span class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Clock class="size-3" />{formatDuration(s.progress.printTimeLeft)} left · {formatEta(s.progress.printTimeLeft)}</span>{/if}
 					</div>
 					<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full bg-primary transition-[width] duration-700" style="width:{pct ?? 0}%"></div></div>
 				</div>
@@ -58,14 +62,16 @@
 				{#each heaters as k (k)}
 					{@const t = s!.temps[k]}
 					<div class="rounded-lg border border-border bg-surface px-2.5 py-1.5">
-						<p class="text-[10px] font-medium text-muted-foreground uppercase">{heaterLabel(k, tools)}</p>
-						<p class="font-mono text-[13px] tabular-nums">{formatTemp(t.actual)}<span class="text-muted-foreground"> / {t.target ? formatTemp(t.target) : 'off'}</span></p>
+						<p class="text-[0.625rem] font-medium text-muted-foreground uppercase">{heaterLabel(k, tools)}</p>
+						<p class="font-mono text-[0.8125rem] tabular-nums">{formatTemp(t.actual)}<span class="text-muted-foreground"> / {t.target ? formatTemp(t.target) : 'off'}</span></p>
 					</div>
 				{/each}
 			</div>
 		{/if}
 		</div>
 	</a>
+	<!-- Print queue: the bed needs clearing before the next job. -->
+	<BedClearBanner class="relative mx-3 mb-3" compact printerId={printer.id} name={printer.name} state={s?.state} canControl={!!printer.access?.control} />
 	{#if printer.access?.control && s && jobActive(s.state)}
 		<div class="relative flex items-center gap-1.5 border-t border-border bg-surface px-4 py-2">
 			{#if s.state === 'paused'}
@@ -73,9 +79,10 @@
 			{:else}
 				<button class="btn btn-secondary btn-sm" disabled={s.state !== 'printing'} onclick={() => jobCommand(printer.id, 'pause')}><CirclePause />Pause</button>
 			{/if}
-			<button class="btn btn-secondary btn-sm ml-auto border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />Cancel print</button>
+			<button class="btn btn-danger-outline btn-sm ml-auto" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />Cancel print</button>
 		</div>
 	{/if}
+	<PowerStrip {printer} />
 	{#if isAdmin()}
 		<button class="btn btn-ghost btn-icon btn-sm absolute top-2 right-2 bg-card/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 touch:opacity-100" title="Edit {printer.name}" onclick={() => (editor.target = printer)}><Settings2 /></button>
 	{/if}

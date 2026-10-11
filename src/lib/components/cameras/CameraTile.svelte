@@ -124,7 +124,7 @@
 			<span class="grid size-full place-items-center px-4 text-center">
 				<span>
 					<VideoOff class="mx-auto size-6 opacity-70" />
-					<span class="mt-2 block text-[13px]">{cam.stream?.toUpperCase() ?? 'This'} stream can’t be relayed</span>
+					<span class="mt-2 block text-[0.8125rem]">{cam.stream?.toUpperCase() ?? 'This'} stream can’t be relayed</span>
 				</span>
 			</span>
 		{:else}
@@ -136,10 +136,10 @@
 	<div class="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-2 bg-gradient-to-b from-black/65 to-transparent p-2.5 {big ? 'sm:p-4' : ''}">
 		<div class="flex min-w-0 items-center gap-2 rounded-md bg-black/35 px-2 py-1 backdrop-blur-sm">
 			<StateDot state={s?.state} />
-			<span class="truncate font-semibold {big ? 'text-[15px]' : 'text-[13px]'}">{printer.name}</span>
-			{#if multi}<span class="truncate text-[11px] opacity-75">· {cam.label}</span>{/if}
+			<span class="truncate font-semibold {big ? 'text-[0.9375rem]' : 'text-[0.8125rem]'}">{printer.name}</span>
+			{#if multi}<span class="truncate text-[0.6875rem] opacity-75">· {cam.label}</span>{/if}
 		</div>
-		<span class="ml-auto shrink-0 rounded-md bg-black/35 px-2 py-1 text-[11px] backdrop-blur-sm">
+		<span class="ml-auto shrink-0 rounded-md bg-black/35 px-2 py-1 text-[0.6875rem] backdrop-blur-sm">
 			{#if src}<span class="mr-1 inline-block size-1.5 animate-pulse rounded-full bg-red-500 align-middle"></span>live{:else if frame}every {every}s{:else}{s ? STATE_LABEL[s.state] : '…'}{/if}
 		</span>
 		{#if !canStream && cam.externalUrl}
@@ -149,17 +149,17 @@
 
 	<div class="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-2.5 pt-8 pb-2.5 {big ? 'sm:px-4 sm:pb-4' : ''}">
 		{#if pct != null}
-			<div class="flex items-baseline gap-2 {big ? 'text-[15px]' : 'text-[13px]'}">
+			<div class="flex items-baseline gap-2 {big ? 'text-[0.9375rem]' : 'text-[0.8125rem]'}">
 				<span class="font-semibold tabular-nums" data-testid="camera-progress">{Math.round(pct)}%</span>
-				{#if s?.job?.file}<span class="min-w-0 truncate text-[11px] opacity-80">{s.job.file.display}</span>{/if}
-				{#if s?.progress?.printTimeLeft != null}<span class="ml-auto shrink-0 font-mono text-[11px] opacity-80">{formatDuration(s.progress.printTimeLeft)} left</span>{/if}
+				{#if s?.job?.file}<span class="min-w-0 truncate text-[0.6875rem] opacity-80">{s.job.file.display}</span>{/if}
+				{#if s?.progress?.printTimeLeft != null}<span class="ml-auto shrink-0 font-mono text-[0.6875rem] opacity-80">{formatDuration(s.progress.printTimeLeft)} left</span>{/if}
 			</div>
 			<div class="mt-1.5 h-1 overflow-hidden rounded-full bg-white/20">
 				<div class="h-full rounded-full transition-[width] duration-700 {s?.state === 'paused' ? 'bg-warning' : 'bg-primary'}" style="width:{pct}%"></div>
 			</div>
 		{/if}
 		{#if temps.length}
-			<div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px] tabular-nums opacity-90">
+			<div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[0.6875rem] tabular-nums opacity-90">
 				<Thermometer class="size-3 self-center opacity-70" />
 				{#each temps as k (k)}
 					{@const t = s!.temps[k]}

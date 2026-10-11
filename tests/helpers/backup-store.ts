@@ -15,7 +15,11 @@ const { hashPassword, verifyPassword } = await import('../../src/lib/server/cryp
 
 const PASSPHRASE = 'correct horse battery staple';
 const FAST = { N: 1024, r: 8, p: 1 };
-const ALL = { printers: true, users: true, settings: true };
+const ALL = { printers: true, users: true, settings: true, notifications: true, history: true, queue: true, filament: true };
+const notify = await import('../../src/lib/server/notify/settings.ts');
+const hs = await import('../../src/lib/server/history/store.ts');
+const detect = await import('../../src/lib/server/detect/settings.ts');
+const { DETECT_DEFAULTS } = await import('../../src/lib/detect.ts');
 
 if (role === 'export') {
 	const mk4 = store.createPrinter({ name: 'mk4', baseUrl: 'http://mk4.lan', apiKey: 'app-key-mk4', verifyTls: true, webcamUrl: null, color: 'violet' });
@@ -29,7 +33,44 @@ if (role === 'export') {
 	store.setGrants(op.id, [mk4.id]);
 	saveSso({ issuer: 'https://id.example', clientId: 'ocm', clientSecret: 'sso-secret-value', name: 'Pocket', scopes: 'openid email', autoCreate: [], adminEmails: [], defaultRole: 'operator' });
 	store.setKv('local-login-disabled', true);
-	writeFileSync(file, JSON.stringify(await encodeBackup(cb.snapshot(ALL), PASSPHRASE, FAST)));
+	// Spoolman (auth header sealed), costs, a spool on the MK4, a maintenance task done once; a cost on a history entry later.
+	const spoolman = await import('../../src/lib/server/spools/spoolman.ts');
+	spoolman.saveSpoolmanSettings({ url: 'http://spoolman.lan:7912', authHeader: 'Authorization', authValue: 'Bearer spoolman-secret', lowThresholdG: 80 });
+	const costs = await import('../../src/lib/server/costs.ts');
+	costs.saveCostSettings({ ...costs.costSettings(), currency: 'EUR' }, [mk4.id]);
+	(await import('../../src/lib/server/spools/assignments.ts')).assignSpool(mk4.id, 0, 42, 'op');
+	const maint = await import('../../src/lib/server/maintenance.ts');
+	const t = maint.createTask(mk4.id, { name: 'Nozzle', metric: 'hours', interval: 500, notes: null } as Parameters<typeof maint.createTask>[1]);
+	maint.markDone(t, { userId: op.id, label: 'op' }, 'swapped');
+	// A smart plug with a password on the MK4.
+	const power = await import('../../src/lib/server/power/config.ts');
+	power.savePlug(mk4.id, { kind: 'shelly', label: 'Desk plug', config: { host: 'http://plug.lan', channel: 0, generation: 2 }, secrets: { username: 'admin', password: 'plug-password' }, settings: power.parseSettings({}) });
+	// Failure detection: the ML API with its token, and one printer's settings.
+	detect.saveGlobal({ mlApiUrl: 'http://ml.lan:3333', token: 'ml-secret-token', publicUrl: 'http://octo.lan' });
+	detect.savePrinterSettings(mk4.id, { ...DETECT_DEFAULTS, enabled: true, onFailure: 'pause' });
+	store.setKv(`detect:baseline:${mk4.id}`, { learned: true });
+	// Notifications: a channel with secrets, quiet hours and a rule for one printer.
+	const tg = notify.createChannel({ type: 'telegram', name: 'Team chat', config: { chatId: '-1001' }, secrets: { botToken: '123:telegram-secret' }, quiet: { enabled: true, start: '22:00', end: '07:00', allowCritical: true } });
+	notify.saveSettings({ publicUrl: 'https://octo.example', progressPercents: [50], rules: [{ name: 'MK4 failures', printers: [mk4.id], events: ['print.failed'], channels: [tg.id] }] });
+	// History: two entries (one with a picture, one started by the operator).
+	const one = hs.insertPrint({ printerId: mk4.id, printerName: 'mk4', file: 'benchy.gcode', path: 'benchy.gcode', origin: 'local', startedAt: '2026-10-01T10:00:00.000Z', endedAt: '2026-10-01T11:00:00.000Z', result: 'success', durationS: 3600, userId: op.id, startedBy: 'op' })!;
+	hs.setThumbnail(one, new Uint8Array([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]), 'image/jpeg');
+	hs.insertPrint({ printerId: mk4.id, printerName: 'mk4', file: 'gear.gcode', path: 'parts/gear.gcode', origin: 'local', startedAt: '2026-10-02T10:00:00.000Z', result: 'printing', userId: op.id, startedBy: 'op' });
+	// Queue: a queued library job, an upload (its file stays behind), a printing one with a run, MK4 tags.
+	const job = store.sqlite().prepare(
+		`INSERT INTO queue_jobs (id, position, name, source_kind, source_id, source_path, tags, copies, done, status, created_by, created_by_label, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, '["pla"]', 2, 0, ?, ?, 'op', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z')`
+	);
+	job.run('11111111-1111-1111-1111-111111111111', 1, 'cube.gcode', 'library', 'src-1', 'cube.gcode', 'queued', op.id);
+	job.run('22222222-2222-2222-2222-222222222222', 2, 'upload.gcode', 'upload', null, 'upload.gcode', 'queued', op.id);
+	job.run('33333333-3333-3333-3333-333333333333', 3, 'busy.gcode', 'library', 'src-1', 'busy.gcode', 'printing', op.id);
+	store.sqlite().prepare(`INSERT INTO queue_runs (job_id, printer_id, printer_name, result, started_at) VALUES (?, ?, 'mk4', 'printing', '2026-10-01T01:00:00Z')`).run('33333333-3333-3333-3333-333333333333', mk4.id);
+	store.sqlite().prepare(`INSERT INTO queue_printers (printer_id, tags, updated_at) VALUES (?, '["pla","0.4"]', '2026-10-01T00:00:00Z')`).run(mk4.id);
+	store.sqlite().prepare(`UPDATE prints SET filament_g = 12.5, cost_filament = 0.31, material = 'PLA' WHERE file_name = 'gear.gcode'`).run();
+	const env = await encodeBackup(cb.snapshot(ALL, { historyImages: true }), PASSPHRASE, FAST);
+	writeFileSync(file, JSON.stringify(env));
+	const small = JSON.stringify(cb.snapshot({ ...ALL, history: true }, { historyImages: false })).includes('"thumbnail"');
+	console.log(JSON.stringify({ ok: true, thumbnailsWithoutImages: small }));
+	process.exit(0);
 	console.log(JSON.stringify({ ok: true }));
 } else {
 	// A fresh install whose signed-in admin is admin@x.io with a different password.
@@ -46,7 +87,12 @@ if (role === 'export') {
 	}
 	const afterRollback = store.listPrinters().length;
 
+	// An entry already here is kept, not doubled.
+	hs.insertPrint({ printerId: p.printers![0].id, printerName: 'mk4', file: 'benchy.gcode', path: 'benchy.gcode', origin: 'local', startedAt: '2026-10-01T10:00:00.000Z', result: 'success' });
 	const result = cb.applyRestore(p, ALL, me.id);
+	const again = cb.applyRestore(p, { ...cb.NO_CATEGORIES, history: true }, me.id);
+	const ns = notify.load();
+	const prints = hs.listPrints({ limit: 10 });
 	const printers = store.listPrinters();
 	const meAfter = store.getUser(me.id)!;
 	const operator = store.findUserByEmail('op@x.io')!;
@@ -62,7 +108,50 @@ if (role === 'export') {
 			operator,
 			operatorGrants: store.listGrants(operator.id),
 			sso: ssoConfig(),
-			localLogin: store.getKv('local-login-disabled', null)
+			localLogin: store.getKv('local-login-disabled', null),
+			detect: { ml: detect.mlConfig(), mk4: detect.printerSettings(printers.find((x) => x.name === 'mk4')!.id), baselines: (store.sqlite().prepare(`SELECT key FROM kv WHERE key LIKE 'detect:baseline:%'`).all() as unknown[]).length, preview: preview.settings.find((x: { label: string }) => x.label === 'Failure detection') },
+			filament: await (async () => {
+				const spoolman = await import('../../src/lib/server/spools/spoolman.ts');
+				const raw = store.getKv<{ sealed: string | null }>('spoolman:settings', { sealed: null });
+				return {
+					preview: preview.filament,
+					result: result.filament,
+					spoolman: spoolman.spoolmanSettings(),
+					authValue: raw.sealed ? (await import('../../src/lib/server/crypto.ts')).decrypt(raw.sealed, 'spoolman') : null,
+					currency: (await import('../../src/lib/server/costs.ts')).costSettings().currency,
+					assignments: store.sqlite().prepare('SELECT tool, spool_id FROM spool_assignments').all(),
+					tasks: store.sqlite().prepare('SELECT name, last_done_by FROM maintenance_tasks').all(),
+					log: store.sqlite().prepare('SELECT task_name, done_by, user_id, notes FROM maintenance_log').all(),
+					benchyCost: store.sqlite().prepare(`SELECT filament_g, cost_filament, material FROM prints WHERE filament_g IS NOT NULL`).all()
+				};
+			})(),
+			plug: await (async () => {
+				const power = await import('../../src/lib/server/power/config.ts');
+				const p = power.getPlug(printers.find((x) => x.name === 'mk4')!.id);
+				return p ? { kind: p.kind, label: p.label, secrets: p.secrets, previewed: preview.printers.find((x: { name: string }) => x.name === 'mk4')?.plug } : null;
+			})(),
+			queue: {
+				preview: preview.queue,
+				result: result.queue,
+				jobs: store.sqlite().prepare('SELECT name, status, error, created_by FROM queue_jobs ORDER BY position').all(),
+				runs: (store.sqlite().prepare('SELECT count(*) AS n FROM queue_runs').get() as { n: number }).n,
+				tags: store.sqlite().prepare('SELECT tags FROM queue_printers').all()
+			},
+			notify: {
+				channels: ns.channels.map((c) => ({ name: c.name, type: c.type, config: c.config, quiet: c.quiet, secrets: notify.secretsOf(c) })),
+				rules: ns.rules.map((r) => ({ name: r.name, printers: r.printers, events: r.events, channels: r.channels.map((id) => ns.channels.find((c) => c.id === id)?.name) })),
+				publicUrl: ns.publicUrl,
+				progressPercents: ns.progressPercents,
+				mk4Id: printers.find((x) => x.name === 'mk4')!.id
+			},
+			history: {
+				previewed: preview.history,
+				result: result.history,
+				again: again.history,
+				rows: prints.map((r) => ({ file: r.file, result: r.result, reason: r.reason, startedBy: r.startedBy, hasThumbnail: r.hasThumbnail })),
+				operatorOwns: prints.filter((r) => r.file === 'benchy.gcode' && r.startedBy === 'op').length,
+				userIds: (store.sqlite().prepare('SELECT user_id FROM prints WHERE user_id IS NOT NULL').all() as { user_id: string }[]).map((r) => r.user_id)
+			}
 		})
 	);
 }

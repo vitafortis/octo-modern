@@ -19,7 +19,7 @@
 				<Info class="mt-0.5 size-4 shrink-0 text-primary" />
 			{/if}
 			<div class="min-w-0 flex-1">
-				<p class="text-[13px] font-medium">{t.title}</p>
+				<p class="text-[0.8125rem] font-medium">{t.title}</p>
 				{#if t.body}<p class="mt-0.5 text-xs break-words text-muted-foreground">{t.body}</p>{/if}
 			</div>
 			<button class="text-muted-foreground hover:text-foreground touch:-m-2.5 touch:p-2.5" onclick={() => dismiss(t.id)} aria-label="Dismiss"

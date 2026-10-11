@@ -15,7 +15,7 @@ export async function act(url: string, body: Record<string, unknown>, opts: { as
 		await api.post(url, opts.ask ? { ...body, confirm: true } : body);
 	} catch (err) {
 		if (err instanceof ApiError && err.status === 409 && err.detail?.confirmRequired) {
-			const ok = await confirmAction({ title: 'Are you sure?', body: err.message, confirmLabel: 'Do it anyway', danger: true });
+			const ok = await confirmAction({ title: err.detail.title ?? 'Are you sure?', body: err.message, confirmLabel: err.detail.confirmLabel ?? 'Do it anyway', danger: true });
 			if (!ok) return false;
 			try {
 				await api.post(url, { ...body, confirm: true });

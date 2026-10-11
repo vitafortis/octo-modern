@@ -17,7 +17,12 @@
 		"e2e:discover": "node scripts/e2e/discover.mjs",
 		"e2e:library": "node scripts/e2e/library.mjs",
 		"e2e:history": "node scripts/e2e/history.mjs",
+		"e2e:notify": "node scripts/e2e/notify.mjs",
+		"e2e:power": "node scripts/e2e/power.mjs",
 		"e2e:mobile": "node scripts/e2e/mobile.mjs",
+		"e2e:detect": "node scripts/e2e/detect.mjs",
+		"e2e:queue": "node scripts/e2e/queue.mjs",
+		"e2e:spools": "node scripts/e2e/spools.mjs",
 		"e2e:viewer": "node scripts/e2e/viewer.mjs"
 	},
 	"devDependencies": {
@@ -29,8 +34,11 @@
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/node": "^26.6.4",
+		"@types/nodemailer": "^8.0.2",
+		"@types/smtp-server": "^3.5.13",
 		"@types/ssh2-sftp-client": "^9.0.6",
 		"playwright": "1",
+		"smtp-server": "^3.19.21",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.6.0",
 		"tailwindcss": "^4.3.3",
@@ -43,6 +51,7 @@
 	},
 	"dependencies": {
 		"jpeg-js": "^0.4.4",
+		"nodemailer": "^10.1.0",
 		"openid-client": "^6.8.8",
 		"smb3-client": "0.2.0",
 		"ssh2-sftp-client": "^12.1.1",

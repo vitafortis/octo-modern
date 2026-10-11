@@ -96,10 +96,10 @@
 	<svg {width} {height} role="img" aria-label="Temperature chart" class="block touch-pan-y select-none" onpointerdown={onmove} onpointermove={onmove} onpointerleave={onleave} onpointercancel={onleave}>
 		{#each yTicks as v (v)}
 			<line x1={PAD.left} x2={width - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--border)" stroke-width="1" />
-			<text x={PAD.left - 6} y={y(v) + 3.5} text-anchor="end" class="fill-muted-foreground font-mono text-[10px]">{v}°</text>
+			<text x={PAD.left - 6} y={y(v) + 3.5} text-anchor="end" class="fill-muted-foreground font-mono text-[0.625rem]">{v}°</text>
 		{/each}
 		{#each xTicks as t (t)}
-			<text x={x(t)} y={height - 6} text-anchor="middle" class="fill-muted-foreground font-mono text-[10px]">{timeFmt(t)}</text>
+			<text x={x(t)} y={height - 6} text-anchor="middle" class="fill-muted-foreground font-mono text-[0.625rem]">{timeFmt(t)}</text>
 		{/each}
 
 		{#each heaters as k (k)}
@@ -120,7 +120,7 @@
 	{#if hovered}
 		{@const hx = x(hovered.t)}
 		<div
-			class="pointer-events-none absolute top-2 z-10 min-w-36 rounded-lg border border-border bg-card px-2.5 py-2 text-[11px] shadow-surface-lg"
+			class="pointer-events-none absolute top-2 z-10 min-w-36 rounded-lg border border-border bg-card px-2.5 py-2 text-[0.6875rem] shadow-surface-lg"
 			style={hx > width / 2 ? `right:${width - hx + 10}px` : `left:${hx + 10}px`}
 		>
 			<p class="mb-1 font-mono text-muted-foreground">{new Date(hovered.t).toLocaleTimeString()}</p>

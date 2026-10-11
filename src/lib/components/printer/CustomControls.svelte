@@ -30,7 +30,7 @@
 	{#each controls as c, i (i)}
 		{#if c.kind === 'section'}
 			<details class="group w-full rounded-lg border border-border bg-surface/60" open={!c.collapsed}>
-				<summary class="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[12px] font-medium select-none">
+				<summary class="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium select-none">
 					<ChevronRight class="size-3.5 text-muted-foreground transition-transform group-open:rotate-90" />{c.name ?? 'Controls'}
 				</summary>
 				<div class="px-3 pb-3">

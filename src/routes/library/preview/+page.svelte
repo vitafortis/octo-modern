@@ -28,7 +28,7 @@
 				<GcodeViewer url={urls.libraryFile(source, path)} cacheKey="lib:{source}:{path}:{version}" class="h-[calc(100dvh-11rem)] min-h-96" />
 			{/key}
 		{:else}
-			<p class="text-[13px] text-muted-foreground">Pick a file in the Library and choose Preview.</p>
+			<p class="text-[0.8125rem] text-muted-foreground">Pick a file in the Library and choose Preview.</p>
 		{/if}
 	</div>
 </div>

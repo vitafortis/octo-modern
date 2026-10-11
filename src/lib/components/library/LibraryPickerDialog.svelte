@@ -77,10 +77,10 @@
 <Dialog bind:open title="Print from the library" description="Pick G-code on your NAS; it’s copied to {printerName}{folder ? ` / ${folder}` : ''}." width="max-w-4xl">
 	{#if send}
 		<div class="space-y-3 py-6" data-testid="send-progress">
-			<div class="flex items-center gap-2 text-[13px]">
+			<div class="flex items-center gap-2 text-[0.8125rem]">
 				{#if send.state === 'done'}<CircleCheck class="size-4 text-success" />{:else if send.state === 'error' || send.state === 'aborted'}<CircleX class="size-4 text-danger" />{:else}<LoaderCircle class="size-4 animate-spin text-primary" />{/if}
 				<span class="font-medium">{send.path.split('/').pop()}</span>
-				<span class="ml-auto font-mono text-[11px] text-muted-foreground tabular-nums">{send.state === 'processing' ? 'OctoPrint is saving…' : `${bytes(send.sent)} / ${bytes(send.size)}`}</span>
+				<span class="ml-auto font-mono text-[0.6875rem] text-muted-foreground tabular-nums">{send.state === 'processing' ? 'OctoPrint is saving…' : `${bytes(send.sent)} / ${bytes(send.size)}`}</span>
 			</div>
 			<div class="h-2 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full bg-primary transition-[width] duration-300 {send.state === 'error' ? 'bg-danger' : ''}" style="width:{pct}%"></div></div>
 			{#if send.error}<p class="text-xs text-danger">{send.error}</p>{/if}
@@ -98,7 +98,7 @@
 			<span class="mr-auto min-w-0 truncate text-xs text-muted-foreground">
 				{#if selected}{selected.name} · {bytes(selected.size)}{selected.meta?.estimatedTime != null ? ` · ${formatDuration(selected.meta.estimatedTime)}` : ''}{:else}Select a file{/if}
 			</span>
-			<label class="flex items-center gap-2 text-[13px]"><Switch label="Start printing" bind:checked={print} />Start printing</label>
+			<label class="flex items-center gap-2 text-[0.8125rem]"><Switch label="Start printing" bind:checked={print} />Start printing</label>
 			<button class="btn btn-primary" disabled={!ready || busy} onclick={() => go()}>
 				{#if busy}<LoaderCircle class="animate-spin" />{:else if print}<Play />{:else}<Send />{/if}{print ? 'Send & print' : 'Send'}
 			</button>

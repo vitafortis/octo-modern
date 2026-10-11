@@ -196,7 +196,7 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="card p-6 text-center text-[13px] text-muted-foreground">{list.length ? 'Every OctoPrint found here is already saved.' : empty}</div>
+		<div class="card p-6 text-center text-[0.8125rem] text-muted-foreground">{list.length ? 'Every OctoPrint found here is already saved.' : empty}</div>
 	{/if}
 {/snippet}
 
@@ -217,11 +217,11 @@
 					<button
 						role="tab"
 						aria-selected={tab === t.id}
-						class="flex h-7 items-center gap-2 rounded-md px-3 text-[13px] font-medium transition {tab === t.id ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+						class="flex h-7 items-center gap-2 rounded-md px-3 text-[0.8125rem] font-medium transition {tab === t.id ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 						onclick={() => (tab = t.id as Tab)}
 					>
 						<t.icon class="size-3.5" />{t.label}
-						{#if t.busy}<LoaderCircle class="size-3 animate-spin opacity-60" />{:else if t.count}<span class="rounded bg-primary-soft px-1.5 text-[11px] text-primary tabular-nums">{t.count}</span>{/if}
+						{#if t.busy}<LoaderCircle class="size-3 animate-spin opacity-60" />{:else if t.count}<span class="rounded bg-primary-soft px-1.5 text-[0.6875rem] text-primary tabular-nums">{t.count}</span>{/if}
 					</button>
 				{/each}
 			</div>
@@ -231,11 +231,11 @@
 		</div>
 
 		{#if selfInfo}
-			<div class="mb-3 flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground">
+			<div class="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
 				<Network class="size-3.5" />
 				{#if selfInfo.container}
 					octo·modern runs as <span class="font-mono text-foreground">{selfInfo.container}</span> on
-					{#each selfInfo.networks as n (n)}<span class="rounded-md border border-success/30 bg-success/10 px-1.5 py-px font-mono text-[11px] text-success">{n}</span>{/each}
+					{#each selfInfo.networks as n (n)}<span class="rounded-md border border-success/30 bg-success/10 px-1.5 py-px font-mono text-[0.6875rem] text-success">{n}</span>{/each}
 					<span>· OctoPrint containers on these networks are reachable by name.</span>
 				{:else if selfInfo.inContainer}
 					octo·modern isn’t one of this host’s containers, so only published ports are reachable from it.
@@ -245,7 +245,7 @@
 			</div>
 		{/if}
 		{#if joinable.length}
-			<div class="card mb-4 border-warning/30 p-3.5 text-[12px]">
+			<div class="card mb-4 border-warning/30 p-3.5 text-xs">
 				<div class="flex flex-wrap items-center gap-2">
 					<Unplug class="size-4 text-warning" />
 					<span>
@@ -257,7 +257,7 @@
 				</div>
 				{#if showJoin}
 					<div class="relative mt-3">
-						<pre class="overflow-x-auto rounded-lg border border-border bg-surface p-3 font-mono text-[11px]">{joinNetworksSnippet(joinable.map((j) => j.network))}</pre>
+						<pre class="overflow-x-auto rounded-lg border border-border bg-surface p-3 font-mono text-[0.6875rem]">{joinNetworksSnippet(joinable.map((j) => j.network))}</pre>
 						<button class="btn btn-ghost btn-icon btn-sm absolute top-1.5 right-1.5" title="Copy" onclick={() => navigator.clipboard.writeText(joinNetworksSnippet(joinable.map((j) => j.network))).then(() => toast('success', 'Copied'))}><Copy /></button>
 					</div>
 				{/if}
@@ -270,7 +270,7 @@
 			{:else}
 				<div class="space-y-6">
 					{#if !docker.length}
-						<div class="card p-6 text-[13px] text-muted-foreground">
+						<div class="card p-6 text-[0.8125rem] text-muted-foreground">
 							<p class="flex items-center gap-2 font-medium text-foreground"><Server class="size-4 text-primary" />No Docker endpoint configured</p>
 							<p class="mt-1.5">
 								Run the read-only <span class="font-mono">docker-socket-proxy</span> next to octo·modern and set
@@ -291,8 +291,8 @@
 							{/if}
 						</section>
 					{/each}
-					<details class="card px-4 py-3 text-[13px]">
-						<summary class="cursor-pointer text-[12px] text-muted-foreground select-none hover:text-foreground">Docker endpoints</summary>
+					<details class="card px-4 py-3 text-[0.8125rem]">
+						<summary class="cursor-pointer text-xs text-muted-foreground select-none hover:text-foreground">Docker endpoints</summary>
 						<div class="mt-3 flex flex-wrap gap-1.5">
 							{#each config?.envDockerHosts ?? [] as h (h)}<span class="badge h-6 font-mono" title="From OCM_DOCKER_HOSTS">{h}</span>{/each}
 							{#each config?.settings.dockerHosts ?? [] as h (h)}
@@ -303,7 +303,7 @@
 							<input class="input h-8 font-mono text-xs" placeholder="tcp://nas.lan:2375 (a read-only socket proxy)" bind:value={newEndpoint} />
 							<button class="btn btn-secondary btn-sm h-8" disabled={!newEndpoint.trim()}><Plus />Add</button>
 						</form>
-						<p class="mt-2 text-[11px] text-muted-foreground">Only <span class="font-mono">GET /containers</span> is used. Point this at a docker-socket-proxy with <span class="font-mono">CONTAINERS=1</span>, never at a writable Docker API.</p>
+						<p class="mt-2 text-[0.6875rem] text-muted-foreground">Only <span class="font-mono">GET /containers</span> is used. Point this at a docker-socket-proxy with <span class="font-mono">CONTAINERS=1</span>, never at a writable Docker API.</p>
 					</details>
 				</div>
 			{/if}
@@ -322,7 +322,7 @@
 									{#if env.inspected !== undefined}<span>· {env.inspected} container{env.inspected === 1 ? '' : 's'}</span>{/if}
 								</div>
 								{#if env.error}
-									<p class="flex items-center gap-1.5 pl-1 text-[12px] text-warning"><CircleAlert class="size-3.5" />{env.error}</p>
+									<p class="flex items-center gap-1.5 pl-1 text-xs text-warning"><CircleAlert class="size-3.5" />{env.error}</p>
 								{:else}
 									{@render rows(env.candidates, 'No OctoPrint containers in this environment.')}
 								{/if}
@@ -335,8 +335,8 @@
 				{/if}
 
 				<div class="card p-5">
-					<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Boxes class="size-4 text-primary" />{config?.managers.length ? 'Arcane instances' : 'Read containers straight from Arcane'}</h2>
-					<p class="mt-1 text-[12px] text-muted-foreground">
+					<h2 class="flex items-center gap-2 text-sm font-semibold"><Boxes class="size-4 text-primary" />{config?.managers.length ? 'Arcane instances' : 'Read containers straight from Arcane'}</h2>
+					<p class="mt-1 text-xs text-muted-foreground">
 						In Arcane, open <b class="font-medium text-foreground">Settings → API Keys</b> and create a key with read-only permissions:
 						<span class="font-mono">environments:list</span>, <span class="font-mono">containers:list</span>, <span class="font-mono">containers:read</span>
 						(<span class="font-mono">projects:list</span> and <span class="font-mono">projects:read</span> are harmless; pg·modern’s key works too). Stored encrypted.
@@ -344,7 +344,7 @@
 					{#if config?.managers.length}
 						<div class="mt-3 divide-y divide-border rounded-lg border border-border">
 							{#each config.managers as m (m.id)}
-								<div class="flex items-center gap-3 px-3 py-2 text-[13px]">
+								<div class="flex items-center gap-3 px-3 py-2 text-[0.8125rem]">
 									<span class="font-medium">{m.name}</span><span class="truncate font-mono text-xs text-muted-foreground">{m.url}</span>
 									{#if m.fromEnv}<span class="badge ml-auto">OCM_ARCANE_URL</span>{:else}<button class="btn btn-ghost btn-icon btn-sm ml-auto" title="Disconnect" onclick={() => removeArcane(m.id)}><Trash2 /></button>{/if}
 								</div>
@@ -352,7 +352,7 @@
 						</div>
 					{/if}
 					<form class="mt-4 grid gap-2 sm:grid-cols-[0.7fr_1.3fr_1.3fr_auto]" onsubmit={connectArcane}>
-						<input class="input h-8 text-[13px]" placeholder="Name" aria-label="Arcane name" bind:value={arcaneForm.name} />
+						<input class="input h-8 text-[0.8125rem]" placeholder="Name" aria-label="Arcane name" bind:value={arcaneForm.name} />
 						<input class="input h-8 font-mono text-xs" placeholder="http://arcane.lan:3552" aria-label="Arcane URL" required bind:value={arcaneForm.url} />
 						<input class="input h-8 font-mono text-xs" type="password" autocomplete="off" placeholder="API key" aria-label="Arcane API key" required bind:value={arcaneForm.apiKey} />
 						<button class="btn btn-primary btn-sm h-8" disabled={arcaneBusy}>{#if arcaneBusy}<LoaderCircle class="animate-spin" />{:else}<Plus />{/if}Connect</button>
@@ -392,14 +392,14 @@
 							</div>
 							<button class="btn btn-primary h-8" disabled={loading.subnet || !subnetForm.targets.trim()}>{#if loading.subnet}<LoaderCircle class="animate-spin" />Scanning…{:else}<ScanSearch />Scan{/if}</button>
 						</div>
-						<p class="mt-2.5 text-[11px] text-muted-foreground">
+						<p class="mt-2.5 text-[0.6875rem] text-muted-foreground">
 							For OctoPi and other installs outside Docker. octo·modern opens a TCP connection to each address and port (128 at a time, 0.7 s timeout), then asks whatever answers
 							whether it’s OctoPrint, without a key. Up to 4096 addresses (a /20).
 						</p>
 						{#if subnetError}<p class="mt-2 flex items-center gap-1.5 text-xs text-danger"><CircleAlert class="size-3.5" />{subnetError}</p>{/if}
 					</form>
 					{#if subnet}
-						<p class="mt-3 mb-2 text-[11px] text-muted-foreground">Probed {subnet.probed} address/port pairs ({subnet.scope}) in {(subnet.durationMs / 1000).toFixed(1)} s.</p>
+						<p class="mt-3 mb-2 text-[0.6875rem] text-muted-foreground">Probed {subnet.probed} address/port pairs ({subnet.scope}) in {(subnet.durationMs / 1000).toFixed(1)} s.</p>
 						{@render rows(subnet.candidates, 'No OctoPrint found in that range.')}
 					{/if}
 				</section>

@@ -52,6 +52,15 @@ export interface PrintRecord {
 	source: 'live' | 'import';
 	hasThumbnail: boolean;
 	notes: string | null;
+	/** Filament used, grams (from the spool's or the material's density). */
+	filamentG: number | null;
+	/** Material of the (first) spool, or the default material it was costed as. */
+	material: string | null;
+	/** Cost of the filament and of the electricity, in the cost settings' currency; null when unknown. */
+	costFilament: number | null;
+	costEnergy: number | null;
+	/** costFilament + costEnergy (whichever are known). */
+	cost: number | null;
 }
 
 export interface HistoryFilter {
@@ -73,6 +82,8 @@ export interface PrinterStats {
 	/** Seconds. */
 	printTime: number;
 	filamentMm: number;
+	/** Sum of the known print costs. */
+	cost: number;
 }
 
 export interface WeekStats {
@@ -96,6 +107,11 @@ export interface HistoryStats {
 	successRate: number | null;
 	printTime: number;
 	filamentMm: number;
+	/** Sum of the known print costs, and how many prints had one. */
+	cost: number;
+	costed: number;
+	/** The cost settings' currency (ISO 4217). */
+	currency?: string;
 	perPrinter: PrinterStats[];
 	perWeek: WeekStats[];
 }

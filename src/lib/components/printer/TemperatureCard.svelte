@@ -70,8 +70,8 @@
 
 <section class="card overflow-hidden">
 	<div class="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-		<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Thermometer class="size-4 text-primary" />Temperatures</h2>
-		<div class="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+		<h2 class="flex items-center gap-2 text-sm font-semibold"><Thermometer class="size-4 text-primary" />Temperatures</h2>
+		<div class="flex flex-wrap items-center gap-3 text-[0.6875rem] text-muted-foreground">
 			{#each heaters as k (k)}
 				<span class="flex items-center gap-1.5"><span class="h-0.5 w-3 rounded-full" style="background:{heaterColor(k)}"></span>{heaterLabel(k, tools)}</span>
 			{/each}
@@ -79,7 +79,7 @@
 		</div>
 		<div class="ml-auto inline-flex rounded-lg border border-border bg-surface p-0.5">
 			{#each RANGES as r (r.ms)}
-				<button class="h-6 rounded-md px-2 text-[11px] touch:h-9 touch:px-2.5 touch:text-xs {range === r.ms ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}" onclick={() => (picked = r.ms)}>{r.label}</button>
+				<button class="h-6 rounded-md px-2 text-[0.6875rem] touch:h-9 touch:px-2.5 touch:text-xs {range === r.ms ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}" onclick={() => (picked = r.ms)}>{r.label}</button>
 			{/each}
 		</div>
 	</div>
@@ -95,8 +95,8 @@
 		{#each heaters as k (k)}
 			{@const t = s.temps[k]}
 			<form class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-2.5 last:border-0" onsubmit={(e) => setOne(k, e)}>
-				<span class="flex w-24 items-center gap-2 text-[13px] font-medium max-sm:w-auto max-sm:min-w-20"><span class="size-2 rounded-full" style="background:{heaterColor(k)}"></span>{heaterLabel(k, tools)}</span>
-				<span class="w-20 font-mono text-[15px] font-semibold tabular-nums max-sm:w-auto">{formatTemp(t.actual)}</span>
+				<span class="flex w-24 items-center gap-2 text-[0.8125rem] font-medium max-sm:w-auto max-sm:min-w-20"><span class="size-2 rounded-full" style="background:{heaterColor(k)}"></span>{heaterLabel(k, tools)}</span>
+				<span class="w-20 font-mono text-[0.9375rem] font-semibold tabular-nums max-sm:w-auto">{formatTemp(t.actual)}</span>
 				<span class="flex items-center gap-1 text-xs text-muted-foreground">
 					{#if (t.target ?? 0) > 0}<Flame class="size-3.5 text-warning" />target <span class="font-mono text-foreground">{formatTemp(t.target)}</span>{:else}off{/if}
 				</span>
@@ -143,11 +143,11 @@
 
 	{#if canControl && heaters.length}
 		<div class="flex flex-wrap items-center gap-1.5 border-t border-border bg-surface px-4 py-2.5">
-			<span class="mr-1 text-[11px] text-muted-foreground">Presets</span>
+			<span class="mr-1 text-[0.6875rem] text-muted-foreground">Presets</span>
 			{#each profiles as p (p.name)}
 				<button class="btn btn-secondary btn-sm" disabled={!connected || !!busy} onclick={() => apply(presetTargets(p), p.name)} title="Hotend {p.extruder ?? '—'}° · bed {p.bed ?? '—'}°">{p.name}</button>
 			{:else}
-				<span class="text-[11px] text-muted-foreground">none in OctoPrint (Settings → Temperatures)</span>
+				<span class="text-[0.6875rem] text-muted-foreground">none in OctoPrint (Settings → Temperatures)</span>
 			{/each}
 			<button class="btn btn-ghost btn-sm ml-auto" disabled={!connected || !anyHeating || !!busy} onclick={() => apply(allOff, 'off')}><Power />All off</button>
 		</div>

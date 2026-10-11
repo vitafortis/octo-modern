@@ -4,5 +4,10 @@
  */
 import './printer-status.ts';
 import './history.ts';
+import './notify.ts';
+import './power.ts';
+import './detect.ts';
+import './queue.ts';
+import './spools.ts';
 
 export {};

@@ -137,7 +137,7 @@
 		<section id="sso" class="card scroll-mt-6 p-5">
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<h2 class="flex items-center gap-2 text-[14px] font-semibold"><KeyRound class="size-4 text-primary" />Single sign-on (OIDC)</h2>
+					<h2 class="flex items-center gap-2 text-sm font-semibold"><KeyRound class="size-4 text-primary" />Single sign-on (OIDC)</h2>
 					<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
 						Let people sign in with Authentik, Authelia, Keycloak, Pocket ID, Google and other OpenID Connect providers. Matching emails can
 						get an account automatically.
@@ -166,7 +166,7 @@
 							<label class="label" for="sso-name">Provider</label>
 							<input id="sso-name" class="input" list="sso-providers" placeholder="Authentik" bind:value={ssoForm.name} />
 							<datalist id="sso-providers">{#each PROVIDERS as p (p.name)}<option value={p.name}></option>{/each}</datalist>
-							<p class="mt-1 text-[11px] text-muted-foreground">Shown on the button: “Continue with {ssoForm.name || 'SSO'}”.</p>
+							<p class="mt-1 text-[0.6875rem] text-muted-foreground">Shown on the button: “Continue with {ssoForm.name || 'SSO'}”.</p>
 						</div>
 						<div>
 							<label class="label" for="sso-issuer">Issuer URL</label>
@@ -189,7 +189,7 @@
 						<div>
 							<label class="label" for="sso-auto">Create accounts automatically for</label>
 							<input id="sso-auto" class="input font-mono text-xs" placeholder="*@example.com, friend@gmail.com" bind:value={ssoForm.autoCreate} />
-							<p class="mt-1 text-[11px] text-muted-foreground">Leave empty to only allow people added on the Users page.</p>
+							<p class="mt-1 text-[0.6875rem] text-muted-foreground">Leave empty to only allow people added on the Users page.</p>
 						</div>
 						<div class="grid grid-cols-[1fr_8rem] gap-3">
 							<div>
@@ -222,8 +222,8 @@
 
 					<div class="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
 						<div class="flex-1">
-							<p class="text-[13px] font-medium">Allow password sign-in</p>
-							<p class="text-[11px] text-muted-foreground">
+							<p class="text-[0.8125rem] font-medium">Allow password sign-in</p>
+							<p class="text-[0.6875rem] text-muted-foreground">
 								{#if sso.localLoginLocked}
 									Set by <code class="font-mono">OCM_LOCAL_LOGIN={sso.localLoginLocked}</code>.
 								{:else if !sso.configured}
@@ -280,12 +280,22 @@
 
 		<!-- Status API tokens -->
 		<section id="tokens" class="card scroll-mt-6 p-5">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Gauge class="size-4 text-primary" />Status API tokens</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><Gauge class="size-4 text-primary" />Status API tokens</h2>
 			<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
 				Read-only tokens for dashboards and monitors — Homepage, Glance, Uptime Kuma, Home Assistant. They only open
 				<code class="font-mono">GET /api/status</code> (state, progress, time left and temperatures of each printer) and nothing else.
 			</p>
 			<ApiTokens />
+		</section>
+
+		<!-- Slicer upload keys (OctoPrint-compatible API) -->
+		<section id="slicer" class="card scroll-mt-6 p-5">
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><KeyRound class="size-4 text-primary" />Slicer upload keys</h2>
+			<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+				PrusaSlicer, OrcaSlicer and Cura can send G-code to octo·modern as if it were an OctoPrint server. Each key decides where uploads go: the print queue,
+				a folder in a writable library source, or straight to one printer.
+			</p>
+			<ApiTokens scope="upload" />
 		</section>
 	</div>
 </div>

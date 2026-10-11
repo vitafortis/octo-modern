@@ -271,7 +271,7 @@
 		{/if}
 		<div class="ml-auto flex items-center gap-1">
 			{#if tp}
-				<span class="mr-1 hidden font-mono text-[11px] text-muted-foreground tabular-nums md:inline" title="Parsed {compact(tp.stats.moves)} moves into {compact(tp.stats.points)} points">
+				<span class="mr-1 hidden font-mono text-[0.6875rem] text-muted-foreground tabular-nums md:inline" title="Parsed {compact(tp.stats.moves)} moves into {compact(tp.stats.points)} points">
 					{compact(tp.stats.moves)} moves · {bytes(tp.stats.bytes)} · {duration(loaded!.ms)}
 				</span>
 			{/if}
@@ -305,16 +305,16 @@
 
 		{#if tp}
 			<div class="pointer-events-none absolute top-2 left-2 flex flex-col items-start gap-1">
-				<span class="rounded-md border border-border bg-card/85 px-2 py-1 font-mono text-[11px] tabular-nums shadow-surface backdrop-blur" data-testid="gcode-layer">
+				<span class="rounded-md border border-border bg-card/85 px-2 py-1 font-mono text-[0.6875rem] tabular-nums shadow-surface backdrop-blur" data-testid="gcode-layer">
 					Layer {layer + 1} / {layers}{#if z != null}{' · '}Z {z.toFixed(2)}{/if}
 				</span>
 				{#if here}
-					<span class="flex items-center gap-1 rounded-md border border-primary/30 bg-primary-soft/90 px-2 py-1 text-[11px] font-medium text-primary backdrop-blur" data-testid="gcode-printing">
+					<span class="flex items-center gap-1 rounded-md border border-primary/30 bg-primary-soft/90 px-2 py-1 text-[0.6875rem] font-medium text-primary backdrop-blur" data-testid="gcode-printing">
 						<Crosshair class="size-3" />Printing layer {here.layer + 1}
 					</span>
 				{/if}
 				{#if tp.stats.minSegment > 0}
-					<span class="rounded-md border border-border bg-card/85 px-2 py-1 text-[11px] text-muted-foreground backdrop-blur" title="Very large file: segments shorter than {tp.stats.minSegment} mm were merged to fit in memory">Simplified ({tp.stats.minSegment} mm)</span>
+					<span class="rounded-md border border-border bg-card/85 px-2 py-1 text-[0.6875rem] text-muted-foreground backdrop-blur" title="Very large file: segments shorter than {tp.stats.minSegment} mm were merged to fit in memory">Simplified ({tp.stats.minSegment} mm)</span>
 				{/if}
 			</div>
 		{/if}
@@ -323,8 +323,8 @@
 			<div class="absolute inset-0 grid place-items-center">
 				<div class="w-64 max-w-[80%] rounded-xl border border-border bg-card/90 p-4 text-center shadow-surface backdrop-blur">
 					<LoaderCircle class="mx-auto size-5 animate-spin text-primary" />
-					<p class="mt-2 text-[13px] font-medium">Reading G-code…</p>
-					<p class="mt-0.5 font-mono text-[11px] text-muted-foreground tabular-nums">{bytes(progress.bytes)}{progress.total ? ` of ${bytes(progress.total)}` : ''}</p>
+					<p class="mt-2 text-[0.8125rem] font-medium">Reading G-code…</p>
+					<p class="mt-0.5 font-mono text-[0.6875rem] text-muted-foreground tabular-nums">{bytes(progress.bytes)}{progress.total ? ` of ${bytes(progress.total)}` : ''}</p>
 					<div class="mt-2 h-1 overflow-hidden rounded-full bg-border"><div class="h-full rounded-full bg-primary transition-[width]" style="width:{pct ?? 30}%"></div></div>
 				</div>
 			</div>
@@ -332,7 +332,7 @@
 			<div class="absolute inset-0 grid place-items-center p-6">
 				<div class="max-w-sm text-center">
 					<CircleAlert class="mx-auto size-6 text-danger" />
-					<p class="mt-2 text-[13px] font-medium">Can’t show this file</p>
+					<p class="mt-2 text-[0.8125rem] font-medium">Can’t show this file</p>
 					<p class="mt-1 text-xs text-muted-foreground">{error}</p>
 				</div>
 			</div>
@@ -371,7 +371,7 @@
 			{#each kindsShown as k (k.id)}
 				{@const off = (hidden & (1 << k.i)) !== 0}
 				<button
-					class="flex h-8 items-center gap-1.5 rounded-md px-2 text-[11px] transition-colors hover:bg-accent {off ? 'text-muted-foreground/60 line-through' : 'text-foreground'}"
+					class="flex h-8 items-center gap-1.5 rounded-md px-2 text-[0.6875rem] transition-colors hover:bg-accent {off ? 'text-muted-foreground/60 line-through' : 'text-foreground'}"
 					aria-pressed={!off}
 					title={off ? `Show ${k.label}` : `Hide ${k.label}`}
 					onclick={() => toggleKind(k.i)}
@@ -380,7 +380,7 @@
 				</button>
 			{/each}
 			{#if showTravel}
-				<span class="flex h-8 items-center gap-1.5 px-2 text-[11px] text-muted-foreground"><span class="h-0.5 w-3 rounded-full" style="background: var(--gc-travel)"></span>Travel</span>
+				<span class="flex h-8 items-center gap-1.5 px-2 text-[0.6875rem] text-muted-foreground"><span class="h-0.5 w-3 rounded-full" style="background: var(--gc-travel)"></span>Travel</span>
 			{/if}
 		</div>
 	{/if}

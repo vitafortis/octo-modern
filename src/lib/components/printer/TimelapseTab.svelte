@@ -90,7 +90,7 @@
 				<video src={timelapseUrl(printer.id, playing.name)} controls autoplay preload="metadata" class="aspect-video w-full bg-black" data-testid="timelapse-player"></video>
 				<div class="flex items-center gap-3 px-4 py-2.5">
 					<Film class="size-4 text-muted-foreground" />
-					<span class="min-w-0 flex-1 truncate text-[13px] font-medium">{playing.name}</span>
+					<span class="min-w-0 flex-1 truncate text-[0.8125rem] font-medium">{playing.name}</span>
 					<a class="btn btn-ghost btn-sm" href={timelapseUrl(printer.id, playing.name, true)} download={playing.name}><Download />Download</a>
 					<button class="btn btn-ghost btn-icon btn-sm" title="Close player" aria-label="Close player" onclick={() => (playing = null)}><X /></button>
 				</div>
@@ -98,7 +98,7 @@
 		{/if}
 
 		<div class="flex items-center gap-2">
-			<h2 class="text-[13px] font-medium">Timelapses</h2>
+			<h2 class="text-[0.8125rem] font-medium">Timelapses</h2>
 			{#if listing}<span class="badge">{listing.files.length}</span>{/if}
 			<button class="btn btn-ghost btn-icon btn-sm ml-auto" title="Refresh" aria-label="Refresh" onclick={load} disabled={loading}><RefreshCw class={loading ? 'animate-spin' : ''} /></button>
 		</div>
@@ -112,8 +112,8 @@
 				<div class="dot-grid mask-fade pointer-events-none absolute inset-0"></div>
 				<div class="relative mx-auto max-w-md">
 					<div class="mx-auto grid size-11 place-items-center rounded-xl bg-primary-soft text-primary"><Clapperboard class="size-5" /></div>
-					<h3 class="mt-4 text-[15px] font-semibold tracking-tight">No timelapses yet</h3>
-					<p class="mt-1.5 text-[13px] text-muted-foreground">
+					<h3 class="mt-4 text-[0.9375rem] font-semibold tracking-tight">No timelapses yet</h3>
+					<p class="mt-1.5 text-[0.8125rem] text-muted-foreground">
 						{listing.config.type === 'off'
 							? 'Timelapses are off. Turn them on in the settings and the next print is recorded.'
 							: 'The next print is recorded; OctoPrint renders the video when it ends.'}
@@ -145,8 +145,8 @@
 						</button>
 						<div class="flex items-center gap-2 px-3 py-2">
 							<div class="min-w-0 flex-1">
-								<p class="truncate text-[12px] font-medium" title={f.name}>{f.name}</p>
-								<p class="text-[11px] text-muted-foreground" title={f.date ? new Date(f.date).toLocaleString() : undefined}>{date(f.date)} · {bytes(f.bytes)}</p>
+								<p class="truncate text-xs font-medium" title={f.name}>{f.name}</p>
+								<p class="text-[0.6875rem] text-muted-foreground" title={f.date ? new Date(f.date).toLocaleString() : undefined}>{date(f.date)} · {bytes(f.bytes)}</p>
 							</div>
 							<a class="btn btn-ghost btn-icon btn-sm" href={timelapseUrl(printer.id, f.name, true)} download={f.name} title="Download" aria-label="Download {f.name}"><Download /></a>
 							{#if canControl}
@@ -160,14 +160,14 @@
 
 		{#if listing?.unrendered.length}
 			<div class="card overflow-hidden">
-				<p class="border-b border-border bg-surface px-4 py-2 text-[11px] font-medium text-muted-foreground">Not rendered yet</p>
+				<p class="border-b border-border bg-surface px-4 py-2 text-[0.6875rem] font-medium text-muted-foreground">Not rendered yet</p>
 				<div class="divide-y divide-border">
 					{#each listing.unrendered as u (u.name)}
-						<div class="flex items-center gap-3 px-4 py-2.5 text-[13px]" data-unrendered={u.name}>
+						<div class="flex items-center gap-3 px-4 py-2.5 text-[0.8125rem]" data-unrendered={u.name}>
 							<Clapperboard class="size-4 shrink-0 text-muted-foreground" />
 							<div class="min-w-0 flex-1">
 								<p class="truncate font-medium">{u.name}</p>
-								<p class="text-[11px] text-muted-foreground">{u.count ?? '?'} frames · {bytes(u.bytes)}{u.date ? ` · ${ago(new Date(u.date).toISOString())}` : ''}</p>
+								<p class="text-[0.6875rem] text-muted-foreground">{u.count ?? '?'} frames · {bytes(u.bytes)}{u.date ? ` · ${ago(new Date(u.date).toISOString())}` : ''}</p>
 							</div>
 							{#if u.recording}
 								<span class="badge badge-primary"><span class="size-1.5 animate-pulse rounded-full bg-current"></span>recording</span>
@@ -187,8 +187,8 @@
 	<aside class="space-y-3">
 		<div class="card">
 			<div class="border-b border-border px-4 py-3">
-				<p class="text-[13px] font-medium">Timelapse settings</p>
-				<p class="mt-0.5 text-[11px] text-muted-foreground">{listing ? summary(listing.config) : 'Loading…'}</p>
+				<p class="text-[0.8125rem] font-medium">Timelapse settings</p>
+				<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">{listing ? summary(listing.config) : 'Loading…'}</p>
 			</div>
 			{#if listing && draft}
 				<div class="space-y-3.5 px-4 py-3.5">
@@ -205,12 +205,12 @@
 										role="radio"
 										aria-checked={draft.type === t.value}
 										title={t.hint}
-										class="h-7 rounded-md px-1 text-[11px] font-medium transition-colors touch:h-10 touch:text-xs {draft.type === t.value ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+										class="h-7 rounded-md px-1 text-[0.6875rem] font-medium transition-colors touch:h-10 touch:text-xs {draft.type === t.value ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 										onclick={() => (draft!.type = t.value)}>{t.label}</button
 									>
 								{/each}
 							</div>
-							<p class="mt-1.5 text-[11px] text-muted-foreground">{TYPES.find((t) => t.value === draft!.type)?.hint}</p>
+							<p class="mt-1.5 text-[0.6875rem] text-muted-foreground">{TYPES.find((t) => t.value === draft!.type)?.hint}</p>
 						</div>
 						{#if draft.type !== 'off'}
 							<div class="grid grid-cols-2 gap-3">
@@ -233,12 +233,12 @@
 							<button class="btn btn-primary btn-sm" disabled={!dirty || saving} onclick={save}>{#if saving}<LoaderCircle class="animate-spin" />{/if}Save</button>
 						</div>
 					{:else}
-						<p class="text-[11px] text-muted-foreground">Only admins can change these.</p>
+						<p class="text-[0.6875rem] text-muted-foreground">Only admins can change these.</p>
 					{/if}
 				</div>
 			{/if}
 		</div>
-		<p class="px-1 text-[11px] leading-relaxed text-muted-foreground">
+		<p class="px-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
 			OctoPrint captures the frames and renders the video with ffmpeg after each print. Videos play and download through octo·modern, so the browser never needs to reach OctoPrint.
 		</p>
 	</aside>

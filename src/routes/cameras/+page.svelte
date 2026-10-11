@@ -176,7 +176,7 @@
 
 {#snippet segmented(label: string, value: string | number, choices: [string | number, string][], set: (v: never) => void)}
 	<div class="flex items-center gap-2">
-		<span class="text-[11px] text-muted-foreground">{label}</span>
+		<span class="text-[0.6875rem] text-muted-foreground">{label}</span>
 		<div class="flex rounded-lg border border-border bg-surface p-0.5" role="radiogroup" aria-label={label}>
 			{#each choices as [v, text] (v)}
 				<button
@@ -213,7 +213,7 @@
 			</div>
 		{/if}
 		<button
-			class="absolute top-3 right-3 z-20 flex h-11 items-center gap-2 rounded-xl bg-black/60 px-3 text-[13px] text-white backdrop-blur transition-opacity {idle ? 'pointer-events-none opacity-0' : 'opacity-100'}"
+			class="absolute top-3 right-3 z-20 flex h-11 items-center gap-2 rounded-xl bg-black/60 px-3 text-[0.8125rem] text-white backdrop-blur transition-opacity {idle ? 'pointer-events-none opacity-0' : 'opacity-100'}"
 			onclick={exitKiosk}
 			data-testid="kiosk-exit"><LogOut class="size-4" />Exit kiosk</button
 		>
@@ -230,21 +230,21 @@
 				<div class="hidden sm:block">{@render segmented('Columns', opts.layout, LAYOUTS, (v) => (opts.layout = v))}</div>
 				{@render segmented('Video', opts.mode, MODES, (v) => (opts.mode = v))}
 				{#if !live}
-					<label class="flex items-center gap-2 text-[11px] text-muted-foreground"
+					<label class="flex items-center gap-2 text-[0.6875rem] text-muted-foreground"
 						>Every
 						<select class="input h-9 w-auto py-0 text-xs" bind:value={opts.every}>
 							{#each [...new Set([...EVERY_CHOICES, opts.every])].sort((a, b) => a - b) as n (n)}<option value={n}>{n} s</option>{/each}
 						</select>
 					</label>
 				{/if}
-				<label class="flex items-center gap-2 text-[11px] text-muted-foreground"
+				<label class="flex items-center gap-2 text-[0.6875rem] text-muted-foreground"
 					>Kiosk rotation
 					<select class="input h-9 w-auto py-0 text-xs" bind:value={opts.rotate}>
 						{#each [...new Set([...ROTATE_CHOICES, opts.rotate])].sort((a, b) => a - b) as n (n)}<option value={n}>{n ? `every ${n} s` : 'off'}</option>{/each}
 					</select>
 				</label>
-				<label class="flex items-center gap-2 text-[11px] text-muted-foreground"><input type="checkbox" class="size-4 accent-[var(--primary)]" bind:checked={opts.fill} />Fill tiles</label>
-				<span class="text-[11px] text-muted-foreground sm:ml-auto" data-testid="camera-mode">
+				<label class="flex items-center gap-2 text-[0.6875rem] text-muted-foreground"><input type="checkbox" class="size-4 accent-[var(--primary)]" bind:checked={opts.fill} />Fill tiles</label>
+				<span class="text-[0.6875rem] text-muted-foreground sm:ml-auto" data-testid="camera-mode">
 					{live ? 'Live streams' : `Snapshots every ${opts.every} s`}{opts.mode === 'auto' && !live ? ' (many cameras)' : ''} · paused while the tab is hidden
 				</span>
 			</div>
@@ -256,8 +256,8 @@
 			{:else if !tiles.length}
 				<div class="card mx-auto max-w-md p-8 text-center">
 					<span class="mx-auto grid size-11 place-items-center rounded-xl bg-primary-soft text-primary"><VideoOff class="size-5" /></span>
-					<p class="mt-3 text-[14px] font-semibold">No cameras</p>
-					<p class="mt-1 text-[13px] text-muted-foreground">None of your printers has a webcam. Set one up in OctoPrint, or add a stream URL to the server in octo·modern.</p>
+					<p class="mt-3 text-sm font-semibold">No cameras</p>
+					<p class="mt-1 text-[0.8125rem] text-muted-foreground">None of your printers has a webcam. Set one up in OctoPrint, or add a stream URL to the server in octo·modern.</p>
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 gap-3 {opts.layout === 'auto' ? 'sm:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))]' : COLS[String(opts.layout)]}" data-testid="camera-grid">
@@ -277,7 +277,7 @@
 					{/each}
 				</div>
 				{#if without}
-					<p class="text-[11px] text-muted-foreground">{without} printer{without === 1 ? '' : 's'} without a webcam not shown.</p>
+					<p class="text-[0.6875rem] text-muted-foreground">{without} printer{without === 1 ? '' : 's'} without a webcam not shown.</p>
 				{/if}
 			{/if}
 		</div>
@@ -292,6 +292,6 @@
 			<button class="absolute top-1/2 left-3 z-20 grid size-11 -translate-y-1/2 place-items-center rounded-xl bg-black/50 text-white backdrop-blur" aria-label="Previous camera" onclick={() => move(-1)}><ChevronLeft class="size-5" /></button>
 			<button class="absolute top-1/2 right-3 z-20 grid size-11 -translate-y-1/2 place-items-center rounded-xl bg-black/50 text-white backdrop-blur" aria-label="Next camera" onclick={() => move(1)}><ChevronRight class="size-5" /></button>
 		{/if}
-		<span class="pointer-events-none absolute top-4 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1 text-[11px] text-white/60 lg:flex"><Expand class="size-3" />Esc to close · ← → to switch</span>
+		<span class="pointer-events-none absolute top-4 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1 text-[0.6875rem] text-white/60 lg:flex"><Expand class="size-3" />Esc to close · ← → to switch</span>
 	</div>
 {/if}

@@ -40,7 +40,7 @@
 </script>
 
 <div class="rounded-xl border border-border bg-surface/60">
-	<div class="flex items-center gap-2 px-4 py-2.5 text-[12px]">
+	<div class="flex items-center gap-2 px-4 py-2.5 text-xs">
 		<Radar class="size-3.5 text-primary" />
 		<span class="font-medium">Found on this host and network</span>
 		{#if scanning}
@@ -56,12 +56,12 @@
 			{/each}
 		</div>
 		{#if hidden}
-			<p class="border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
+			<p class="border-t border-border px-4 py-2.5 text-[0.6875rem] text-muted-foreground">
 				{hidden} more {hidden === 1 ? 'isn’t' : 'aren’t'} reachable from octo·modern; <b class="font-medium text-foreground">Discover</b> shows why after setup.
 			</p>
 		{/if}
 	{:else if !scanning}
-		<p class="border-t border-border px-4 py-3 text-[12px] text-muted-foreground">
+		<p class="border-t border-border px-4 py-3 text-xs text-muted-foreground">
 			Nothing found automatically. Enter the address below; later, <b class="font-medium text-foreground">Discover</b> can also scan a subnet or read Arcane.
 		</p>
 	{/if}

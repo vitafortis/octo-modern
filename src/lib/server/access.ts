@@ -6,7 +6,7 @@
 import type { Role } from '#lib/types.ts';
 
 /** Pages only admins can open. */
-export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit', '/discover', '/library/sources'];
+export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit', '/discover', '/library/sources', '/notifications'];
 
 /** API calls only admins may make: users, settings, integrations, audit, backups, discovery, and adding/editing servers. */
 export function adminOnlyApi(method: string, path: string): boolean {
@@ -20,6 +20,8 @@ export function adminOnlyApi(method: string, path: string): boolean {
 	if (/^\/api\/printers\/[^/]+\/timelapse$/.test(path)) return method !== 'GET';
 	if (/^\/api\/history\/\d+$/.test(path)) return method === 'DELETE';
 	if (path === '/api/history/import') return true;
+	// Smart plug setup and tests (switching is for operators, see controlApi).
+	if (/^\/api\/printers\/[^/]+\/power\/(config|test)$/.test(path)) return true;
 	return false;
 }
 
@@ -32,6 +34,8 @@ export function controlApi(method: string, path: string): boolean {
 	if (method === 'GET' || method === 'HEAD') return false;
 	// Sending library files to printers (and cancelling sends).
 	if (/^\/api\/library\/(?!sources(\/|$))/.test(path)) return true;
+	// Changing the print queue (handlers check per printer too).
+	if (/^\/api\/queue(\/|$)/.test(path)) return true;
 	return /^\/api\/printers\/[^/]+\/.+/.test(path) && !path.startsWith('/api/printers/test');
 }
 

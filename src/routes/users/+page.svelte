@@ -111,15 +111,15 @@
 
 	<div class="max-w-5xl space-y-5 page-x pb-10">
 		<div class="grid gap-3 md:grid-cols-3">
-			<div class="card p-4 text-[13px]">
+			<div class="card p-4 text-[0.8125rem]">
 				<p class="flex items-center gap-2 font-medium"><ShieldCheck class="size-4 text-primary" />Admin</p>
 				<p class="mt-1 text-xs text-muted-foreground">Everything: add and edit printers, users, single sign-on, settings and backups, plus full printer control.</p>
 			</div>
-			<div class="card p-4 text-[13px]">
+			<div class="card p-4 text-[0.8125rem]">
 				<p class="flex items-center gap-2 font-medium"><Wrench class="size-4 text-primary" />Operator</p>
 				<p class="mt-1 text-xs text-muted-foreground">Runs the printers they can see: start, pause and cancel prints, temperatures, connection, files and G-code. Can't change servers or users.</p>
 			</div>
-			<div class="card p-4 text-[13px]">
+			<div class="card p-4 text-[0.8125rem]">
 				<p class="flex items-center gap-2 font-medium"><Eye class="size-4 text-primary" />Viewer</p>
 				<p class="mt-1 text-xs text-muted-foreground">Watches only: state, progress, temperatures, webcam and history. Never sees API keys or server settings.</p>
 			</div>
@@ -145,9 +145,9 @@
 					{#each users as u (u.id)}
 						<li class="space-y-2.5 px-3 py-3 {u.disabled ? 'opacity-60' : ''}">
 							<div class="flex items-center gap-3">
-								<span class="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-[13px] font-semibold text-primary uppercase">{(u.name ?? u.email).slice(0, 1)}</span>
+								<span class="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-[0.8125rem] font-semibold text-primary uppercase">{(u.name ?? u.email).slice(0, 1)}</span>
 								<div class="min-w-0 flex-1">
-									<p class="truncate text-[14px] font-medium">{u.name ?? u.email}{#if isSelf(u)}<span class="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span>{/if}</p>
+									<p class="truncate text-sm font-medium">{u.name ?? u.email}{#if isSelf(u)}<span class="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span>{/if}</p>
 									<p class="truncate text-xs text-muted-foreground">{#if u.name}{u.email} · {/if}seen {ago(u.lastLoginAt)}</p>
 								</div>
 								{#if !isSelf(u)}
@@ -183,8 +183,8 @@
 					{/each}
 				</ul>
 			{:else}
-				<table class="w-full text-left text-[13px]">
-					<thead class="border-b border-border bg-surface text-[11px] text-muted-foreground">
+				<table class="w-full text-left text-[0.8125rem]">
+					<thead class="border-b border-border bg-surface text-[0.6875rem] text-muted-foreground">
 						<tr>
 							<th class="px-4 py-2 font-medium">User</th>
 							<th class="px-4 py-2 font-medium">Sign-in</th>
@@ -199,10 +199,10 @@
 							<tr class={u.disabled ? 'opacity-50' : ''}>
 								<td class="px-4 py-2.5">
 									<div class="flex items-center gap-2.5">
-										<span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary uppercase">{(u.name ?? u.email).slice(0, 1)}</span>
+										<span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[0.6875rem] font-semibold text-primary uppercase">{(u.name ?? u.email).slice(0, 1)}</span>
 										<div class="min-w-0">
-											<p class="truncate font-medium">{u.name ?? u.email}{#if isSelf(u)}<span class="ml-1.5 text-[11px] font-normal text-muted-foreground">(you)</span>{/if}</p>
-											{#if u.name}<p class="truncate text-[11px] text-muted-foreground">{u.email}</p>{/if}
+											<p class="truncate font-medium">{u.name ?? u.email}{#if isSelf(u)}<span class="ml-1.5 text-[0.6875rem] font-normal text-muted-foreground">(you)</span>{/if}</p>
+											{#if u.name}<p class="truncate text-[0.6875rem] text-muted-foreground">{u.email}</p>{/if}
 										</div>
 									</div>
 								</td>
@@ -292,7 +292,7 @@
 </Dialog>
 
 <Dialog bind:open={() => confirmDelete !== null, (v) => !v && (confirmDelete = null)} title="Delete user?" description="They'll be signed out immediately. Printers are not affected.">
-	<p class="text-[13px]">{confirmDelete?.email}</p>
+	<p class="text-[0.8125rem]">{confirmDelete?.email}</p>
 	{#snippet footer()}
 		<button class="btn btn-secondary" onclick={() => (confirmDelete = null)}>Cancel</button>
 		<button class="btn btn-danger" onclick={() => confirmDelete && remove(confirmDelete)}>Delete</button>
@@ -316,11 +316,11 @@
 		{#if accessMode === 'selected'}
 			<div class="divide-y divide-border rounded-xl border border-border">
 				{#each printers.list as p (p.id)}
-					<label class="flex items-center gap-3 px-3 py-2 text-[13px]">
+					<label class="flex items-center gap-3 px-3 py-2 text-[0.8125rem]">
 						<input type="checkbox" class="size-4 accent-[var(--primary)]" bind:checked={grants[p.id]} />
 						<span class="size-2 shrink-0 rounded-full" style="background:{COLORS[p.color] ?? COLORS.violet}"></span>
 						<span class="min-w-0 flex-1 truncate">{p.name}</span>
-						<span class="truncate font-mono text-[11px] text-muted-foreground">{p.baseUrl.replace(/^https?:\/\//, '')}</span>
+						<span class="truncate font-mono text-[0.6875rem] text-muted-foreground">{p.baseUrl.replace(/^https?:\/\//, '')}</span>
 					</label>
 				{:else}
 					<p class="px-3 py-4 text-center text-xs text-muted-foreground">No printers yet.</p>

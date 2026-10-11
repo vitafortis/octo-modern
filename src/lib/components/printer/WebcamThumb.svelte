@@ -35,6 +35,6 @@
 		{#if shown || ok}
 			<img src={snapshotUrl(printerId, cam.id, stamp)} alt="Webcam" class="h-full w-full object-cover" style:transform={webcamTransform(cam)} onload={() => (ok = true)} onerror={() => (ok = ok ? true : false)} />
 		{/if}
-		<span class="absolute top-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] text-white/90"><Camera class="size-3" />{cam.label}</span>
+		<span class="absolute top-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/50 px-1.5 py-0.5 text-[0.625rem] text-white/90"><Camera class="size-3" />{cam.label}</span>
 	</div>
 {/if}

@@ -1,6 +1,6 @@
 /**
  * Print history: starts the tracker (which records every print from the live state
- * of all printers, see history/tracker.ts) and its notifications, and imports each
+ * of all printers, see history/tracker.ts; notifications hook in from jobs/notify.ts), and imports each
  * printer's earlier prints from OctoPrint once, the first time it's reachable.
  */
 import { defineJob } from '../jobs.ts';
@@ -8,7 +8,6 @@ import { printers } from '../octoprint/manager.ts';
 import { listPrinters } from '../store.ts';
 import { history } from '../history/tracker.ts';
 import { importedAt, importHistory } from '../history/import.ts';
-import { notifyPrintEnded } from '../history/notify.ts';
 
 defineJob({
 	name: 'print-history',
@@ -16,7 +15,6 @@ defineJob({
 	initialDelayMs: 0,
 	run: async () => {
 		history.start();
-		history.ended.add(notifyPrintEnded); // a Set: added once
 		for (const p of listPrinters()) {
 			if (!p.hasApiKey || importedAt(p.id)) continue;
 			const state = printers.snapshot(p.id)?.state;

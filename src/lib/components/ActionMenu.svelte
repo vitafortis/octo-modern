@@ -48,7 +48,7 @@
 			{#each shown as a (a.label)}
 				<button
 					role="menuitem"
-					class="flex min-h-12 items-center gap-3 rounded-lg px-3 text-left text-[15px] transition-colors hover:bg-accent disabled:opacity-45 {a.danger ? 'text-danger' : 'text-foreground'}"
+					class="flex min-h-12 items-center gap-3 rounded-lg px-3 text-left text-[0.9375rem] transition-colors hover:bg-accent disabled:opacity-45 {a.danger ? 'text-danger' : 'text-foreground'}"
 					disabled={a.disabled}
 					onclick={() => run(a)}
 				>

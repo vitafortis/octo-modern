@@ -82,7 +82,13 @@
 		'library.save': 'Saved to library',
 		'library.source.create': 'Added library source',
 		'library.source.update': 'Changed library source',
-		'library.source.delete': 'Removed library source'
+		'library.source.delete': 'Removed library source',
+		'settings.notifications': 'Changed notification settings',
+		'notifications.channel.create': 'Added notification channel',
+		'notifications.channel.update': 'Changed notification channel',
+		'notifications.channel.delete': 'Removed notification channel',
+		'notifications.test': 'Sent test notification',
+		'notifications.log.clear': 'Cleared delivery log'
 	};
 	const GROUPS = [
 		{ value: '', label: 'All actions' },
@@ -125,7 +131,7 @@
 
 		<div class="card overflow-hidden">
 			{#if listLayout.current}
-				<ul class="divide-y divide-border text-[13px]" data-testid="audit-list">
+				<ul class="divide-y divide-border text-[0.8125rem]" data-testid="audit-list">
 					{#each events as e (e.id)}
 						<li class="space-y-1 px-3 py-2.5">
 							<div class="flex items-baseline gap-2">
@@ -137,15 +143,15 @@
 								{#if e.printerName}<span>· {#if printers.list.some((p) => p.id === e.printerId)}<a class="hover:text-primary" href="/p/{e.printerId}">{e.printerName}</a>{:else}{e.printerName}{/if}</span>{/if}
 								{#if e.ip}<span class="font-mono">· {e.ip}</span>{/if}
 							</p>
-							{#if e.detail}<p class="font-mono text-[11px] [overflow-wrap:anywhere] text-muted-foreground">{e.detail}</p>{/if}
+							{#if e.detail}<p class="font-mono text-[0.6875rem] [overflow-wrap:anywhere] text-muted-foreground">{e.detail}</p>{/if}
 						</li>
 					{:else}
 						<li class="px-4 py-10 text-center text-xs text-muted-foreground">{loading ? 'Loading…' : 'Nothing recorded yet.'}</li>
 					{/each}
 				</ul>
 			{:else}
-			<table class="w-full table-fixed text-left text-[13px]">
-				<thead class="border-b border-border bg-surface text-[11px] text-muted-foreground">
+			<table class="w-full table-fixed text-left text-[0.8125rem]">
+				<thead class="border-b border-border bg-surface text-[0.6875rem] text-muted-foreground">
 					<tr>
 						<th class="w-32 px-4 py-2 font-medium">When</th>
 						<th class="w-52 px-4 py-2 font-medium">Who</th>
@@ -162,13 +168,13 @@
 							<td class="px-4 py-2.5 text-xs">
 								<span class={tone(e.action)}>{ACTIONS[e.action] ?? e.action}</span>
 								{#if e.printerName}
-									<p class="truncate text-[11px] text-muted-foreground">
+									<p class="truncate text-[0.6875rem] text-muted-foreground">
 										{#if printers.list.some((p) => p.id === e.printerId)}<a class="hover:text-primary" href="/p/{e.printerId}">{e.printerName}</a>{:else}{e.printerName}{/if}
 									</p>
 								{/if}
 							</td>
-							<td class="px-4 py-2.5 font-mono text-[11px] break-words text-muted-foreground">{e.detail ?? ''}</td>
-							<td class="truncate px-4 py-2.5 font-mono text-[11px] text-muted-foreground">{e.ip ?? ''}</td>
+							<td class="px-4 py-2.5 font-mono text-[0.6875rem] break-words text-muted-foreground">{e.detail ?? ''}</td>
+							<td class="truncate px-4 py-2.5 font-mono text-[0.6875rem] text-muted-foreground">{e.ip ?? ''}</td>
 						</tr>
 					{:else}
 						<tr><td colspan="5" class="px-4 py-10 text-center text-xs text-muted-foreground">{loading ? 'Loading…' : 'Nothing recorded yet.'}</td></tr>

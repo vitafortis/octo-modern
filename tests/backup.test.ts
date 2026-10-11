@@ -62,7 +62,8 @@ test('store export restores on a fresh install with a different master key', () 
 		execFileSync(process.execPath, ['--no-warnings', '--experimental-strip-types', helper, role, mkdtempSync(join(tmpdir(), `ocm-backup-${role}-`)), key, file], {
 			encoding: 'utf8'
 		});
-	run('export', 'master-key-one');
+	const exported = JSON.parse(run('export', 'master-key-one'));
+	assert.equal(exported.thumbnailsWithoutImages, false, 'pictures only when asked for');
 	const out = JSON.parse(run('import', 'master-key-two'));
 
 	assert.deepEqual(out.preview.printers.map((p: { status: string }) => p.status), ['new', 'new']);
@@ -85,4 +86,60 @@ test('store export restores on a fresh install with a different master key', () 
 	assert.equal(out.sso.clientSecret, 'sso-secret-value');
 	assert.equal(out.sso.defaultRole, 'operator');
 	assert.equal(out.localLogin, true);
+
+	// Failure detection: the ML token re-sealed, printer settings back, learned baselines not carried.
+	assert.deepEqual(out.detect.ml, { url: 'http://ml.lan:3333', token: 'ml-secret-token', publicUrl: 'http://octo.lan' });
+	assert.equal(out.detect.mk4.enabled, true);
+	assert.equal(out.detect.mk4.onFailure, 'pause');
+	assert.equal(out.detect.baselines, 0);
+	assert.match(out.detect.preview.detail, /ML API http:\/\/ml\.lan:3333 · with token · 1 printer setting$/);
+
+	// Spools & maintenance: Spoolman's header re-sealed, costs, spool per printer, tasks and log (user remapped).
+	assert.equal(out.filament.preview.spoolman, 'http://spoolman.lan:7912');
+	assert.deepEqual(out.filament.result, { assignments: 1, tasks: 1, log: 1 });
+	assert.equal(out.filament.spoolman.url, 'http://spoolman.lan:7912');
+	assert.equal(out.filament.spoolman.lowThresholdG, 80);
+	assert.equal(out.filament.authValue, 'Bearer spoolman-secret');
+	assert.equal(out.filament.currency, 'EUR');
+	assert.deepEqual(out.filament.assignments, [{ tool: 0, spool_id: 42 }]);
+	assert.deepEqual(out.filament.tasks.map((t: { name: string }) => t.name), ['Nozzle']);
+	assert.deepEqual(out.filament.log, [{ task_name: 'Nozzle', done_by: 'op', user_id: out.operator.id, notes: 'swapped' }]);
+
+	assert.deepEqual(out.filament.benchyCost, [{ filament_g: 12.5, cost_filament: 0.31, material: 'PLA' }], 'history entries keep their cost');
+
+	// Smart plug: back with its credentials, re-sealed with the new key.
+	assert.deepEqual(out.plug, { kind: 'shelly', label: 'Desk plug', secrets: { username: 'admin', password: 'plug-password' }, previewed: 'shelly' });
+
+	// Queue: jobs merged by id, the upload without its file and the printing one come back failed, tags set.
+	assert.deepEqual(out.queue.preview, { jobs: 3, added: 3, tags: 1 });
+	assert.deepEqual(out.queue.result, { added: 3, skipped: 0, tags: 1 });
+	assert.deepEqual(
+		out.queue.jobs.map((j: { name: string; status: string; error: string | null }) => [j.name, j.status, j.error]),
+		[
+			['cube.gcode', 'queued', null],
+			['upload.gcode', 'failed', 'Its uploaded file isn’t in the backup: upload it again'],
+			['busy.gcode', 'failed', 'Was printing when the backup was made']
+		]
+	);
+	assert.ok(out.queue.jobs.every((j: { created_by: string }) => j.created_by === out.operator.id), 'creators mapped to local users');
+	assert.equal(out.queue.runs, 1);
+	assert.deepEqual(out.queue.tags, [{ tags: '["pla","0.4"]' }]);
+
+	// Notifications: secrets re-sealed with the new key, rules still point at their printer and channel.
+	assert.deepEqual(out.notify.channels, [
+		{ name: 'Team chat', type: 'telegram', config: { chatId: '-1001' }, quiet: { enabled: true, start: '22:00', end: '07:00', days: [], allowCritical: true }, secrets: { botToken: '123:telegram-secret' } }
+	]);
+	assert.deepEqual(out.notify.rules, [{ name: 'MK4 failures', printers: [out.notify.mk4Id], events: ['print.failed'], channels: ['Team chat'] }]);
+	assert.equal(out.notify.publicUrl, 'https://octo.example');
+	assert.deepEqual(out.notify.progressPercents, [50]);
+
+	// History: merged (the entry already here kept), pictures restored, an open print closed, users remapped.
+	assert.deepEqual(out.history.previewed, { total: 2, added: 2, images: true }, 'previewed before the local entry was added');
+	assert.deepEqual(out.history.result, { added: 1, skipped: 1 });
+	assert.deepEqual(out.history.again, { added: 0, skipped: 2 }, 'restoring twice adds nothing');
+	assert.deepEqual(out.history.rows.map((r: { file: string; result: string; reason: string | null }) => [r.file, r.result, r.reason]), [
+		['gear.gcode', 'failed', 'lost track'],
+		['benchy.gcode', 'success', null]
+	]);
+	assert.deepEqual(out.history.userIds, [out.operator.id], 'the backup’s user id mapped to the local operator');
 });

@@ -45,7 +45,7 @@
 				class="size-2 shrink-0 rounded-full {candidate.reachable ? 'bg-success shadow-[0_0_6px_var(--success)]' : running ? 'bg-warning' : 'bg-muted-foreground/40'}"
 				title={candidate.reachable ? 'Answers' : running ? 'Not reachable from octo·modern' : 'Not running'}
 			></span>
-			<span class="truncate text-[13px] font-medium" title={candidate.name}>{candidate.name}</span>
+			<span class="truncate text-[0.8125rem] font-medium" title={candidate.name}>{candidate.name}</span>
 		</div>
 		<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 			<SourceBadge source={candidate.source} />
@@ -58,7 +58,7 @@
 			{/if}
 		</div>
 		{#if candidate.container && !compact}
-			<p class="mt-1.5 truncate font-mono text-[11px] text-muted-foreground" title="{candidate.container.image} · {candidate.container.status}">
+			<p class="mt-1.5 truncate font-mono text-[0.6875rem] text-muted-foreground" title="{candidate.container.image} · {candidate.container.status}">
 				{candidate.container.image}{candidate.container.project ? ` · ${candidate.container.project}` : ''}
 			</p>
 		{/if}
@@ -95,7 +95,7 @@
 			<NetworkPathView path={candidate.network} reachable={candidate.reachable} />
 		{/if}
 		{#if candidate.saved?.addressChanged}
-			<div class="mt-2 rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-2 text-[11px]">
+			<div class="mt-2 rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-2 text-[0.6875rem]">
 				<p>
 					Saved as <a class="font-medium text-primary hover:underline" href="/p/{candidate.saved.id}">{candidate.saved.name}</a>
 					on <span class="font-mono">{candidate.saved.baseUrl}</span>{candidate.reachable ? ', but this scan reaches it elsewhere.' : '.'}
@@ -109,7 +109,7 @@
 		{/if}
 		{#if !compact}
 			{#each candidate.notes as note (note)}
-				<p class="mt-1.5 flex items-start gap-1 text-[11px] text-muted-foreground"><CircleAlert class="mt-px size-3 shrink-0" />{note}</p>
+				<p class="mt-1.5 flex items-start gap-1 text-[0.6875rem] text-muted-foreground"><CircleAlert class="mt-px size-3 shrink-0" />{note}</p>
 			{/each}
 		{/if}
 	</div>

@@ -4,7 +4,7 @@
  * in `?tab=<id>`.
  */
 import type { Component } from 'svelte';
-import { Box, Camera, Clapperboard, FolderOpen, History, LayoutDashboard, Move, SquareTerminal } from '@lucide/svelte';
+import { Box, Camera, Clapperboard, FolderOpen, History, LayoutDashboard, ListOrdered, Move, ScanEye, SquareTerminal, Wrench } from '@lucide/svelte';
 import type { LivePrinter } from '#lib/client/live.svelte.ts';
 import type { Printer } from '#lib/types.ts';
 import DashboardTab from './DashboardTab.svelte';
@@ -14,6 +14,9 @@ import TerminalTab from './TerminalTab.svelte';
 import WebcamTab from './WebcamTab.svelte';
 import TimelapseTab from './TimelapseTab.svelte';
 import HistoryTab from './HistoryTab.svelte';
+import DetectionTab from './DetectionTab.svelte';
+import QueueTab from './QueueTab.svelte';
+import MaintenanceTab from './MaintenanceTab.svelte';
 import PreviewTab from './PreviewTab.svelte';
 
 export interface TabProps {
@@ -39,5 +42,8 @@ export const TABS: TabDef[] = [
 	{ id: 'terminal', label: 'Terminal', icon: SquareTerminal, component: TerminalTab },
 	{ id: 'webcam', label: 'Webcam', icon: Camera, component: WebcamTab },
 	{ id: 'timelapse', label: 'Timelapse', icon: Clapperboard, component: TimelapseTab },
-	{ id: 'history', label: 'History', icon: History, component: HistoryTab }
+	{ id: 'history', label: 'History', icon: History, component: HistoryTab },
+	{ id: 'queue', label: 'Queue', icon: ListOrdered, component: QueueTab },
+	{ id: 'detection', label: 'Failure detection', icon: ScanEye, component: DetectionTab },
+	{ id: 'maintenance', label: 'Maintenance', icon: Wrench, component: MaintenanceTab }
 ];

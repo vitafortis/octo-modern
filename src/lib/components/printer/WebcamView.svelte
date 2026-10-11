@@ -60,7 +60,7 @@
 		<div class="grid aspect-video place-items-center rounded-xl border border-dashed border-border bg-surface px-6 text-center {cls}">
 			<div>
 				<VideoOff class="mx-auto size-6 text-muted-foreground" />
-				<p class="mt-2 text-[13px] font-medium">No webcam</p>
+				<p class="mt-2 text-[0.8125rem] font-medium">No webcam</p>
 				<p class="mt-1 text-xs text-muted-foreground">Set one up in OctoPrint (Settings → Webcam & Timelapse), or add a stream URL to this server in octo·modern.</p>
 			</div>
 		</div>
@@ -90,7 +90,7 @@
 				<div class="absolute inset-0 grid place-items-center bg-black/70 text-center text-white">
 					<div>
 						<VideoOff class="mx-auto size-6 opacity-80" />
-						<p class="mt-2 text-[13px]">The stream stopped or couldn’t start.</p>
+						<p class="mt-2 text-[0.8125rem]">The stream stopped or couldn’t start.</p>
 						<button class="btn btn-secondary btn-sm mt-3" onclick={retry}><RefreshCw />Retry</button>
 					</div>
 				</div>
@@ -104,7 +104,7 @@
 			{/if}
 			<div class="absolute inset-0 grid place-items-center text-center text-white">
 				<div>
-					<p class="text-[13px] font-medium">{cam.stream?.toUpperCase()} stream</p>
+					<p class="text-[0.8125rem] font-medium">{cam.stream?.toUpperCase()} stream</p>
 					<p class="mt-1 max-w-xs text-xs opacity-80">octo·modern can only relay MJPEG. Open this camera directly (your browser must be able to reach it).</p>
 					{#if cam.externalUrl}<a class="btn btn-secondary btn-sm mt-3" href={cam.externalUrl} target="_blank" rel="noreferrer"><ExternalLink />Open stream</a>{/if}
 				</div>
@@ -112,7 +112,7 @@
 		{/if}
 
 		<div class="absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/60 to-transparent p-2 text-white">
-			<span class="flex items-center gap-1.5 rounded-md bg-black/40 px-2 py-0.5 text-[11px]">
+			<span class="flex items-center gap-1.5 rounded-md bg-black/40 px-2 py-0.5 text-[0.6875rem]">
 				{#if cam.proxied && src && !failed}<span class="size-1.5 animate-pulse rounded-full bg-red-500"></span>live{:else}<Camera class="size-3" />{cam.label}{/if}
 			</span>
 			{#if list.length > 1}
@@ -121,7 +121,7 @@
 						<button
 							role="tab"
 							aria-selected={c.id === cam.id}
-							class="rounded-md px-2 py-0.5 text-[11px] {c.id === cam.id ? 'bg-white/90 text-black' : 'bg-black/40 text-white hover:bg-black/60'}"
+							class="rounded-md px-2 py-0.5 text-[0.6875rem] {c.id === cam.id ? 'bg-white/90 text-black' : 'bg-black/40 text-white hover:bg-black/60'}"
 							onclick={() => ((camId = c.id), (failed = false))}>{c.label}</button
 						>
 					{/each}

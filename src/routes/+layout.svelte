@@ -3,13 +3,16 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, Cctv } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, Disc3, Wrench, BellRing, Cctv } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
 	import PrinterDialog from '#lib/components/PrinterDialog.svelte';
 	import CommandPalette from '#lib/components/CommandPalette.svelte';
 	import StateDot from '#lib/components/printer/StateDot.svelte';
+	import PowerGlyph from '#lib/components/power/PowerGlyph.svelte';
+	import PowerMenu, { powerMenu } from '#lib/components/power/PowerMenu.svelte';
+	import { plugs } from '#lib/client/power.svelte.ts';
 	import { api } from '#lib/client/api.ts';
 	import { COLORS } from '#lib/client/format.ts';
 	import { editor, isAdmin, pollStatuses, printers, session, setTheme, statuses, theme } from '#lib/client/state.svelte.ts';
@@ -46,14 +49,18 @@
 
 	const nav = $derived([
 		...(single ? [] : [{ href: '/', label: 'Overview', icon: LayoutDashboard }]),
+		{ href: '/queue', label: 'Queue', icon: ListOrdered },
 		{ href: '/library', label: 'Library', icon: LibraryBig },
 		{ href: '/cameras', label: 'Cameras', icon: Cctv },
 		{ href: '/history', label: 'History', icon: History },
+		{ href: '/filament', label: 'Filament', icon: Disc3 },
+		{ href: '/maintenance', label: 'Maintenance', icon: Wrench, badge: data.maintenanceOverdue },
 		...(isAdmin()
 			? [
 					{ href: '/discover', label: 'Discover', icon: Radar },
 					{ href: '/users', label: 'Users', icon: Users },
 					{ href: '/integrations', label: 'Integrations', icon: Plug },
+					{ href: '/notifications', label: 'Notifications', icon: BellRing },
 					{ href: '/audit', label: 'Audit log', icon: ScrollText },
 					{ href: '/settings', label: 'Settings', icon: Settings }
 				]
@@ -149,7 +156,15 @@
 	<a
 		href="/p/{p.id}"
 		title="{p.name} — {s ? STATE_LABEL[s.state] : 'loading'}{pct != null ? ` ${Math.round(pct)}%` : ''}"
-		class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors touch:h-11 touch:text-[15px] {active
+		oncontextmenu={(e) => {
+			// Smart plug: power on/off from the sidebar.
+			if (!plugs[p.id]) return;
+			e.preventDefault();
+			powerMenu.target = { id: p.id, name: p.name, control: !!p.access?.control };
+			powerMenu.x = e.clientX;
+			powerMenu.y = e.clientY;
+		}}
+		class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[0.8125rem] transition-colors touch:h-11 touch:text-[0.9375rem] {active
 			? 'bg-accent text-foreground shadow-surface'
 			: 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}"
 	>
@@ -157,8 +172,9 @@
 		<StateDot state={s?.state} />
 		{#if !collapsed}
 			<span class="min-w-0 flex-1 truncate">{p.name}</span>
+			<PowerGlyph printerId={p.id} />
 			{#if pct != null}
-				<span class="font-mono text-[11px] text-primary tabular-nums">{Math.round(pct)}%</span>
+				<span class="font-mono text-[0.6875rem] text-primary tabular-nums">{Math.round(pct)}%</span>
 			{/if}
 		{/if}
 	</a>
@@ -172,7 +188,7 @@
 				<a href="/" class="flex items-center gap-2.5">
 					<Logo size={26} />
 					{#if !rail}
-						<span class="text-[15px] font-semibold tracking-tight">octo<span class="text-primary">·</span>modern</span>
+						<span class="text-[0.9375rem] font-semibold tracking-tight">octo<span class="text-primary">·</span>modern</span>
 					{/if}
 				</a>
 			</div>
@@ -188,13 +204,20 @@
 					<a
 						href={item.href}
 						title={item.label}
-						class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-colors touch:h-11 touch:text-[15px] {active
+						class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[0.8125rem] font-medium transition-colors touch:h-11 touch:text-[0.9375rem] {active
 							? 'bg-accent text-foreground shadow-surface'
 							: 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}"
 					>
 						{#if active}<span class="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-primary"></span>{/if}
 						<item.icon class="size-4 shrink-0" />
 						{#if !rail}{item.label}{/if}
+						{#if 'badge' in item && item.badge}
+							<span
+								class="{rail ? 'absolute top-1 right-1 size-2 p-0' : 'ml-auto h-4 min-w-4 px-1'} grid place-items-center rounded-full bg-danger text-[0.625rem] leading-none font-semibold text-white tabular-nums"
+								title="{item.badge} overdue maintenance task{item.badge === 1 ? '' : 's'}"
+								data-testid="maintenance-badge">{rail ? '' : item.badge}</span
+							>
+						{/if}
 					</a>
 				{/each}
 			</nav>
@@ -202,7 +225,7 @@
 			{#if !single}
 				<div class="mt-5 flex items-center justify-between px-4 pb-1.5">
 					{#if !rail}
-						<span class="text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Printers</span>
+						<span class="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">Printers</span>
 					{/if}
 					{#if isAdmin()}
 						<button class="btn btn-ghost btn-icon btn-sm -mr-1.5" title="Add printer" onclick={() => (editor.target = 'new')}><Plus /></button>
@@ -242,12 +265,12 @@
 
 			{#if data.viewer && data.auth === 'authenticated' && !rail}
 				<a href="/account" title="My account" class="flex items-center gap-2.5 border-t border-border px-3 py-2.5 transition-colors hover:bg-accent/60">
-					<span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary uppercase">
+					<span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[0.6875rem] font-semibold text-primary uppercase">
 						{(data.viewer.name ?? data.viewer.email).slice(0, 1)}
 					</span>
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-[12px] font-medium">{data.viewer.name ?? data.viewer.email}</p>
-						<p class="truncate text-[11px] text-muted-foreground capitalize">{data.viewer.role}</p>
+						<p class="truncate text-xs font-medium">{data.viewer.name ?? data.viewer.email}</p>
+						<p class="truncate text-[0.6875rem] text-muted-foreground capitalize">{data.viewer.role}</p>
 					</div>
 				</a>
 			{/if}
@@ -263,7 +286,7 @@
 					{#if theme.value === 'dark'}<Sun />{:else}<Moon />{/if}
 				</button>
 				{#if !rail}
-					<span class="ml-1 truncate font-mono text-[11px] text-muted-foreground/70" title="octo·modern version">v{data.version}</span>
+					<span class="ml-1 truncate font-mono text-[0.6875rem] text-muted-foreground/70" title="octo·modern version">v{data.version}</span>
 				{/if}
 				{#if data.auth === 'authenticated'}
 					<button class="btn btn-ghost btn-icon btn-sm {rail ? '' : 'ml-auto'}" title="Sign out" onclick={logout}><LogOut /></button>
@@ -280,11 +303,13 @@
 		<!-- Phones and tablets: a slim bar with the menu, where you are, and search. -->
 		<header class="z-30 shrink-0 border-b border-border bg-surface/95 pt-safe backdrop-blur-md lg:hidden" style="padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)" data-testid="topbar">
 			<div class="flex h-13 items-center gap-1 px-1.5 short:h-11">
-				<button class="btn btn-ghost btn-icon" aria-label="Open menu" aria-expanded={drawerOpen} onclick={() => (drawerOpen = true)}><Menu class="size-5!" /></button>
+				<button class="btn btn-ghost btn-icon relative" aria-label="Open menu" aria-expanded={drawerOpen} onclick={() => (drawerOpen = true)}
+					><Menu class="size-5!" />{#if data.maintenanceOverdue}<span class="absolute top-2 right-2 size-2 rounded-full bg-danger" title="Maintenance overdue"></span>{/if}</button
+				>
 				<a href="/" class="shrink-0 p-1" aria-label="octo·modern home"><Logo size={24} /></a>
 				<div class="flex min-w-0 flex-1 items-center gap-2 pl-1.5">
 					{#if current.color}<StateDot state={current.state} />{/if}
-					<span class="truncate text-[15px] font-semibold tracking-tight" data-testid="topbar-title">{current.title}</span>
+					<span class="truncate text-[0.9375rem] font-semibold tracking-tight" data-testid="topbar-title">{current.title}</span>
 					{#if current.pct != null}<span class="shrink-0 font-mono text-xs text-primary tabular-nums">{Math.round(current.pct)}%</span>{/if}
 				</div>
 				{#if data.viewer}
@@ -301,6 +326,7 @@
 		</main>
 	</div>
 	<PrinterDialog />
+	<PowerMenu />
 	<!-- ⌘K / Ctrl+K: search printers, pages and actions. -->
 	<CommandPalette signedIn={!!data.viewer} ontogglesidebar={toggleSidebar} />
 	<!-- The sidebar as a drawer below lg: a modal dialog, so focus stays inside and Esc closes it. -->

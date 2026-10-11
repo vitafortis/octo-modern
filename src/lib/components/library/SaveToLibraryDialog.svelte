@@ -32,7 +32,7 @@
 			<span class="label">Source</span>
 			<div class="grid gap-1.5 sm:grid-cols-2" role="radiogroup" aria-label="Source">
 				{#each sources as s (s.id)}
-					<button type="button" role="radio" aria-checked={sourceId === s.id} class="flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-[13px] {sourceId === s.id ? 'border-primary/50 bg-primary-soft' : 'border-border hover:bg-accent/50'}" onclick={() => (sourceId = s.id)}>
+					<button type="button" role="radio" aria-checked={sourceId === s.id} class="flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-[0.8125rem] {sourceId === s.id ? 'border-primary/50 bg-primary-soft' : 'border-border hover:bg-accent/50'}" onclick={() => (sourceId = s.id)}>
 						<SourceIcon kind={s.kind} class="size-4 text-primary" />{s.name}
 					</button>
 				{/each}
@@ -41,7 +41,7 @@
 		<div>
 			<label class="label" for="save-folder">Folder (optional)</label>
 			<input id="save-folder" class="input font-mono text-xs" placeholder="e.g. archive/2026" bind:value={folder} />
-			<p class="mt-1 text-[11px] text-muted-foreground">Created if it doesn't exist. The file keeps its name.</p>
+			<p class="mt-1 text-[0.6875rem] text-muted-foreground">Created if it doesn't exist. The file keeps its name.</p>
 		</div>
 	</form>
 	{#snippet footer()}
