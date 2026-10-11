@@ -33,11 +33,17 @@ export async function sendToPrinter(
 	opts: { path: string; printerId: string; printerName: string; folder: string; print: boolean }
 ): Promise<LibrarySend | null> {
 	const req: Record<string, unknown> = { path: opts.path, printerId: opts.printerId, folder: opts.folder, print: opts.print };
-	for (let attempt = 0; attempt < 3; attempt++) {
+	for (let attempt = 0; attempt < 4; attempt++) {
 		try {
 			return await api.post<LibrarySend>(`${base(sourceId)}/send`, req);
 		} catch (err) {
-			const d = err instanceof ApiError ? (err.detail as { exists?: boolean; target?: string; confirmRequired?: boolean } | undefined) : undefined;
+			const d = err instanceof ApiError ? (err.detail as { exists?: boolean; target?: string; confirmRequired?: boolean; filament?: boolean } | undefined) : undefined;
+			if (err instanceof ApiError && err.status === 409 && d?.filament) {
+				const ok = await confirmAction({ title: 'Not enough filament?', body: err.message, confirmLabel: 'Print anyway', danger: true });
+				if (!ok) return null;
+				req.confirmFilament = true;
+				continue;
+			}
 			if (err instanceof ApiError && err.status === 409 && d?.exists) {
 				const ok = await confirmAction({
 					title: `Replace ${d.target}?`,

@@ -64,8 +64,17 @@ export async function deleteEntry(r: PrintRecord): Promise<boolean> {
 export async function reprint(r: PrintRecord, printerName: string): Promise<boolean> {
 	const ok = await confirmAction({ title: `Print ${r.file} again?`, body: `Starts the print on ${printerName} right away.`, detail: `${r.origin === 'sdcard' ? 'SD card' : 'local'}: ${r.path}`, confirmLabel: 'Print' });
 	if (!ok) return false;
+	const url = `/api/printers/${encodeURIComponent(r.printerId)}/files/select`;
+	const body = { origin: r.origin, path: r.path, print: true };
 	try {
-		await api.post(`/api/printers/${encodeURIComponent(r.printerId)}/files/select`, { origin: r.origin, path: r.path, print: true });
+		try {
+			await api.post(url, body);
+		} catch (err) {
+			// The server may ask first (e.g. the active spool won't last).
+			if (!(err instanceof ApiError && err.status === 409 && err.detail?.confirmRequired)) throw err;
+			if (!(await confirmAction({ title: 'Are you sure?', body: err.message, confirmLabel: 'Print anyway', danger: true }))) return false;
+			await api.post(url, { ...body, confirm: true });
+		}
 		toast('success', 'Print started', r.file);
 		return true;
 	} catch (err) {

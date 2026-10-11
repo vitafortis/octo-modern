@@ -13,9 +13,12 @@ import type { PrintRecord } from '#lib/history.ts';
 export type ChannelKind = 'ntfy' | 'discord' | 'webhook';
 export const CHANNEL_KINDS: ChannelKind[] = ['ntfy', 'discord', 'webhook'];
 export type EndResult = 'success' | 'failed' | 'cancelled';
+/** Events besides a print's end: a spool running low (Spoolman), a maintenance task falling due. */
+export type OtherEvent = 'spool.low' | 'maintenance.due';
+export type NotifyEvent = EndResult | OtherEvent;
 
 export interface PrintNotification {
-	event: EndResult | 'test';
+	event: NotifyEvent | 'test';
 	title: string;
 	message: string;
 	printer: { id: string; name: string } | null;
@@ -31,8 +34,8 @@ export interface OutgoingRequest {
 	body: string;
 }
 
-const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test' };
-const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6 };
+const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'spool.low': 'Spool low', 'maintenance.due': 'Maintenance due' };
+const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'spool.low': 0xf59e0b, 'maintenance.due': 0xf59e0b };
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
 
 /** The notification for a finished print. */
@@ -76,7 +79,7 @@ export function buildRequest(kind: ChannelKind, config: Record<string, string>, 
 					title: n.title,
 					message: n.message,
 					priority: n.event === 'failed' ? 4 : 3,
-					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : 'bell', 'octo-modern'],
+					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : n.event === 'spool.low' ? 'thread' : n.event === 'maintenance.due' ? 'wrench' : 'bell', 'octo-modern'],
 					...(n.url ? { click: n.url } : {})
 				})
 			};
@@ -145,7 +148,7 @@ interface StoredChannel {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: NotifyEvent[];
 	config: Record<string, string>;
 	sealed: string | null;
 	lastError: string | null;
@@ -164,7 +167,7 @@ export interface ChannelInfo {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: NotifyEvent[];
 	config: Record<string, string>;
 	secrets: Record<string, string>;
 	lastError: string | null;
@@ -181,7 +184,7 @@ export function listChannels(): ChannelInfo[] {
 	});
 }
 
-const RESULTS: EndResult[] = ['success', 'failed', 'cancelled'];
+const RESULTS: NotifyEvent[] = ['success', 'failed', 'cancelled', 'spool.low', 'maintenance.due'];
 
 /**
  * Replaces the channel list. A secret field left out (or empty) keeps the stored value
@@ -262,6 +265,36 @@ export async function notifyPrintEnded(r: PrintRecord): Promise<void> {
 		targets.map(async (c) => {
 			try {
 				await deliver(c.kind, c.config, secretsOf(c), n);
+				record(c.id, null);
+			} catch (err) {
+				record(c.id, (err as Error).message);
+				console.warn(`[octo-modern] notification via ${c.name} failed: ${(err as Error).message}`);
+			}
+		})
+	);
+}
+
+/**
+ * Notifies every enabled channel subscribed to `event` (spool.low, maintenance.due). `path`
+ * is a link into octo·modern (e.g. `/maintenance`), made absolute with the known address. Never throws.
+ */
+export async function notifyEvent(event: OtherEvent, n: { title: string; message: string; printer: { id: string; name: string } | null; path?: string }): Promise<void> {
+	const s = load();
+	const targets = s.channels.filter((c) => c.enabled && c.on.includes(event));
+	if (!targets.length) return;
+	const note: PrintNotification = {
+		event,
+		title: n.title,
+		message: n.message,
+		printer: n.printer,
+		print: null,
+		at: new Date().toISOString(),
+		url: s.publicUrl && n.path ? `${trimSlash(s.publicUrl)}${n.path}` : null
+	};
+	await Promise.all(
+		targets.map(async (c) => {
+			try {
+				await deliver(c.kind, c.config, secretsOf(c), note);
 				record(c.id, null);
 			} catch (err) {
 				record(c.id, (err as Error).message);

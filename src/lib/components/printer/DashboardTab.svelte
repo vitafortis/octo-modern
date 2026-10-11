@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Box, CircleAlert, Gauge, Radio } from '@lucide/svelte';
 	import JobCard from './JobCard.svelte';
+	import SpoolCard from './SpoolCard.svelte';
 	import TemperatureCard from './TemperatureCard.svelte';
 	import WebcamView from './WebcamView.svelte';
 	import { ago } from '#lib/client/format.ts';
@@ -23,6 +24,7 @@
 	</div>
 	<div class="space-y-4">
 		<JobCard {live} {canControl} />
+		<SpoolCard {printer} {live} {canControl} />
 		<section class="card p-4 text-[13px]">
 			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Gauge class="size-4 text-primary" />Server</h2>
 			<dl class="mt-3 space-y-2">

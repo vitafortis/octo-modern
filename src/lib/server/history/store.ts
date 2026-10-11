@@ -9,7 +9,7 @@ type Row = Record<string, unknown>;
 const db = () => sqlite();
 
 const COLUMNS =
-	'id, printer_id, printer_name, file_name, file_path, origin, started_at, ended_at, duration_s, result, reason, filament_mm, estimated_s, completion, user_id, started_by, octoprint_user, source, notes, thumbnail IS NOT NULL AS has_thumb';
+	'id, printer_id, printer_name, file_name, file_path, origin, started_at, ended_at, duration_s, result, reason, filament_mm, estimated_s, completion, user_id, started_by, octoprint_user, source, notes, filament_g, material, cost_filament, cost_energy, thumbnail IS NOT NULL AS has_thumb';
 
 function toRecord(r: Row): PrintRecord {
 	const n = (v: unknown) => (typeof v === 'number' ? v : null);
@@ -33,7 +33,12 @@ function toRecord(r: Row): PrintRecord {
 		octoprintUser: s(r.octoprint_user),
 		source: r.source === 'import' ? 'import' : 'live',
 		hasThumbnail: Number(r.has_thumb) === 1,
-		notes: s(r.notes)
+		notes: s(r.notes),
+		filamentG: n(r.filament_g),
+		material: s(r.material),
+		costFilament: n(r.cost_filament),
+		costEnergy: n(r.cost_energy),
+		cost: r.cost_filament == null && r.cost_energy == null ? null : (n(r.cost_filament) ?? 0) + (n(r.cost_energy) ?? 0)
 	};
 }
 
@@ -102,7 +107,13 @@ const PATCHABLE = {
 	notes: 'notes',
 	octoprintUser: 'octoprint_user',
 	userId: 'user_id',
-	startedBy: 'started_by'
+	startedBy: 'started_by',
+	filamentG: 'filament_g',
+	material: 'material',
+	costFilament: 'cost_filament',
+	costEnergy: 'cost_energy',
+	costSource: 'cost_source',
+	pricePerKg: 'price_per_kg'
 } as const;
 
 export function updatePrint(id: number, patch: Partial<Record<keyof typeof PATCHABLE, string | number | null>>) {

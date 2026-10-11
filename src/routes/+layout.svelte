@@ -3,7 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Disc3, Wrench } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -46,6 +46,8 @@
 		...(single ? [] : [{ href: '/', label: 'Overview', icon: LayoutDashboard }]),
 		{ href: '/library', label: 'Library', icon: LibraryBig },
 		{ href: '/history', label: 'History', icon: History },
+		{ href: '/filament', label: 'Filament', icon: Disc3 },
+		{ href: '/maintenance', label: 'Maintenance', icon: Wrench, badge: data.maintenanceOverdue },
 		...(isAdmin()
 			? [
 					{ href: '/discover', label: 'Discover', icon: Radar },
@@ -134,6 +136,13 @@
 						{#if active}<span class="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-primary"></span>{/if}
 						<item.icon class="size-4 shrink-0" />
 						{#if !collapsed}{item.label}{/if}
+						{#if 'badge' in item && item.badge}
+							<span
+								class="{collapsed ? 'absolute top-1 right-1 size-2 p-0' : 'ml-auto h-4 min-w-4 px-1'} grid place-items-center rounded-full bg-danger text-[10px] leading-none font-semibold text-white tabular-nums"
+								title="{item.badge} overdue maintenance task{item.badge === 1 ? '' : 's'}"
+								data-testid="maintenance-badge">{collapsed ? '' : item.badge}</span
+							>
+						{/if}
 					</a>
 				{/each}
 			</nav>

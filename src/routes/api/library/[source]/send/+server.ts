@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { BadRequest, body, Forbidden, handler } from '#lib/server/http.ts';
 import { confirmRequired, controlTarget, currentState } from '#lib/server/control.ts';
-import { requireSource, sourceAllowsPrinter } from '#lib/server/library/service.ts';
+import { fileMeta, requireSource, sourceAllowsPrinter } from '#lib/server/library/service.ts';
+import { filamentWarning, needFromMeta, wantsFilamentCheck } from '#lib/server/spools/check.ts';
 import { cleanFolder, octoprintHas, startSend } from '#lib/server/library/send.ts';
 import { baseName, cleanRelPath, joinPath } from '#lib/library.ts';
 import { STATE_LABEL } from '#lib/printer.ts';
@@ -11,7 +12,9 @@ import type { RequestHandler } from './$types';
  * Sends a file to a printer: `{ path, printerId, folder?, print?, overwrite?, confirm? }`.
  * Answers 409 `{ exists: true }` when the printer already has a file of that name
  * (resend with `overwrite: true`), and 409 `confirmRequired` when printing was asked
- * for but the printer can't start now (resend with `confirm: true` to just upload).
+ * for but the printer can't start now (resend with `confirm: true` to just upload), and
+ * 409 `{ confirmRequired, filament: true }` when an active Spoolman spool won't last the
+ * print (resend with `confirmFilament: true` to print anyway).
  * Otherwise 202 with the transfer; poll /api/library/sends/<id>.
  */
 export const POST: RequestHandler = handler(async ({ locals, params, request }) => {
@@ -42,6 +45,11 @@ export const POST: RequestHandler = handler(async ({ locals, params, request }) 
 			}
 			print = false;
 		}
+	}
+	if (print && b.confirmFilament !== true && wantsFilamentCheck(printer.id)) {
+		const meta = await fileMeta(src, path).catch(() => null);
+		const warning = meta ? await filamentWarning(printer.id, needFromMeta(meta.meta)) : null;
+		if (warning) return json({ message: warning, confirmRequired: true, filament: true }, { status: 409 });
 	}
 	const send = await startSend(locals, { src, path, printer, client, folder, print });
 	return json(send, { status: 202 });

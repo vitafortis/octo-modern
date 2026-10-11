@@ -4,5 +4,6 @@
  */
 import './printer-status.ts';
 import './history.ts';
+import './spools.ts';
 
 export {};
