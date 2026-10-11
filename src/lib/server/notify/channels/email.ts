@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import nodemailer from 'nodemailer';
 import { plainBody, type ChannelAdapter } from './adapter.ts';
 import { DeliveryError, escapeHtml, imageName } from './http.ts';
@@ -30,7 +31,7 @@ export function transportOptions(config: Record<string, string>, secrets: Record
 		requireTLS: security === 'starttls',
 		ignoreTLS: security === 'none',
 		auth: config.username ? { user: config.username, pass: secrets.password ?? '' } : undefined,
-		tls: { rejectUnauthorized: config.allowSelfSigned !== 'true', servername: config.host },
+		tls: { rejectUnauthorized: config.allowSelfSigned !== 'true', ...(isIP(config.host) ? {} : { servername: config.host }) },
 		connectionTimeout: 10_000,
 		greetingTimeout: 10_000,
 		socketTimeout: 15_000
