@@ -6,10 +6,11 @@ import { gotify } from './gotify.ts';
 import { homeassistant } from './homeassistant.ts';
 import { matrix } from './matrix.ts';
 import { ntfy } from './ntfy.ts';
+import { push } from './push.ts';
 import { pushover } from './pushover.ts';
 import { slack } from './slack.ts';
 import { telegram } from './telegram.ts';
 import { webhook } from './webhook.ts';
 
-export const ADAPTERS: Record<ChannelType, ChannelAdapter> = { ntfy, discord, slack, telegram, pushover, gotify, matrix, email, homeassistant, webhook };
+export const ADAPTERS: Record<ChannelType, ChannelAdapter> = { ntfy, discord, slack, telegram, pushover, gotify, matrix, email, homeassistant, webhook, push };
 export type { ChannelAdapter, SendContext } from './adapter.ts';

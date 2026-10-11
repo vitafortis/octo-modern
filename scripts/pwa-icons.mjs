@@ -6,6 +6,8 @@
 //   static/icon-192.png, icon-512.png      the rounded tile on transparent ("any")
 //   static/icon-maskable-512.png           full-bleed, the mark inside the safe zone (Android)
 //   static/apple-touch-icon.png (180)      full-bleed square; iOS rounds the corners itself
+//   static/badge-96.png                    the white mark alone on transparent: Android's status-bar
+//                                          badge for push notifications (only the alpha is used)
 import { join, resolve } from 'node:path';
 import { chromium } from 'playwright';
 
@@ -27,12 +29,16 @@ const tile = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 const bleed = (scale) =>
 	`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${DEFS}<rect width="32" height="32" fill="url(#f)"/><rect width="32" height="32" fill="url(#s)"/><g transform="translate(16 16) scale(${scale}) translate(-16 -15.2)">${MARK}</g></svg>`;
 
+/** The mark alone, white on transparent, for the notification badge. */
+const badge = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><g transform="translate(16 16) scale(1.08) translate(-16 -15.2)">${MARK}</g></svg>`;
+
 const icons = [
 	{ file: 'icon-192.png', size: 192, svg: tile() },
 	{ file: 'icon-512.png', size: 512, svg: tile() },
 	// Android crops maskable icons to as little as the inner 80% circle.
 	{ file: 'icon-maskable-512.png', size: 512, svg: bleed(0.62) },
-	{ file: 'apple-touch-icon.png', size: 180, svg: bleed(0.78) }
+	{ file: 'apple-touch-icon.png', size: 180, svg: bleed(0.78) },
+	{ file: 'badge-96.png', size: 96, svg: badge() }
 ];
 
 const browser = await chromium.launch();

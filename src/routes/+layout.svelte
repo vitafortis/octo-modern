@@ -318,11 +318,12 @@
 				{/if}
 			</div>
 		</header>
-		<aside class="hidden shrink-0 lg:flex flex-col border-r border-border bg-surface transition-[width] duration-200 {collapsed ? 'w-14' : 'w-64'}">
+		<!-- Tablets in landscape as a home-screen app: clear of the status bar and the home indicator. -->
+		<aside class="hidden shrink-0 lg:flex flex-col border-r border-border bg-surface pt-safe pb-[env(safe-area-inset-bottom)] transition-[width] duration-200 {collapsed ? 'w-14' : 'w-64'}">
 			{@render sidebar(collapsed, false)}
 		</aside>
 
-		<main class="relative min-w-0 flex-1 overflow-hidden">
+		<main class="relative min-w-0 flex-1 overflow-hidden lg:pt-safe">
 			{@render children()}
 		</main>
 	</div>

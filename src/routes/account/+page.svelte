@@ -3,6 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { KeyRound, LoaderCircle, Lock, Save, UserRound } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import PushDevices from '#lib/components/notify/PushDevices.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { toast } from '#lib/client/state.svelte.ts';
 	import type { PageProps } from './$types';
@@ -47,8 +48,8 @@
 <svelte:head><title>My account · octo·modern</title></svelte:head>
 
 <div class="h-full overflow-y-auto">
-	<PageHeader title="My account" description="Your profile and how you sign in." />
-	<form class="max-w-2xl space-y-5 page-x pb-10" onsubmit={saveProfile}>
+	<PageHeader title="My account" description="Your profile, how you sign in, and notifications on your devices." />
+	<form class="max-w-2xl space-y-5 page-x pb-5" onsubmit={saveProfile}>
 		<section class="card p-5">
 			<h2 class="flex items-center gap-2 text-sm font-semibold"><UserRound class="size-4 text-primary" />Profile</h2>
 			<div class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -89,4 +90,7 @@
 			<button class="btn btn-primary" disabled={busy}>{#if busy}<LoaderCircle class="animate-spin" />{:else}<Save />{/if}Save</button>
 		</div>
 	</form>
+	<div class="max-w-2xl page-x pb-10">
+		<PushDevices admin={data.user.role === 'admin'} />
+	</div>
 </div>
