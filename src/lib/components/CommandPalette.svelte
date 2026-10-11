@@ -28,14 +28,15 @@
 	let active = $state(0);
 
 	function show() {
-		loadRecents();
-		query = '';
-		active = 0;
 		palette.open = true;
 	}
 
+	// Opened by the shortcut or from elsewhere (the search button in the phone top bar).
 	$effect(() => {
 		if (palette.open && dialog && !dialog.open) {
+			loadRecents();
+			query = '';
+			active = 0;
 			dialog.showModal();
 			queueMicrotask(() => input?.focus());
 		} else if (!palette.open && dialog?.open) dialog.close();
@@ -174,7 +175,7 @@
 	onclose={() => (palette.open = false)}
 	onclick={(e) => e.target === dialog && (palette.open = false)}
 	aria-label="Command palette"
-	class="mx-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-2xl border border-border bg-card p-0 text-card-foreground shadow-surface-lg backdrop:bg-black/40 backdrop:backdrop-blur-[2px] open:animate-[pop_.12s_ease-out]"
+	class="mx-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-2xl border border-border bg-card p-0 text-card-foreground shadow-surface-lg backdrop:bg-black/40 backdrop:backdrop-blur-[2px] open:animate-[pop_.12s_ease-out] max-sm:m-0 max-sm:h-(--app-h,100dvh) max-sm:max-h-none max-sm:w-full max-sm:max-w-none max-sm:rounded-none max-sm:border-0 max-sm:open:flex max-sm:open:flex-col max-sm:pt-[env(safe-area-inset-top)]"
 >
 	{#if palette.open}
 		<div class="flex items-center gap-2.5 border-b border-border px-4">
@@ -183,7 +184,7 @@
 				bind:this={input}
 				bind:value={query}
 				{onkeydown}
-				class="h-12 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground/70"
+				class="h-12 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground/70 touch:h-14 touch:text-base"
 				placeholder="Search printers, pages and actions…"
 				role="combobox"
 				aria-expanded="true"
@@ -193,8 +194,9 @@
 				spellcheck="false"
 			/>
 			<span class="kbd">esc</span>
+			<button class="btn btn-ghost -mr-2 px-3 mouse:hidden" onclick={() => (palette.open = false)}>Cancel</button>
 		</div>
-		<div bind:this={list} id="palette-list" role="listbox" class="max-h-[min(26rem,60vh)] overflow-y-auto p-1.5">
+		<div bind:this={list} id="palette-list" role="listbox" class="max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain p-1.5 max-sm:max-h-none max-sm:min-h-0 max-sm:flex-1 max-sm:pb-[max(0.375rem,env(safe-area-inset-bottom))]">
 			{#each sections as s, si (si)}
 				{#if s.title}<p class="px-2.5 pt-2 pb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{s.title}</p>{/if}
 				{#each s.rows as r (r.item.key)}
@@ -204,7 +206,7 @@
 						data-index={r.index}
 						role="option"
 						aria-selected={r.index === active}
-						class="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left {r.index === active ? 'bg-accent text-foreground' : 'text-foreground/90'}"
+						class="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left touch:min-h-12 {r.index === active ? 'bg-accent text-foreground' : 'text-foreground/90'}"
 						onmousemove={() => (active = r.index)}
 						onclick={() => choose(r)}
 					>
@@ -220,7 +222,7 @@
 				<p class="px-3 py-8 text-center text-xs text-muted-foreground">Nothing matches “{query}”.</p>
 			{/each}
 		</div>
-		<div class="flex items-center gap-3 border-t border-border bg-surface px-3 py-2 text-[11px] text-muted-foreground">
+		<div class="flex items-center gap-3 border-t border-border bg-surface px-3 py-2 text-[11px] text-muted-foreground touch:hidden">
 			<span class="flex items-center gap-1"><span class="kbd">↑</span><span class="kbd">↓</span>navigate</span>
 			<span class="flex items-center gap-1"><span class="kbd">↵</span>open</span>
 		</div>

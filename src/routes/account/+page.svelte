@@ -48,7 +48,7 @@
 
 <div class="h-full overflow-y-auto">
 	<PageHeader title="My account" description="Your profile and how you sign in." />
-	<form class="max-w-2xl space-y-5 px-8 pb-10" onsubmit={saveProfile}>
+	<form class="max-w-2xl space-y-5 page-x pb-10" onsubmit={saveProfile}>
 		<section class="card p-5">
 			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><UserRound class="size-4 text-primary" />Profile</h2>
 			<div class="mt-4 grid gap-3 sm:grid-cols-2">

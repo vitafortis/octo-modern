@@ -3,6 +3,9 @@
 @import '@fontsource-variable/geist-mono';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+/* Touch screens (phones, tablets): bigger targets, no keyboard hints. `touch:hidden`, `touch:h-11`… */
+@custom-variant touch (@media (pointer: coarse));
+@custom-variant mouse (@media (pointer: fine));
 
 /* Palette follows Arcane: a violet primary (hue 292) over faintly violet-tinted neutrals. */
 :root {
@@ -226,5 +229,88 @@
 	}
 	.mask-fade {
 		mask-image: radial-gradient(80% 70% at 50% 0, #000 30%, transparent 75%);
+	}
+}
+
+/* Page gutters: 16 px on phones (and clear of the notch in landscape), 24 px on tablets, 32 px on desktop. */
+@utility page-x {
+	padding-left: max(1rem, env(safe-area-inset-left));
+	padding-right: max(1rem, env(safe-area-inset-right));
+	@media (width >= 40rem) {
+		padding-left: max(1.5rem, env(safe-area-inset-left));
+		padding-right: max(1.5rem, env(safe-area-inset-right));
+	}
+	@media (width >= 64rem) {
+		padding-left: 2rem;
+		padding-right: 2rem;
+	}
+}
+@utility pb-safe {
+	padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+}
+@utility pt-safe {
+	padding-top: env(safe-area-inset-top);
+}
+@utility scrollbar-none {
+	scrollbar-width: none;
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+/*
+ * Touch screens. Unlayered, so it wins over the h-7/h-8/text-xs utilities that dense desktop
+ * toolbars use: every button and field is at least 44 px tall, and fields use 16 px text so
+ * iOS doesn't zoom in when one is focused.
+ */
+@media (pointer: coarse) {
+	.btn {
+		min-height: 2.75rem;
+	}
+	.btn-icon {
+		min-width: 2.75rem;
+	}
+	.input {
+		min-height: 2.75rem;
+		font-size: 16px;
+	}
+	textarea.input {
+		min-height: 2.75rem;
+	}
+	.range {
+		height: 0.5rem;
+	}
+	.range::-webkit-slider-thumb {
+		width: 1.75rem;
+		height: 1.75rem;
+	}
+	.range::-moz-range-thumb {
+		width: 1.75rem;
+		height: 1.75rem;
+	}
+	.kbd,
+	.kbd-hint {
+		display: none !important;
+	}
+	/* Segmented controls and chips that aren't .btn. */
+	.tap {
+		min-height: 2.75rem;
+	}
+}
+
+html {
+	-webkit-tap-highlight-color: transparent;
+	-webkit-text-size-adjust: 100%;
+}
+
+/* Phones: dialogs become sheets that slide up from the bottom edge. */
+@keyframes sheet-up {
+	from {
+		transform: translateY(100%);
+	}
+}
+@keyframes drawer-in {
+	from {
+		transform: translateX(-100%);
 	}
 }
