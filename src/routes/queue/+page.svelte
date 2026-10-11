@@ -42,7 +42,7 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="space-y-6 px-4 pb-10 sm:px-8">
+	<div class="page-x space-y-6 pb-10">
 		{#if queue.paused}
 			<div class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-2.5 text-[13px]">
 				<CirclePause class="size-4 shrink-0 text-warning" />

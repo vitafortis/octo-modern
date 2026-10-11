@@ -23,6 +23,8 @@
 - **Jobs**: print, pause, resume, restart and cancel. Cancelling always asks first, from the dashboard, the printer header or the overview card.
 - **Files**: browse OctoPrint's storage and the SD card with folders, sizes, upload dates, estimated print time, filament and the last print's outcome (and slicer thumbnails, if a thumbnail plugin provides them). Search and sort, drag and drop G-code to upload with progress, "print after upload", print or load any file, create folders, and delete (with confirmation). Uploads stream through octo·modern to OctoPrint without being held in memory, so files of hundreds of megabytes are fine.
 - **Library**: print G-code straight from your NAS (a mounted NFS/SMB share, SMB, SFTP or WebDAV). Browse and search it with slicer thumbnails, print time and filament read from each file, then send it to any printer, or send and print, streamed without a copy in between. See [Library](#library-print-from-your-nas).
+- **Print queue**: one queue for every printer. Add jobs from the library, a printer's files or an upload, for a specific printer or "any compatible printer" (free-form tags such as `0.4mm`, `petg`); drag or use the arrows to reorder, set copies, pause. A printer takes the next job when it's idle and someone has confirmed its **bed is clear**, which it asks for after every print (with a notification); a failed or cancelled queued print pauses that printer. See [Print queue](#print-queue).
+- **Slicer uploads**: PrusaSlicer, OrcaSlicer and Cura can send G-code to octo·modern as if it were an OctoPrint server, with an upload key that decides where it goes: the queue, a library folder, or one printer. See [Slicer uploads](#slicer-uploads).
 - **Webcams**: the live MJPEG stream on the dashboard (with fullscreen) and its own tab, relayed by octo·modern so it works wherever octo·modern does, even when the camera is on a LAN address the browser can't reach. Several cameras per printer get a switcher; flip and rotation follow OctoPrint's settings; HLS and WebRTC cameras get an "Open stream" link.
 - **Control**: jog X/Y/Z in 0.1–100 mm steps (buttons or arrow keys, Page Up/Down and Home while the pad has focus), home, motors off, feed and flow rate overrides, part fan, extrude/retract and tool select. It follows the printer profile (axis inversion, build volume, extruder count, heated bed/chamber) and shows OctoPrint's custom controls (sections, commands, scripts, sliders and inputs, feedback lines). Movement is refused while a print runs, by the server too; jogs are coalesced in the audit log.
 - **Terminal**: the live serial log (virtualized, follows the bottom until you scroll up), filters for temperature reports, `ok`, SD status, `wait` and `busy`, search with highlighting, clear and copy. A G-code prompt with multi-line send, history (↑/↓, kept per user and printer), autocomplete with short descriptions, optional uppercasing, and an emergency stop button.
@@ -151,6 +153,9 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Upload, print and delete files | ✓ | ✓ | |
 | Browse the library | ✓ | ✓ | ✓ |
 | Send library files to printers, save printer files to the library | ✓ | ✓ | |
+| Watch the print queue | ✓ | ✓ | ✓ |
+| Add, reorder and remove queued jobs, pause the queue, confirm a bed is clear | ✓ | ✓ | |
+| Printer tags (for the queue), slicer upload keys | ✓ | | |
 | Watch the print history and timelapses, export CSV | ✓ | ✓ | ✓ |
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
 | Timelapse settings, delete history entries, import history, notifications | ✓ | | |
@@ -247,7 +252,7 @@ A print shorter than one poll interval, started and finished while nobody watche
 
 **Importing**: the first time a printer is reachable, octo·modern imports its earlier prints once: every print the [PrintJobHistory](https://plugins.octoprint.org/plugins/PrintJobHistory/) plugin recorded, if it's installed, otherwise the last print of each file from OctoPrint's file statistics (OctoPrint counts a cancel as a failure there, so those come in as failed). Admins can import again from the History page; prints already recorded aren't duplicated.
 
-**Notifications**: admins add channels under **History → Notifications**: [ntfy](https://ntfy.sh) (topic, optional token), a Discord webhook, or a generic webhook, each for finished, failed and/or cancelled prints, with a test button. Webhook URLs and tokens are stored encrypted. A generic webhook receives a JSON `POST`:
+**Notifications**: admins add channels under **History → Notifications**: [ntfy](https://ntfy.sh) (topic, optional token), a Discord webhook, or a generic webhook, each for finished, failed and/or cancelled prints (and the print queue's **clear the bed** prompt, event `queue.bed_clear_needed`), with a test button. Webhook URLs and tokens are stored encrypted. A generic webhook receives a JSON `POST`:
 
 ```json
 {
@@ -266,15 +271,50 @@ A print shorter than one poll interval, started and finished while nobody watche
 
 The **Timelapse** tab lists OctoPrint's rendered timelapses with their thumbnails, plays them in the browser and downloads them. octo·modern relays the videos with HTTP Range requests passed through, so the player can seek without downloading the whole file, and the browser never needs to reach OctoPrint. Operators delete timelapses and render or delete unrendered ones; admins change the settings (off, on each layer change, or timed; frame rate, interval, post-roll). OctoPrint needs a webcam snapshot URL and ffmpeg to record timelapses (the `octoprint/octoprint` image has ffmpeg).
 
+## Print queue
+
+**Queue** (in the sidebar) holds prints waiting for a printer; each printer's **Queue** tab shows the jobs it could take.
+
+- **Adding jobs**: **Add job** on the Queue page (from the library, or upload a file, which octo·modern keeps in its data folder until the job is removed), **Add to queue** on a library file, or the queue button on a file in a printer's **Files** tab (that file prints on that printer only). Slicers can add jobs too ([Slicer uploads](#slicer-uploads)).
+- **Which printer**: a job targets one printer, or **any compatible printer**: one whose tags include every tag the job requires. Admins set each printer's tags on the Queue page (free-form, e.g. `0.4mm`, `petg`, `bed:300`). Jobs added by an operator who only sees some printers only go to those.
+- **Order and copies**: drag a job (or use the up/down arrows; on phones, the ⋯ menu) to reorder; set how many copies to print. Copies print one after another, each needing a clear bed.
+- **Bed is clear**: every print, queued or not, leaves the printer **awaiting bed clear**; nothing more is sent to it until someone confirms with **Bed is clear** (on the overview card, the printer page or the Queue page). Printers start out unconfirmed. When jobs are waiting, a `queue.bed_clear_needed` notification goes to channels subscribed to **Queue: clear the bed** (History → Notifications). A button or automation next to the printer can confirm too: `POST /api/status/<printer id>/bed-clear` with a status token created with **May confirm bed clear**.
+- **Dispatch**: every few seconds (and right after a change), each printer that's connected, idle, not paused and confirmed clear takes the first matching job. Library and uploaded files are transferred first unless the printer already has a file of that name and size; then octo·modern selects and prints it, crediting the person who queued it in the history.
+- **Failures**: if a queued print fails or is cancelled, or can't be started, the job is marked failed (with **Requeue**, which puts it at the end) and that printer's queue is paused until someone resumes it. **Pause queue** stops all new starts; running prints carry on.
+- **History**: each run of a job is linked to its print history entry. The queue and every printer's state are kept in the database, so a restart picks up where it left off.
+
+## Slicer uploads
+
+octo·modern answers enough of OctoPrint's API for slicers to upload to it: `GET /api/version`, `GET /api/server`, `POST /api/files/local` (multipart, honouring `print`/`select` and `path`), plus the read-only settings, printer profile, printer, job and connection answers Cura's plugin polls. It lives under **`/octoprint`**, so the slicer's host is
+
+```
+http://<octo·modern host>:3040/octoprint
+```
+
+(octo·modern's own `/api/…` is a different, session-only API; the prefix keeps the two apart.)
+
+1. Under **Integrations → Slicer upload keys** (admins), create a key and choose where its uploads go:
+   - **The print queue**: a job for a chosen printer, or for any printer with the tags you give (e.g. a "PETG" key);
+   - **A library folder**: a folder in a *writable* library source (the slicer's subfolder, if any, goes below it);
+   - **A printer**: straight into its OctoPrint, optionally allowed to start the print ("Upload and print").
+2. Copy the key (shown once). It is an `ocm_…` token with scope `upload`; it opens `/octoprint/api/…` and nothing else, and can expire or be revoked like other tokens.
+3. Add octo·modern in the slicer:
+   - **PrusaSlicer**: Printer settings → Physical printer (the cog next to the printer) → Host type **OctoPrint**, Hostname/IP/URL `http://octo-modern.lan:3040/octoprint`, API key = the key → **Test**. Then **Send to print host** (or *Upload and print*).
+   - **OrcaSlicer**: the printer's **Connection** (Wi-Fi icon next to the printer) → Host type **Octo/Klipper**, Hostname/IP/URL `http://octo-modern.lan:3040/octoprint`, API key = the key → **Test** → **OK**. Use **Print** / **Send** on the Prepare/Preview tab.
+   - **Cura**: Marketplace → install **OctoPrint Connection** → Preferences → Printers → **Connect OctoPrint** → **Add** a manual instance: Name *octo·modern*, IP address or hostname `octo-modern.lan`, Port `3040`, Path `/octoprint/`; paste the key into **API key** (if Cura refuses the underscore, paste it without `ocm_`), then **Connect**. **Print with OctoPrint** uploads (Cura asks to start the print; only keys for a printer that may start prints do).
+
+Keys are letters and digits after `ocm_`, and octo·modern also accepts them without the prefix. An upload with *Upload and print* to the queue or library just stores the file (the queue starts it when a printer is ready).
+
 ## Dashboards and monitoring
 
-Create a token under **Integrations → Status API tokens** (admins). It's shown once; only its SHA-256 is stored. Tokens can expire, can be revoked, and record when they were last used. They open these routes only, and only for `GET`. They're never accepted as a session anywhere else.
+Create a token under **Integrations → Status API tokens** (admins). It's shown once; only its SHA-256 is stored. Tokens can expire, can be revoked, and record when they were last used. They open these routes only, and only for `GET` (plus the bed-clear `POST` for tokens allowed to). They're never accepted as a session anywhere else.
 
 | Route | Returns |
 | --- | --- |
 | `GET /api/status` | `{ printers, online, printing, checkedAt, items: [...] }` |
 | `GET /api/status/<id>` | one item; add `?strict=1` to get HTTP 503 while it's unreachable or in an error state |
 | `GET /api/status/badge/<id>.svg` | a shields-style badge, e.g. `printing 42%` (`?label=` sets the left text) |
+| `POST /api/status/<id>/bed-clear` | confirms the printer's bed is clear for the [print queue](#print-queue); only tokens created with **May confirm bed clear** (409 while it prints) |
 
 Each item has `id`, `name`, `state` (`operational`, `printing`, `paused`, `error`, `offline`, `disconnected`, …), `stateLabel`, `online`, `printing`, `progress` (0–100 while a job runs), `file`, `printTimeSeconds`, `printTimeLeftSeconds`, `eta`, `filamentMeters`, `temperatures` (`{ tool0: { actual, target }, bed: … }`), `version`, `lastUpdatedAt`, and, when unreachable, a short `error` code such as `ECONNREFUSED`. The OctoPrint URL is included only if the token was created with **Include addresses**. Answers come from the state octo·modern already keeps, so frequent polling never reaches OctoPrint. Printer ids are in `/api/status` and in each printer's URL (`/p/<id>`).
 
@@ -389,6 +429,12 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **A print**: how it ended, notes, print again | **History tab** of one printer |
 | ![Timelapse player](docs/screenshots/timelapse-player.png) | ![Timelapses, light](docs/screenshots/timelapse-light.png) |
 | **Timelapse**: play with seeking, download | **Timelapse settings**, light |
+| ![Queue](docs/screenshots/queue.png) | ![Queue, light](docs/screenshots/queue-light.png) |
+| **Queue**: jobs, copies, printers and their tags | **Queue**, light |
+| ![Bed is clear](docs/screenshots/queue-bed-clear.png) | ![Slicer upload keys](docs/screenshots/slicer-keys.png) |
+| **Queue tab**: confirm the bed is clear | **Slicer upload keys** for PrusaSlicer, OrcaSlicer, Cura |
+| ![Queue on a phone](docs/screenshots/mobile-queue.png) | ![Bed is clear on a phone](docs/screenshots/mobile-queue-bed-clear.png) |
+| **Queue** on a phone | **Bed is clear** on a phone |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |

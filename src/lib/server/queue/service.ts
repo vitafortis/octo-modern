@@ -17,6 +17,7 @@ import { deleteJob, getJob, insertJob, isPaused, listJobs, type StoredJob } from
 import { clampCopies, parseTags, type QueueJob, type QueueState } from '#lib/queue.ts';
 import { baseName, isPrintable } from '#lib/library.ts';
 import { jobActive } from '#lib/printer.ts';
+import { currentState } from '../control.ts';
 import type { User } from '#lib/types.ts';
 import { randomUUID } from 'node:crypto';
 
@@ -138,11 +139,14 @@ export async function removeJob(job: StoredJob): Promise<void> {
  * Someone says the bed is clear. Refused (409) while the printer prints: the print
  * still on the bed would end up under the next one.
  */
-export function confirmBedClear(locals: { user: User | null; ip?: string }, printerId: string, via?: string): { ok: true } | { ok: false; message: string } {
+export async function confirmBedClear(locals: { user: User | null; ip?: string }, printerId: string, via?: string): Promise<{ ok: true } | { ok: false; message: string }> {
 	const printer = getPrinter(printerId);
 	if (!printer) return { ok: false, message: 'Printer not found' };
-	const state = printers.snapshot(printerId)?.state;
-	if (state && jobActive(state)) return { ok: false, message: `${printer.name} is printing; confirm the bed once the print is done and removed` };
+	// Ask OctoPrint (the live snapshot can trail by a poll), and count a queued job still running.
+	let state = printers.snapshot(printerId)?.state;
+	if (printer.hasApiKey) state = await currentState(printerId, clientFor(printer)).catch(() => state);
+	const running = listJobs().some((j) => j.activePrinterId === printerId && (j.status === 'printing' || j.status === 'starting'));
+	if ((state && jobActive(state)) || running) return { ok: false, message: `${printer.name} is printing; confirm the bed once the print is done and removed` };
 	dispatcher.bedCleared(printerId);
 	audit(locals, 'queue.bed_clear', { printer, detail: via ?? undefined });
 	return { ok: true };

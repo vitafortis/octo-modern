@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ChevronDown, ChevronUp, CircleAlert, FileCode2, GripVertical, HardDrive, LibraryBig, LoaderCircle, RotateCcw, Trash2, Upload } from '@lucide/svelte';
+	import ActionMenu from '../ActionMenu.svelte';
 	import { bytes, ago } from '#lib/client/format.ts';
 	import { patchJob, removeJob, reorderJobs, queue } from '#lib/client/queue.svelte.ts';
 	import { isAdmin, printers, session } from '#lib/client/state.svelte.ts';
@@ -132,22 +133,35 @@
 			<label class="flex items-center gap-1 text-[11px] text-muted-foreground" title="Copies printed / to print">
 				<span class="font-mono tabular-nums">{j.done}/</span>
 				{#if manage && j.status !== 'done'}
-					<input class="input h-9 w-14 px-2 text-center font-mono text-xs tabular-nums sm:h-8" type="number" min="1" max="100" value={j.copies} aria-label="Copies of {j.name}" onchange={(e) => setCopies(j, e.currentTarget.value)} />
+					<input class="input h-8 w-14 px-2 text-center font-mono text-xs tabular-nums touch:h-11" type="number" min="1" max="100" value={j.copies} aria-label="Copies of {j.name}" onchange={(e) => setCopies(j, e.currentTarget.value)} />
 				{:else}
 					<span class="font-mono tabular-nums">{j.copies}</span>
 				{/if}
 			</label>
 		</div>
 		{#if manage}
-			<div class="flex shrink-0 items-center gap-0.5">
+			<div class="hidden shrink-0 items-center gap-0.5 sm:flex">
 				{#if inPending && reorderable}
-					<button class="btn btn-ghost btn-icon size-11 sm:size-8" title="Move up" aria-label="Move {j.name} up" disabled={index === 0} onclick={() => step(j, -1)}><ChevronUp /></button>
-					<button class="btn btn-ghost btn-icon size-11 sm:size-8" title="Move down" aria-label="Move {j.name} down" disabled={index === pending.length - 1} onclick={() => step(j, 1)}><ChevronDown /></button>
+					<button class="btn btn-ghost btn-icon btn-sm touch:size-11" title="Move up" aria-label="Move {j.name} up" disabled={index === 0} onclick={() => step(j, -1)}><ChevronUp /></button>
+					<button class="btn btn-ghost btn-icon btn-sm touch:size-11" title="Move down" aria-label="Move {j.name} down" disabled={index === pending.length - 1} onclick={() => step(j, 1)}><ChevronDown /></button>
 				{/if}
 				{#if j.status === 'failed' || j.status === 'done'}
-					<button class="btn btn-secondary btn-sm min-h-11 sm:min-h-8" onclick={() => patchJob(j.id, { requeue: true }, 'Could not requeue')}><RotateCcw />Requeue</button>
+					<button class="btn btn-secondary btn-sm touch:h-11" onclick={() => patchJob(j.id, { requeue: true }, 'Could not requeue')}><RotateCcw />Requeue</button>
 				{/if}
-				<button class="btn btn-ghost btn-icon size-11 hover:text-danger sm:size-8" title="Remove from the queue" aria-label="Remove {j.name}" onclick={() => removeJob(j)}><Trash2 /></button>
+				<button class="btn btn-ghost btn-icon btn-sm hover:text-danger touch:size-11" title="Remove from the queue" aria-label="Remove {j.name}" onclick={() => removeJob(j)}><Trash2 /></button>
+			</div>
+			<!-- Phones: the row's actions in one sheet. -->
+			<div class="ml-auto sm:hidden">
+				<ActionMenu
+					title={j.name}
+					description={`${STATUS_LABEL[j.status]} · ${target ?? 'Any printer'}`}
+					actions={[
+						{ label: 'Move up', icon: ChevronUp, onclick: () => step(j, -1), hidden: !(inPending && reorderable), disabled: index === 0 },
+						{ label: 'Move down', icon: ChevronDown, onclick: () => step(j, 1), hidden: !(inPending && reorderable), disabled: index === pending.length - 1 },
+						{ label: 'Requeue', icon: RotateCcw, onclick: () => patchJob(j.id, { requeue: true }, 'Could not requeue'), hidden: !(j.status === 'failed' || j.status === 'done') },
+						{ label: 'Remove from the queue', icon: Trash2, onclick: () => removeJob(j), danger: true }
+					]}
+				/>
 			</div>
 		{/if}
 	</li>

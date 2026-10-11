@@ -6,9 +6,10 @@
 	let {
 		printerId,
 		name,
-		state,
+		state: printerState,
 		canControl,
-		compact = false
+		compact = false,
+		class: cls = ''
 	}: {
 		printerId: string;
 		name: string;
@@ -16,11 +17,12 @@
 		canControl: boolean;
 		/** Inside an overview card. */
 		compact?: boolean;
+		class?: string;
 	} = $props();
 
 	const q = $derived(queuePrinter(printerId));
 	const next = $derived(queue.jobs.find((j) => j.status === 'queued' && (j.printerId === printerId || !j.printerId)));
-	const printing = $derived(!!state && jobActive(state));
+	const printing = $derived(!!printerState && jobActive(printerState));
 	let busy = $state(false);
 
 	async function clear() {
@@ -32,7 +34,7 @@
 
 {#if q && !printing && (needsBedClear(q) || (q.held && q.waiting > 0))}
 	<div
-		class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/30 bg-warning/5 {compact ? 'px-3 py-2 text-[12px]' : 'px-3.5 py-2.5 text-[13px]'}"
+		class="{cls} flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/30 bg-warning/5 {compact ? 'px-3 py-2 text-[12px]' : 'px-3.5 py-2.5 text-[13px]'}"
 		data-testid="bed-clear-{printerId}"
 	>
 		{#if q.held}

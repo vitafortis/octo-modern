@@ -10,7 +10,7 @@
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
 	type Kind = 'ntfy' | 'discord' | 'webhook';
-	type Result = 'success' | 'failed' | 'cancelled';
+	type Result = 'success' | 'failed' | 'cancelled' | 'queue.bed_clear_needed';
 	interface Channel {
 		id?: string;
 		kind: Kind;
@@ -38,7 +38,8 @@
 	const RESULTS: { value: Result; label: string }[] = [
 		{ value: 'success', label: 'Finished' },
 		{ value: 'failed', label: 'Failed' },
-		{ value: 'cancelled', label: 'Cancelled' }
+		{ value: 'cancelled', label: 'Cancelled' },
+		{ value: 'queue.bed_clear_needed', label: 'Queue: clear the bed' }
 	];
 
 	type Server = Omit<Channel, 'input'>;

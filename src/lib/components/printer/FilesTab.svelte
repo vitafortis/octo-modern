@@ -33,6 +33,8 @@
 	import { listSources } from '#lib/client/library.ts';
 	import type { LibrarySourceSummary } from '#lib/library.ts';
 	import ActionMenu from '../ActionMenu.svelte';
+	import { ListPlus } from '@lucide/svelte';
+	import { addPrinterFileJob } from '#lib/client/queue.svelte.ts';
 	import { listLayout } from '#lib/client/viewport.svelte.ts';
 
 	let { printer, live, canControl }: TabProps = $props();
@@ -303,6 +305,7 @@
 								actions={[
 									{ label: 'Print', icon: Play, hidden: f.type !== 'machinecode', disabled: !ready, hint: ready ? undefined : jobActive(s.state) ? 'A print is already running' : 'Connect the printer first', onclick: () => printFile(printer.id, f, true) },
 									{ label: 'Load without printing', icon: FileCode2, hidden: f.type !== 'machinecode', disabled: !ready || current === key, onclick: () => printFile(printer.id, f, false) },
+									{ label: 'Add to queue', icon: ListPlus, hidden: !(f.type === 'machinecode' && f.origin === 'local'), hint: 'Prints here once the bed is confirmed clear', onclick: () => addPrinterFileJob(printer.id, f.path) },
 									{ label: 'Save to library', icon: Save, hidden: !(f.type === 'machinecode' && f.origin === 'local' && writableSources.length), onclick: () => (saving = f) },
 									{ label: `Delete ${f.type === 'folder' ? 'folder' : 'file'}`, icon: Trash2, danger: true, disabled: inUse, hint: inUse ? 'In use by OctoPrint' : undefined, onclick: async () => (await deleteFile(printer.id, f)) && load() }
 								]}
@@ -377,6 +380,9 @@
 												onclick={() => printFile(printer.id, f, true)}><Play />Print</button
 											>
 											<button class="btn btn-ghost btn-sm" disabled={!ready || current === key} title="Load without starting" onclick={() => printFile(printer.id, f, false)}>Load</button>
+										{/if}
+										{#if f.type === 'machinecode' && f.origin === 'local'}
+											<button class="btn btn-ghost btn-icon btn-sm" title="Add to the queue (prints here once the bed is confirmed clear)" aria-label="Queue {f.display}" onclick={() => addPrinterFileJob(printer.id, f.path)}><ListPlus /></button>
 										{/if}
 										{#if f.type === 'machinecode' && f.origin === 'local' && writableSources.length}
 											<button class="btn btn-ghost btn-icon btn-sm" title="Save to library" aria-label="Save {f.display} to library" onclick={() => (saving = f)}><Save /></button>

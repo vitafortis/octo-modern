@@ -23,7 +23,7 @@ export const POST: RequestHandler = handler(async ({ locals, params, request }) 
 	const b = await body(request);
 	switch (b.action) {
 		case 'bed-clear': {
-			const r = confirmBedClear(locals, printer.id);
+			const r = await confirmBedClear(locals, printer.id);
 			if (!r.ok) return json({ message: r.message }, { status: 409 });
 			break;
 		}

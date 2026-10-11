@@ -6,6 +6,8 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import LibraryBrowser from '#lib/components/library/LibraryBrowser.svelte';
 	import SendDialog from '#lib/components/library/SendDialog.svelte';
+	import AddJobDialog from '#lib/components/queue/AddJobDialog.svelte';
+	import { ListPlus } from '@lucide/svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { cancelSend, listSends, listSources, thumbnailUrl } from '#lib/client/library.ts';
@@ -70,6 +72,9 @@
 		if (!dialog.open && dialog.entry) void refreshSends();
 	});
 
+	/** "Add to queue" for one file. */
+	let queueing = $state<{ source: LibrarySourceSummary; entry: LibraryEntry } | null>(null);
+
 	function openSend(entry: LibraryEntry, print: boolean) {
 		// The details sheet (below xl) makes way for the send dialog.
 		if (!wide.current) selected = null;
@@ -133,6 +138,7 @@
 										<button class="btn btn-secondary flex-1" onclick={() => openSend(selected!, false)}><Send />{targets.length === 1 ? `Send to ${targets[0].name}` : 'Send to…'}</button>
 										<button class="btn btn-primary flex-1" onclick={() => openSend(selected!, true)}><Play />Send & print</button>
 									</div>
+									<button class="btn btn-secondary w-full" onclick={() => (queueing = { source: source!, entry: selected! })}><ListPlus />Add to queue</button>
 								{:else if !targets.length && source}
 									<p class="text-[11px] text-muted-foreground">{source.printers.length ? 'Your role can only browse the library.' : 'No printer you can see may use this source.'}</p>
 								{/if}
@@ -174,6 +180,7 @@
 					{#snippet row(e)}
 						{#if targets.length && isPrintable(e.name)}
 							<button class="btn btn-ghost btn-icon btn-sm" title="Send to a printer" aria-label="Send {e.name}" onclick={() => openSend(e, false)}><Send /></button>
+							<button class="btn btn-ghost btn-icon btn-sm" title="Add to the queue" aria-label="Queue {e.name}" onclick={() => (queueing = { source: source!, entry: e })}><ListPlus /></button>
 						{/if}
 					{/snippet}
 				</LibraryBrowser>
@@ -222,4 +229,8 @@
 
 {#if source && dialog.entry}
 	<SendDialog bind:open={dialog.open} {source} entry={dialog.entry} print={dialog.print} onsent={refreshSends} />
+{/if}
+
+{#if queueing}
+	<AddJobDialog bind:open={() => !!queueing, (v) => !v && (queueing = null)} preset={queueing} />
 {/if}

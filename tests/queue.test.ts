@@ -214,7 +214,7 @@ test('dispatcher: uploads the file, starts it, counts copies, holds the printer 
 	assert.equal(sent.length, 1, 'nothing left waiting: no second notification');
 
 	// Bed confirmation: refused while printing, accepted when idle.
-	const r = svc.confirmBedClear({ user: admin }, p.id, 'test');
+	const r = await svc.confirmBedClear({ user: admin }, p.id, 'test');
 	assert.ok(r.ok);
 	assert.ok(!qs.getQueuePrinter(p.id).awaitingClear);
 });
