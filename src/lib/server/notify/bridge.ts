@@ -142,8 +142,10 @@ class NotifyBridge {
 		setTimeout(() => {
 			const w = this.watch(r.printerId);
 			const t = Date.now();
+			// Someone pressed pause in octo·modern; else what the printer and OctoPrint said.
+			const audited = auditedActor(r.printerId, ['job.pause'], at - 30_000, t);
 			const reason = w.pauseReason(t);
-			const by = reason ? null : (auditedActor(r.printerId, ['job.pause'], at - 60_000, t) ?? w.eventUser(['PrintPaused'], t));
+			const by = audited ?? (reason ? null : w.eventUser(['PrintPaused'], t, 30_000));
 			const snap = printers.snapshot(r.printerId);
 			this.send([
 				{
@@ -151,7 +153,7 @@ class NotifyBridge {
 					printerId: r.printerId,
 					printerName: r.printerName,
 					dedupeKey: `print:${r.id}:${Math.floor(at / 1000)}`,
-					print: { ...recordFacts(r), completion: snap?.progress?.completion ?? r.completion, elapsedS: snap?.progress?.printTime ?? null, remainingS: snap?.progress?.printTimeLeft ?? null, reason, pausedBy: by }
+					print: { ...recordFacts(r), completion: snap?.progress?.completion ?? r.completion, elapsedS: snap?.progress?.printTime ?? null, remainingS: snap?.progress?.printTimeLeft ?? null, reason: audited ? null : reason, pausedBy: by }
 				}
 			]);
 		}, 2_000).unref?.();

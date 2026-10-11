@@ -3,7 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, BellRing } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -53,6 +53,7 @@
 					{ href: '/discover', label: 'Discover', icon: Radar },
 					{ href: '/users', label: 'Users', icon: Users },
 					{ href: '/integrations', label: 'Integrations', icon: Plug },
+					{ href: '/notifications', label: 'Notifications', icon: BellRing },
 					{ href: '/audit', label: 'Audit log', icon: ScrollText },
 					{ href: '/settings', label: 'Settings', icon: Settings }
 				]

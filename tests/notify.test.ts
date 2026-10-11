@@ -370,10 +370,15 @@ test('watcher: why a print paused', () => {
 	assert.equal(pauseReasonFrom([], [{ name: 'plugin:filamentsensorsimplified', payload: { type: 'runout' } }]), 'filament runout');
 	assert.equal(pauseReasonFrom(['Send: M0 Change color'], []), 'pause in the G-code (M0)');
 	assert.equal(pauseReasonFrom(['Recv: //action:pause'], []), 'paused by the printer');
+	assert.equal(pauseReasonFrom(['Pausing print job due to command M0'], []), 'pause in the G-code (M0)');
+	assert.equal(pauseReasonFrom(['Info: Not sending M0 to printer as it\'s configured as a blocked command'], []), 'pause in the G-code (M0)');
+	assert.equal(pauseReasonFrom([], [{ name: 'CommandSuppressed', payload: { command: 'M0 Change color', severity: 'warn' } }]), 'pause in the G-code (M0)');
 	assert.equal(pauseReasonFrom(['Send: G1 X1', 'Recv: ok'], []), null);
 	const w = new PrinterWatch();
 	w.log(['Send: N5 M600*1'], 0);
 	assert.equal(w.pauseReason(1_000), 'filament change (M600)');
+	assert.equal(w.pauseReason(2_000), null, 'what explained a pause doesn’t explain the next');
+	w.log(['Send: N9 M600*1'], 3_000);
 	assert.equal(w.pauseReason(200_000), null, 'only recent lines count');
 	w.event('PrintCancelled', { user: 'octouser' }, 300_000);
 	assert.equal(w.eventUser(['PrintCancelled'], 301_000), 'octouser');

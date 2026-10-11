@@ -54,6 +54,13 @@ export function pauseReasonFrom(lines: string[], events: { name: string; payload
 			const cmd = e.payload && typeof e.payload === 'object' ? (e.payload as Record<string, unknown>).cmd : null;
 			return `filament change (${typeof cmd === 'string' && cmd ? cmd : 'M600'})`;
 		}
+		// OctoPrint pauses on its "pausing commands" (M0, M1, M25 by default) and, as they're also
+		// blocked by default, reports them as suppressed instead of sending them.
+		if (e.name === 'CommandSuppressed') {
+			const cmd = e.payload && typeof e.payload === 'object' ? String((e.payload as Record<string, unknown>).command ?? '') : '';
+			const m = /^\s*(M0|M1|M25|M125|M601)\b/i.exec(cmd);
+			if (m) return `pause in the G-code (${m[1].toUpperCase()})`;
+		}
 		if (/runout/i.test(e.name) || (e.name.startsWith('plugin:') && /runout|no.?filament/i.test(JSON.stringify(e.payload ?? '')))) return 'filament runout';
 	}
 	for (const l of [...lines].reverse()) {
@@ -62,6 +69,8 @@ export function pauseReasonFrom(lines: string[], events: { name: string; payload
 		const m = /^Send:\s*(?:N\d+\s+)?(M0|M1|M25|M125|M601)\b/i.exec(l);
 		if (m) return `pause in the G-code (${m[1].toUpperCase()})`;
 		if (/@pause\b/i.test(l)) return 'pause in the G-code (@pause)';
+		const own = /(?:Pausing print job due to command|Not sending) (M0|M1|M25|M125|M601)\b/i.exec(l);
+		if (own) return `pause in the G-code (${own[1].toUpperCase()})`;
 		if (/^Recv:.*\/\/\s*action:\s*pause/i.test(l)) return 'paused by the printer';
 	}
 	return null;
@@ -82,6 +91,7 @@ export class PrinterWatch {
 	private lines: { at: number; line: string }[] = [];
 	private events: { at: number; name: string; payload: unknown }[] = [];
 	private snap: WatchSnapshot | null = null;
+	private lastPause = -Infinity;
 
 	/** A new snapshot: progress milestones and state changes. */
 	observe(s: WatchSnapshot, now: number, cfg: WatchConfig): WatchEvent[] {
@@ -196,7 +206,7 @@ export class PrinterWatch {
 
 	/** Terminal lines (`Send: …` / `Recv: …`), kept briefly for pause reasons. */
 	log(lines: string[], now: number) {
-		for (const line of lines) if (/^(Send|Recv):/.test(line) || /@pause/i.test(line)) this.lines.push({ at: now, line });
+		for (const line of lines) if (/^(Send|Recv):/.test(line) || /@pause|Pausing print job|Not sending M/i.test(line)) this.lines.push({ at: now, line });
 		this.trim(now);
 	}
 
@@ -211,9 +221,12 @@ export class PrinterWatch {
 		this.events = this.events.filter((e) => now - e.at < 5 * 60_000).slice(-100);
 	}
 
+	/** Why the print just paused; what explained an earlier pause doesn't count again. */
 	pauseReason(now: number): string | null {
-		const lines = this.lines.filter((l) => now - l.at < LOOKBACK_MS).map((l) => l.line);
-		const events = this.events.filter((e) => now - e.at < LOOKBACK_MS);
+		const since = Math.max(now - LOOKBACK_MS, this.lastPause);
+		const lines = this.lines.filter((l) => l.at > since).map((l) => l.line);
+		const events = this.events.filter((e) => e.at > since);
+		this.lastPause = now;
 		return pauseReasonFrom(lines, events);
 	}
 

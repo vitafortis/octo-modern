@@ -106,9 +106,9 @@
 	width="max-w-2xl"
 >
 	{#if !type}
-		<div class="grid gap-2 sm:grid-cols-2" role="list" aria-label="Channel types">
+		<div class="grid gap-2 sm:grid-cols-2" role="group" aria-label="Channel types">
 			{#each CHANNEL_TYPES as t (t.type)}
-				<button type="button" role="listitem" class="flex min-h-14 items-start gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/40" onclick={() => pick(t.type)} data-type={t.type}>
+				<button type="button" class="flex min-h-14 items-start gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/40" onclick={() => pick(t.type)} data-type={t.type}>
 					<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary"><ChannelIcon type={t.type} /></span>
 					<span class="min-w-0">
 						<span class="block text-[13px] font-medium">{t.label}</span>

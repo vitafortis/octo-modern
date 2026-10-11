@@ -264,11 +264,20 @@ async function main() {
 	});
 	await new Promise((r) => hookServer.listen(HOOK_PORT, '127.0.0.1', r));
 	assert.equal((await operator.get('/api/settings/notifications')).status, 403, 'notification settings are for admins');
-	const saved = await admin.put('/api/settings/notifications', {
-		channels: [{ kind: 'webhook', name: 'e2e hook', on: ['success', 'failed', 'cancelled'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/print`, authorization: 'Bearer e2e' } }]
+	// A version-1 webhook (the payload from before the notifications rework) for print ends.
+	const saved = await admin.post('/api/settings/notifications/channels', {
+		type: 'webhook',
+		name: 'e2e hook',
+		config: { format: '1' },
+		secrets: { url: `http://127.0.0.1:${HOOK_PORT}/print`, authorization: 'Bearer e2e' }
 	});
-	assert.equal(saved.status, 200, JSON.stringify(saved.data));
-	assert.equal((await admin.post('/api/settings/notifications/test', { id: saved.data.channels[0].id })).status, 200);
+	assert.equal(saved.status, 201, JSON.stringify(saved.data));
+	const rules = await admin.put('/api/settings/notifications', {
+		publicUrl: APP,
+		rules: [{ name: 'Print ends', printers: 'all', events: ['print.finished', 'print.failed', 'print.cancelled'], channels: [saved.data.channel.id] }]
+	});
+	assert.equal(rules.status, 200, JSON.stringify(rules.data));
+	assert.equal((await admin.post('/api/settings/notifications/test', { id: saved.data.channel.id })).status, 200);
 	assert.equal(hooks.shift().body.event, 'test');
 
 	// --- nobody watching: the background poll notices, the push socket is held while printing ----
