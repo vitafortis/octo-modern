@@ -215,7 +215,7 @@
 										{#if s.state === 'sending'}<button class="text-muted-foreground hover:text-danger" title="Cancel" aria-label="Cancel transfer" onclick={async () => (await cancelSend(s.id), refreshSends())}><X class="size-3.5" /></button>{/if}
 									</div>
 									<p class="mt-0.5 pl-5.5 text-[0.6875rem] text-muted-foreground">
-										→ {s.printerName}{s.state === 'sending' ? ` · ${pct}%` : s.state === 'processing' ? ' · saving…' : s.state === 'done' ? (s.printing ? ' · printing' : ' · sent') : s.state === 'aborted' ? ' · cancelled' : ''} · {ago(s.startedAt)}
+										→ {s.printerName}{s.state === 'sending' ? ` · ${pct}%` : s.state === 'processing' ? ' · saving…' : s.state === 'done' ? (s.preparing ? ' · preparing' : s.printing ? ' · printing' : ' · sent') : s.state === 'aborted' ? ' · cancelled' : ''} · {ago(s.startedAt)}
 									</p>
 									{#if s.error && s.state === 'error'}<p class="mt-0.5 pl-5.5 text-[0.6875rem] text-danger">{s.error}</p>{/if}
 								</div>

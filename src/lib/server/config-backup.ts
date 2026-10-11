@@ -7,6 +7,7 @@ import { getPlug, parseSettings as parsePlugSettings, savePlug } from './power/c
 import { checkPortable, exportSettings, importSettings, load as loadNotify, type PortableSettings } from './notify/settings.ts';
 import { checkFilament, exportFilament, importFilament, previewFilament, type BackupFilament } from './spools/backup.ts';
 import { checkQueue, exportQueue, importQueue, previewQueue, type BackupQueue } from './queue/backup.ts';
+import { exportPrep, importPrep, GLOBAL_KEY as PREP_GLOBAL } from './preprint/settings.ts';
 import { checkHistory, exportHistory, importHistoryRows, previewHistory, type BackupHistory } from './history/backup.ts';
 
 /**
@@ -72,6 +73,8 @@ export interface BackupSettings {
 	localLoginDisabled: boolean | null;
 	/** Failure detection: the `detect:settings` and `detect:printer:*` rows, the ML API token decrypted (learned baselines are left out). */
 	detect?: { rows: Record<string, unknown>; mlToken: string | null };
+	/** Before each print: the `preprint:settings` and `preprint:printer:*` rows. */
+	preprint?: { rows: Record<string, unknown> };
 }
 
 const DETECT_GLOBAL = 'detect:settings';
@@ -165,7 +168,8 @@ export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): Ba
 			sso: getKv<Record<string, unknown> | null>('sso', null),
 			ssoClientSecret: sealed ? decrypt(sealed, 'sso') : null,
 			localLoginDisabled: getKv<boolean | null>('local-login-disabled', null),
-			detect: exportDetect()
+			detect: exportDetect(),
+			preprint: { rows: exportPrep() }
 		};
 	}
 	return payload;
@@ -301,6 +305,18 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 				label: 'Failure detection',
 				detail: `${g?.mlApiUrl ? `ML API ${g.mlApiUrl}${s.detect.mlToken ? ' · with token' : ''}` : 'no ML API'} · ${printersSet} printer setting${printersSet === 1 ? '' : 's'}`,
 				status: g || printersSet ? 'update' : 'same'
+			});
+		}
+		if (s.preprint && typeof s.preprint === 'object') {
+			const rows = s.preprint.rows ?? {};
+			const g = rows[PREP_GLOBAL] as { leveling?: { enabled?: boolean }; snippet?: { enabled?: boolean } } | undefined;
+			const printersSet = Object.keys(rows).filter((k) => k.startsWith('preprint:printer:')).length;
+			const on = [g?.leveling?.enabled && 'leveling', g?.snippet?.enabled && 'pre-print G-code'].filter(Boolean).join(' and ');
+			const here = exportPrep();
+			preview.settings.push({
+				label: 'Before each print',
+				detail: `${on ? `${on} by default` : 'off by default'} · ${printersSet} printer setting${printersSet === 1 ? '' : 's'}`,
+				status: same(rows, here) ? 'same' : Object.keys(rows).length ? (Object.keys(here).length ? 'update' : 'new') : 'remove'
 			});
 		}
 		preview.settings.push({
@@ -447,6 +463,8 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 			else deleteKv('local-login-disabled');
 			// Backups from before failure detection have no `detect`: leave it as it is.
 			if (s.detect && typeof s.detect === 'object') importDetect(s.detect);
+			// Likewise for backups from before the pre-print steps.
+			if (s.preprint && typeof s.preprint === 'object') importPrep(s.preprint.rows ?? {});
 			result.settings = true;
 		}
 

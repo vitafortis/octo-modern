@@ -244,6 +244,15 @@ export class MoonrakerBackend implements PrinterBackend {
 		await this.client.gcode(script);
 	}
 
+	/**
+	 * Runs a script and waits until Klipper has run it (pre-print steps: G28, probing,
+	 * heating). Klipper keeps going if the request is aborted; only an emergency stop halts it.
+	 */
+	async runScript(script: string, opts: { timeoutMs: number; signal?: AbortSignal }) {
+		this.onSent(script);
+		await this.client.post('/printer/gcode/script', { script }, { timeoutMs: opts.timeoutMs, signal: opts.signal });
+	}
+
 	async setTargets(targets: Record<string, number>) {
 		const map = heaterMap(await this.objects());
 		await this.run(Object.entries(targets).map(([k, v]) => targetScript(k, v, map)).join('\n'));

@@ -160,6 +160,8 @@ export interface LibrarySend {
 	/** Stored path on OctoPrint, once done. */
 	storedPath: string | null;
 	printing: boolean;
+	/** Pre-print steps (leveling, G-code) run first; the print starts after them. */
+	preparing?: boolean;
 	startedAt: string;
 	finishedAt: string | null;
 	userId: string | null;

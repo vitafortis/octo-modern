@@ -83,7 +83,7 @@
 		try {
 			const final = await followSend(s.id, (u) => (send = u));
 			if (final.state === 'done') {
-				toast('success', final.printing ? `Printing on ${final.printerName}` : `Sent to ${final.printerName}`, final.storedPath ?? entry.name);
+				toast('success', final.preparing ? `Sent; preparing ${final.printerName}` : final.printing ? `Printing on ${final.printerName}` : `Sent to ${final.printerName}`, final.preparing ? `${final.storedPath ?? entry.name} starts once the pre-print steps have finished.` : (final.storedPath ?? entry.name));
 				onsent?.(final);
 				open = false;
 			}

@@ -2,6 +2,7 @@
 	import { CircleAlert, CirclePause, CirclePlay, CircleStop, Clock, FileBox, Settings2, Unplug } from '@lucide/svelte';
 	import StateBadge from './StateBadge.svelte';
 	import BedClearBanner from '../queue/BedClearBanner.svelte';
+	import PreparingBanner from './PreparingBanner.svelte';
 	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import WebcamThumb from './WebcamThumb.svelte';
 	import PowerStrip from '../power/PowerStrip.svelte';
@@ -32,7 +33,7 @@
 				<h3 class="truncate text-[0.9375rem] font-semibold tracking-tight">{printer.name}</h3>
 				<p class="mt-0.5 truncate font-mono text-[0.6875rem] text-muted-foreground">{#if printer.kind === 'moonraker'}<span class="mr-1 font-sans font-medium text-primary">Klipper</span>{/if}{printer.baseUrl.replace(/^https?:\/\//, '')}</p>
 			</div>
-			{#if s}<StateBadge state={s.state} text={s.stateText} />{:else}<span class="badge animate-pulse">Loading</span>{/if}
+			{#if s}<StateBadge state={s.state} text={s.stateText} preparing={!!s.preparing} />{:else}<span class="badge animate-pulse">Loading</span>{/if}
 		</div>
 
 		{#if s?.state === 'offline'}
@@ -70,6 +71,7 @@
 		{/if}
 		</div>
 	</a>
+	<PreparingBanner class="relative mx-3 mb-3" compact printerId={printer.id} preparing={s?.preparing} canControl={!!printer.access?.control} />
 	<!-- Print queue: the bed needs clearing before the next job. -->
 	<BedClearBanner class="relative mx-3 mb-3" compact printerId={printer.id} name={printer.name} state={s?.state} canControl={!!printer.access?.control} />
 	{#if printer.access?.control && s && jobActive(s.state)}

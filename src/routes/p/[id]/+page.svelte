@@ -15,6 +15,7 @@
 	import { isConnected, jobActive, progressPercent } from '#lib/printer.ts';
 	import { phone } from '#lib/client/viewport.svelte.ts';
 	import BedClearBanner from '#lib/components/queue/BedClearBanner.svelte';
+	import PreparingBanner from '#lib/components/printer/PreparingBanner.svelte';
 	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import type { PageProps } from './$types';
 
@@ -76,7 +77,7 @@
 				<div class="flex items-center gap-2.5">
 					<!-- Below lg the top bar already names the printer. -->
 					<h1 class="hidden truncate text-2xl font-semibold tracking-tight lg:block">{printer.name}</h1>
-					<StateBadge state={s.state} text={s.stateText} />
+					<StateBadge state={s.state} text={s.stateText} preparing={!!s.preparing} />
 				</div>
 				<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground short:hidden">
 					{printer.baseUrl.replace(/^https?:\/\//, '')}{#if s.version}{' · '}{klipper ? s.version : `OctoPrint ${s.version}`}{/if}
@@ -127,6 +128,9 @@
 			</div>
 		</div>
 	{/if}
+
+	<!-- Pre-print steps (leveling, G-code) running before a print starts. -->
+	<PreparingBanner class="mx-4 mt-3 sm:mx-6 lg:mx-8" printerId={printer.id} preparing={s.preparing} {canControl} />
 
 	<!-- Print queue: waiting for someone to clear the bed (above the scrolling content, so it's in reach on phones). -->
 	{#if tab.id !== 'queue'}

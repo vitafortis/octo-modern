@@ -119,9 +119,11 @@ function parseMultipart(body, contentType) {
  * - `printSeconds`: how long a print takes; `webcam`: { stream, snapshot } URLs to advertise
  * - `octoprintCompat`: also answer /api/version like Moonraker's [octoprint_compat] does
  */
-export async function startMockMoonraker({ port = 0, host = '127.0.0.1', apiKey = null, printSeconds = 20, webcam = null, octoprintCompat = true, tickMs = 250 } = {}) {
+export async function startMockMoonraker({ port = 0, host = '127.0.0.1', apiKey = null, printSeconds = 20, webcam = null, octoprintCompat = true, tickMs = 250, levelMs = 0, failOn = null } = {}) {
 	const calls = [];
 	const gcode = [];
+	/** Changeable while running (tests): how long probing takes, and a line that fails once. */
+	const opts = { levelMs, failOn };
 	const tokens = new Set();
 	const clients = new Set();
 	const thumb = makePng(300, 300);
@@ -360,8 +362,30 @@ export async function startMockMoonraker({ port = 0, host = '127.0.0.1', apiKey 
 			ready();
 			const script = String(p?.script ?? '');
 			gcode.push(script);
-			for (const line of script.split('\n')) runLine(line.trim());
-			return 'ok';
+			const lines = script.split('\n').map((l) => l.trim());
+			// Like Klipper, the answer comes once the script has run: probing and heating take a while.
+			const slow = lines.some((l) => /^(G29|BED_MESH_CALIBRATE|M190|M109|TEMPERATURE_WAIT)\b/i.test(l) || (opts.failOn && opts.failOn.test(l)));
+			if (!slow) {
+				for (const line of lines) runLine(line);
+				return 'ok';
+			}
+			return (async () => {
+				for (const line of lines) {
+					if (opts.failOn && opts.failOn.test(line)) {
+						opts.failOn = null;
+						respond('!! Probe triggered prior to movement');
+						throw rpcError(400, 'Probe triggered prior to movement');
+					}
+					runLine(line);
+					if (/^(G29|BED_MESH_CALIBRATE)\b/i.test(line)) await new Promise((r) => setTimeout(r, opts.levelMs));
+					let m;
+					if ((m = /^M190\b.*?S([\d.]+)/i.exec(line))) {
+						s.status.heater_bed.target = Number(m[1]);
+						for (let i = 0; i < 600 && Math.abs(s.status.heater_bed.temperature - s.status.heater_bed.target) > 1.5; i++) await new Promise((r) => setTimeout(r, 100));
+					}
+				}
+				return 'ok';
+			})();
 		},
 		'server.temperature_store': () => Object.fromEntries(Object.entries(s.tempStore).map(([k, arr]) => [k, { temperatures: arr.map((x) => x[0]), targets: arr.map((x) => x[1]), powers: arr.map(() => 0) }])),
 		'server.gcode_store': (p) => ({ gcode_store: s.gcodeStore.slice(-(p?.count ?? 100)) }),
@@ -470,7 +494,9 @@ export async function startMockMoonraker({ port = 0, host = '127.0.0.1', apiKey 
 		if (!authorized(req, url)) return fail(res, 401, 'Unauthorized');
 		const rpc = (name, params) => {
 			try {
-				return ok(res, methods[name](params));
+				const r = methods[name](params);
+				if (r instanceof Promise) return void r.then((v) => ok(res, v), (err) => fail(res, err.rpcCode ?? 500, err.message));
+				return ok(res, r);
 			} catch (err) {
 				return fail(res, err.rpcCode ?? 500, err.message);
 			}
@@ -599,7 +625,9 @@ export async function startMockMoonraker({ port = 0, host = '127.0.0.1', apiKey 
 					continue;
 				}
 				try {
-					reply({ result: fn(msg.params) });
+					const r = fn(msg.params);
+					if (r instanceof Promise) r.then((v) => reply({ result: v }), (err) => reply({ error: { code: err.rpcCode ?? 500, message: err.message } }));
+					else reply({ result: r });
 				} catch (err) {
 					reply({ error: { code: err.rpcCode ?? 500, message: err.message } });
 				}
@@ -622,6 +650,9 @@ export async function startMockMoonraker({ port = 0, host = '127.0.0.1', apiKey 
 		gcode,
 		state: s,
 		files,
+		opts,
+		/** Adds a file (text) to the gcodes root. */
+		addFile: (path, text) => addFile(path, { data: Buffer.from(text) }),
 		/** Drops every websocket (to test reconnects). */
 		dropSockets() {
 			for (const c of clients) c.destroy();

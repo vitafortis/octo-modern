@@ -104,6 +104,7 @@
 								<li><a href="#spools">Spools, costs and maintenance</a></li>
 								<li><a href="#stats">Stats</a></li>
 								<li><a href="#bedmesh">Bed mesh</a></li>
+								<li><a href="#preprint">Before each print</a></li>
 								<li><a href="#preview">G-code preview</a></li>
 								<li><a href="#cameras">Camera wall</a></li>
 								<li><a href="#images">Images</a></li>
@@ -387,7 +388,7 @@
 						<p>Admins set them up under <strong>Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
 						<ul>
 							<li><strong>Channels</strong>: browser push (<a href="#push">below</a>), ntfy, Discord, Slack (incoming webhook, Block Kit), Telegram (bot token and chat ID, the snapshot as a photo), Pushover, Gotify, Matrix (homeserver, room ID, access token), email over SMTP (STARTTLS or TLS, snapshot inline), Home Assistant (webhook trigger and/or a <code>notify.*</code> service) and generic JSON webhooks.</li>
-							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.off</code> and <code>bed.drift</code> from other features.</li>
+							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.off</code>, <code>bed.drift</code> and <code>print.prestart_failed</code> from other features.</li>
 							<li><strong>Messages</strong>: printer, file, elapsed and estimated time, filament, who started it, a link back (set the public URL, or <code>ORIGIN</code>) and the webcam snapshot. Slack, Gotify and Home Assistant show pictures only by link: turn on <strong>Share snapshots by link</strong> (unguessable links, 48 hours).</li>
 							<li><strong>Rules, quiet hours, limits</strong>: rules pick printers × events → channels; quiet hours per channel can still let errors through; the same event goes to a channel once per 10 minutes and at most 20 messages per 10 minutes, so flapping printers stay quiet. <strong>Recent deliveries</strong> shows the last 100 with their status.</li>
 						</ul>
@@ -455,6 +456,18 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 							<li><strong>Update mesh</strong> (operators): sends <code>@BEDLEVELVISUALIZER</code> and the plugin's probe G-code, as the plugin's own button does. It asks first, is refused while printing or disconnected, shows progress and refreshes when the plugin reports the mesh. The mesh is written back to the plugin so OctoPrint shows it too.</li>
 							<li><strong>History</strong>: every distinct mesh is kept with when it was seen, including ones probed from OctoPrint. Compare any two as a difference map (different probe counts are interpolated), follow flatness over time, choose a reference mesh, delete bad runs.</li>
 							<li><strong>Drift alerts</strong>: a flatness limit and/or a limit on how far any point moved from the reference; a new mesh past them sends <code>bed.drift</code> (<strong>Bed mesh drift</strong> in notification rules).</li>
+						</ul>
+					</section>
+
+					<section id="preprint">
+						<h2>Before each print</h2>
+						<p><strong>Settings → Before each print</strong> (admins) sets bed leveling and a pre-print G-code snippet to run before every print octo·modern starts; each printer’s settings dialog picks <strong>Use the default</strong>, <strong>Custom for this printer</strong> or <strong>None</strong>, separately for each. Everything is off until you turn it on.</p>
+						<ul>
+							<li><strong>Leveling</strong>: <code>G28</code> + <code>G29</code> on OctoPrint, <code>G28</code> + <code>BED_MESH_CALIBRATE</code> on Klipper, or your own command. Optionally heat the bed first, to the file’s first bed temperature (or a start macro’s <code>BED_TEMP=</code>), else a temperature you set, waiting with <code>M190</code>.</li>
+							<li><strong>Already in the file?</strong> octo·modern reads the start of the file (up to its first layer change, at most 1 MB) and compares commands with comments, case and spacing ignored. Leveling is skipped when the file runs <code>G29</code>, <code>G80</code> or <code>BED_MESH_CALIBRATE</code>; <code>M420 S1</code> and <code>BED_MESH_PROFILE LOAD</code> only load a mesh and don’t count. The snippet is skipped when all its commands are there, in order (with or without their parameters). An optional pattern (<code>START_PRINT</code>, or <code>/regex/flags</code>) covers start macros that do it inside.</li>
+							<li><strong>Finished before the file starts</strong>: Klipper’s <code>gcode.script</code> answers when done; on OctoPrint each step ends with <code>M400</code> and an <code>M118</code> marker, and octo·modern waits for the marker in the terminal log. Errors, a disconnect or the timeout (default 30 minutes per step) leave the file unstarted and send <code>print.prestart_failed</code>.</li>
+							<li><strong>Starting</strong> shows the plan (will run / already in file) with <strong>Skip the pre-print steps this time</strong>; while the steps run the printer shows <strong>Preparing</strong> with <strong>Cancel</strong>. The queue, library sends, print after upload and slicer uploads apply the steps without asking.</li>
+							<li>It applies to every start octo·modern makes, not to resume or to restarting a paused OctoPrint job. Prints started in OctoPrint’s or Mainsail’s own UI can’t be intercepted.</li>
 						</ul>
 					</section>
 

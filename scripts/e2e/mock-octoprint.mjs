@@ -9,6 +9,14 @@
 // `{ processing: true }`, then `{ mesh, bed }` on the push socket after `delayMs`. `uiSaves`
 // also writes the mesh into the settings (as the plugin's own web UI does when it's open).
 // `nextMesh(run)` makes each probe run's mesh; `fail: 'message'` makes the next run report an error.
+//
+// Like OctoPrint, G-code from /api/printer/command goes through a serial queue one line at a
+// time: each line is logged as `Send: …` on the push socket, takes a while (`levelMs` for
+// G29/G80, M190/M109 until the heater is near its target, `homeMs` for G28), and is answered
+// `Recv: ok` (M118 E1 text echoes `Recv: echo:text` first). `failOn: /G29/` answers the
+// first matching line with `Recv: Error:Probing failed` instead. `files: { 'a.gcode': text }`
+// adds downloadable files (/downloads/files/local/…, with Range) to the file list; a file
+// can be selected and then started with the job command `start`.
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 
@@ -84,7 +92,7 @@ function wsAccept(req, socket) {
 	return { send, messages, socket };
 }
 
-export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powered = () => true, printSeconds = 8, coolPerSecond = 0.25, connectMs = 600, host = '127.0.0.1', push = false, bedVisualizer = null } = {}) {
+export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powered = () => true, printSeconds = 8, coolPerSecond = 0.25, connectMs = 600, host = '127.0.0.1', push = false, bedVisualizer = null, files = null, levelMs = 1500, homeMs = 300, failOn = null } = {}) {
 	const s = {
 		/** 'Offline' | 'Connecting' | 'Operational' | 'Printing' | 'Offline after error' */
 		state: 'Offline',
@@ -116,8 +124,49 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 					fail: bedVisualizer.fail ?? null
 				}
 			: null,
-		pushClients: 0
+		pushClients: 0,
+		/** Lines the simulated firmware has finished, in order. */
+		executed: [],
+		/** The selected file (select without print). */
+		selected: null,
+		failOn
 	};
+	const fileMap = new Map(Object.entries(files ?? {}));
+	/** The serial queue: OctoPrint sends one line, waits for `ok`, then the next. */
+	const serialQueue = [];
+	let serialBusy = false;
+	const logLines = (lines) => {
+		if (!sockets.size) return;
+		pushAll({ current: { ...currentFrame(), logs: lines } });
+	};
+	const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
+	async function runSerial() {
+		if (serialBusy) return;
+		serialBusy = true;
+		while (serialQueue.length) {
+			const line = serialQueue.shift();
+			logLines([`Send: ${line}`]);
+			const up = line.trim().toUpperCase();
+			let m;
+			if (s.failOn && s.failOn.test(line)) {
+				s.failOn = null;
+				await waitMs(100);
+				logLines(['Recv: Error:Probing failed']);
+			} else if (/^G(29|80)\b/.test(up)) await waitMs(levelMs);
+			else if (/^G28\b/.test(up)) await waitMs(homeMs);
+			else if ((m = /^M1(40|90)\b.*?S(\d+)/.exec(up))) {
+				s.bedTarget = Number(m[2]);
+				if (m[1] === '90') for (let i = 0; i < 600 && Math.abs(s.bed - s.bedTarget) > 1.5; i++) await waitMs(100);
+			} else if ((m = /^M10(4|9)\b.*?S(\d+)/.exec(up))) {
+				s.toolTarget = Number(m[2]);
+				if (m[1] === '9') for (let i = 0; i < 600 && Math.abs(s.tool - s.toolTarget) > 1.5; i++) await waitMs(100);
+			} else if ((m = /^M118\s+(?:E1\s+)?(.*)$/i.exec(line.trim()))) logLines([`Recv: echo:${m[1]}`]);
+			else await waitMs(20);
+			s.executed.push(line);
+			logLines(['Recv: ok']);
+		}
+		serialBusy = false;
+	}
 	const sockets = new Set();
 	const pushAll = (obj) => {
 		for (const ws of sockets) ws.send(obj);
@@ -200,7 +249,7 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 	const round = (v) => Math.round(v * 10) / 10;
 	const currentFrame = () => ({
 		state: { text: s.state, flags: flags(), error: s.error ?? '' },
-		job: { file: s.job ? { name: s.job.path.split('/').pop(), path: s.job.path, display: s.job.path.split('/').pop(), origin: 'local' } : { name: null, path: null, display: null, origin: null } },
+		job: { file: s.job || s.selected ? ((p) => ({ name: p.split('/').pop(), path: p, display: p.split('/').pop(), origin: 'local' }))(s.job?.path ?? s.selected) : { name: null, path: null, display: null, origin: null } },
 		progress: { completion: null, printTime: null, printTimeLeft: null },
 		currentZ: null,
 		temps: connected() ? [{ time: Math.floor(Date.now() / 1000), tool0: { actual: round(s.tool), target: s.toolTarget }, bed: { actual: round(s.bed), target: s.bedTarget } }] : [],
@@ -267,6 +316,12 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 			const cmds = Array.isArray(b.commands) ? b.commands : b.command ? [b.command] : [];
 			s.commands.push(...cmds);
 			if (s.blv && cmds[0] === '@BEDLEVELVISUALIZER') probe();
+			else {
+				// M108 jumps OctoPrint's queue (an emergency command): it ends a heating wait.
+				if (cmds.some((c) => /^M108\b/i.test(c))) s.bedTarget = Math.round(s.bed);
+				serialQueue.push(...cmds.filter((c) => !/^M108\b/i.test(c)));
+				void runSerial();
+			}
 			return res.writeHead(204).end();
 		}
 		if (p === '/api/printer') {
@@ -279,6 +334,11 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 		if (p === '/api/job') {
 			if (req.method === 'POST') {
 				const b = JSON.parse(body || '{}');
+				if (b.command === 'start' && s.selected) {
+					if (s.state !== 'Operational') return sendJson(res, { error: 'Printer is not operational' }, 409);
+					startPrint(s.selected);
+					return res.writeHead(204).end();
+				}
 				if (b.command === 'cancel' && s.state === 'Printing') {
 					s.state = 'Operational';
 					s.toolTarget = s.bedTarget = 0;
@@ -287,7 +347,8 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 				return sendJson(res, { error: 'Printer is not printing' }, 409);
 			}
 			const elapsed = s.state === 'Printing' ? (Date.now() - s.startedAt) / 1000 : s.job?.done ? printSeconds : null;
-			const file = s.job ? { name: s.job.path.split('/').pop(), path: s.job.path, display: s.job.path.split('/').pop(), origin: 'local', size: 123456, date: 1760000000 } : { name: null, path: null, display: null, origin: null, size: null, date: null };
+			const shown = s.job ?? (s.selected ? { path: s.selected } : null);
+			const file = shown ? { name: shown.path.split('/').pop(), path: shown.path, display: shown.path.split('/').pop(), origin: 'local', size: 123456, date: 1760000000 } : { name: null, path: null, display: null, origin: null, size: null, date: null };
 			return sendJson(res, {
 				job: { file, estimatedPrintTime: s.job ? printSeconds : null, filament: s.job ? { tool0: { length: 1234, volume: 3 } } : null, user: s.job ? 'admin' : null },
 				progress: { completion: elapsed == null ? null : Math.min(100, (elapsed / printSeconds) * 100), printTime: elapsed == null ? null : Math.round(elapsed), printTimeLeft: s.state === 'Printing' ? Math.max(0, Math.round(printSeconds - elapsed)) : null, printTimeLeftOrigin: 'estimate', filepos: null },
@@ -324,12 +385,28 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 			});
 		}
 		if (p === '/api/files' || p === '/api/files/local') {
-			if (req.method === 'GET') return sendJson(res, { files: [{ name: 'benchy.gcode', path: 'benchy.gcode', display: 'benchy.gcode', type: 'machinecode', typePath: ['machinecode', 'gcode'], origin: 'local', size: 123456, date: 1760000000, refs: {} }], free: 1e10, total: 2e10 });
+			const entry = (name, size) => ({ name, path: name, display: name, type: 'machinecode', typePath: ['machinecode', 'gcode'], origin: 'local', size, date: 1760000000, refs: {} });
+			const list = fileMap.size ? [...fileMap].map(([name, text]) => entry(name, Buffer.byteLength(text))) : [entry('benchy.gcode', 123456)];
+			if (req.method === 'GET') return sendJson(res, { files: list, free: 1e10, total: 2e10 });
+		}
+		const dl = /^\/downloads\/files\/local\/(.+)$/.exec(p);
+		if (dl) {
+			const data = fileMap.get(decodeURIComponent(dl[1]));
+			if (data === undefined) return sendJson(res, { error: 'not found' }, 404);
+			const buf = Buffer.from(data);
+			const range = /bytes=(\d+)-(\d*)/.exec(req.headers.range ?? '');
+			if (range) {
+				const start = Number(range[1]);
+				const end = range[2] ? Math.min(Number(range[2]), buf.length - 1) : buf.length - 1;
+				return res.writeHead(206, { 'content-type': 'text/plain', 'content-range': `bytes ${start}-${end}/${buf.length}`, 'content-length': String(end - start + 1) }).end(buf.subarray(start, end + 1));
+			}
+			return res.writeHead(200, { 'content-type': 'text/plain', 'content-length': String(buf.length) }).end(buf);
 		}
 		const sel = /^\/api\/files\/local\/(.+)$/.exec(p);
 		if (sel && req.method === 'POST') {
 			const b = JSON.parse(body || '{}');
 			if (b.command === 'select') {
+				s.selected = decodeURIComponent(sel[1]);
 				if (b.print) {
 					if (s.state !== 'Operational') return sendJson(res, { error: 'Printer is not operational' }, 409);
 					startPrint(decodeURIComponent(sel[1]));
@@ -337,7 +414,11 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 				return res.writeHead(204).end();
 			}
 		}
-		if (sel && req.method === 'GET') return sendJson(res, { name: 'benchy.gcode', path: 'benchy.gcode', origin: 'local', size: 123456, prints: {} });
+		if (sel && req.method === 'GET') {
+			const name = decodeURIComponent(sel[1]);
+			if (fileMap.size && !fileMap.has(name)) return sendJson(res, { error: 'not found' }, 404);
+			return sendJson(res, { name, path: name, origin: 'local', size: fileMap.has(name) ? Buffer.byteLength(fileMap.get(name)) : 123456, prints: {} });
+		}
 		sendJson(res, { error: 'Not found' }, 404);
 	});
 	server.on('upgrade', (req, socket) => {

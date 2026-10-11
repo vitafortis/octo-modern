@@ -2,6 +2,7 @@
  * Live printer state, shared by the server (which builds it from OctoPrint) and the
  * browser (which renders it). Pure: no I/O, safe to import anywhere.
  */
+import type { Preparing } from './preprint.ts';
 
 /**
  * - `offline`: OctoPrint itself can't be reached
@@ -189,6 +190,8 @@ export interface LiveSnapshot {
 	version: string | null;
 	/** Epoch ms of the last update from OctoPrint. */
 	updatedAt: number;
+	/** octo·modern is running the pre-print steps (leveling, G-code) before a print. */
+	preparing?: Preparing | null;
 }
 
 export function emptySnapshot(id: string): LiveSnapshot {
@@ -204,7 +207,8 @@ export function emptySnapshot(id: string): LiveSnapshot {
 		currentZ: null,
 		source: 'none',
 		version: null,
-		updatedAt: 0
+		updatedAt: 0,
+		preparing: null
 	};
 }
 

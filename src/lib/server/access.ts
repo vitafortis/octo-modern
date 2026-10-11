@@ -20,6 +20,8 @@ export function adminOnlyApi(method: string, path: string): boolean {
 	if (/^\/api\/printers\/[^/]+\/timelapse$/.test(path)) return method !== 'GET';
 	if (/^\/api\/history\/\d+$/.test(path)) return method === 'DELETE';
 	if (path === '/api/history/import') return true;
+	// Pre-print settings per printer (starting prints through them is for operators).
+	if (/^\/api\/printers\/[^/]+\/preprint\/settings$/.test(path)) return true;
 	// Smart plug setup and tests (switching is for operators, see controlApi).
 	if (/^\/api\/printers\/[^/]+\/power\/(config|test)$/.test(path)) return true;
 	return false;

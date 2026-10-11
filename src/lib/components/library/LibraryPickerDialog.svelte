@@ -63,7 +63,7 @@
 		try {
 			const final = await followSend(s.id, (u) => (send = u));
 			if (final.state === 'done') {
-				toast('success', final.printing ? 'Sent and printing' : 'Sent from the library', final.storedPath ?? entry.name);
+				toast('success', final.preparing ? 'Sent; preparing the printer' : final.printing ? 'Sent and printing' : 'Sent from the library', final.storedPath ?? entry.name);
 				onsent?.(final);
 				open = false;
 			}

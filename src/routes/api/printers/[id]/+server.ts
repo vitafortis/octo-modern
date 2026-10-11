@@ -3,6 +3,7 @@ import { body, handler, NotFound, parsePrinterInput } from '#lib/server/http.ts'
 import { deletePrinter, getPrinter, updatePrinter } from '#lib/server/store.ts';
 import { audit, requirePrinter, withAccess } from '#lib/server/permissions.ts';
 import { printers } from '#lib/server/octoprint/manager.ts';
+import { forgetPrinter } from '#lib/server/preprint/settings.ts';
 import { KIND_LABEL } from '#lib/printer-kind.ts';
 import type { RequestHandler } from './$types';
 
@@ -33,6 +34,7 @@ export const DELETE: RequestHandler = handler(({ params, locals }) => {
 	if (!printer) throw new NotFound('Printer not found');
 	deletePrinter(printer.id);
 	printers.forget(printer.id);
+	forgetPrinter(printer.id);
 	audit(locals, 'printer.delete', { printer, detail: printer.baseUrl });
 	return json({ ok: true });
 });

@@ -2,7 +2,8 @@
  * Print history and timelapses from the browser: queries, and the actions with
  * their confirmations (the server insists on them too).
  */
-import { api, ApiError, errorMessage } from './api.ts';
+import { act } from './actions.ts';
+import { api, errorMessage } from './api.ts';
 import { confirmAction, toast } from './state.svelte.ts';
 import type { HistoryFilter, HistoryStats, PrintRecord, TimelapseConfig, TimelapseFile, TimelapseListing, UnrenderedTimelapse } from '#lib/history.ts';
 
@@ -65,23 +66,8 @@ export async function reprint(r: PrintRecord, printerName: string): Promise<bool
 	const ok = await confirmAction({ title: `Print ${r.file} again?`, body: `Starts the print on ${printerName} right away.`, detail: `${r.origin === 'sdcard' ? 'SD card' : 'local'}: ${r.path}`, confirmLabel: 'Print' });
 	if (!ok) return false;
 	const url = `/api/printers/${encodeURIComponent(r.printerId)}/files/select`;
-	const body = { origin: r.origin, path: r.path, print: true };
-	try {
-		try {
-			await api.post(url, body);
-		} catch (err) {
-			// The server may ask first (e.g. the active spool won't last).
-			if (!(err instanceof ApiError && err.status === 409 && err.detail?.confirmRequired)) throw err;
-			if (!(await confirmAction({ title: err.detail.title ?? 'Are you sure?', body: err.message, confirmLabel: err.detail.confirmLabel ?? 'Print anyway', danger: true }))) return false;
-			await api.post(url, { ...body, confirm: true });
-		}
-		toast('success', 'Print started', r.file);
-		return true;
-	} catch (err) {
-		const gone = err instanceof ApiError && err.status === 404;
-		toast('error', 'Could not start the print', gone ? 'The file is no longer on OctoPrint.' : errorMessage(err));
-		return false;
-	}
+	// The server may still ask (the active spool won't last; the pre-print plan): act() handles both.
+	return act(url, { origin: r.origin, path: r.path, print: true }, { done: `Print started: ${r.file}`, failed: 'Could not start the print' });
 }
 
 export async function importHistory(printer?: string): Promise<number | null> {
