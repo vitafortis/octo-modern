@@ -4,6 +4,7 @@
 	import Dialog from './Dialog.svelte';
 	import PowerConfigDialog from './power/PowerConfigDialog.svelte';
 	import Switch from './Switch.svelte';
+	import BedMeshHint from './bedmesh/BedMeshHint.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { COLORS } from '#lib/client/format.ts';
 	import { removePrinter } from '#lib/client/printers.ts';
@@ -152,6 +153,7 @@
 				</div>
 				<button type="button" class="btn btn-secondary btn-sm shrink-0" onclick={setUpPlug} data-testid="power-setup"><PlugZap />{plugs[editing.id] ? 'Change' : 'Set up'}</button>
 			</div>
+			<BedMeshHint printerId={editing.id} />
 		{/if}
 
 		{#if test}
