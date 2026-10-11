@@ -256,6 +256,24 @@ async function main() {
 	r = await operator.post(`/api/printers/${mk4.id}/job`, { command: 'start' });
 	assert.equal(r.status, 409);
 	assert.equal(r.data.title, 'Not enough filament');
+	// Restart (print it again from the start): the same question.
+	r = await operator.post(`/api/printers/${mk4.id}/job`, { command: 'restart' });
+	assert.equal(r.status, 409);
+	assert.equal(r.data.title, 'Not enough filament');
+	assert.equal(await opState(OP[0]), 'Operational', 'nothing restarted');
+
+	// The print queue: the job is held (not started), with the reason, and someone is told.
+	log('print queue: a job the spool won’t last is held, with the reason and a spool.low notification');
+	r = await operator.post('/api/queue', { source: 'printer', printerId: mk4.id, path: 'whole-spool.gcode' });
+	assert.equal(r.status, 201, JSON.stringify(r.data));
+	const heldJob = r.data;
+	assert.equal((await operator.post(`/api/printers/${mk4.id}/queue`, { action: 'bed-clear' })).status, 200);
+	const held = await waitFor(async () => (await viewer.get('/api/queue')).data.jobs.find((j) => j.id === heldJob.id && j.status === 'held'), 'the job held', { tries: 60 });
+	assert.match(held.error, /^Not enough filament on Prusa MK4: Galaxy Black \(PLA\) has 688 g \/ 230\.\d m left; this print needs about 1193 g \/ 400\.0 m\.$/);
+	assert.equal(await opState(OP[0]), 'Operational', 'the queue started nothing');
+	const heldHook = await waitFor(() => hooks.find((h) => h.event === 'spool.low' && /Queue held/.test(h.title)), 'the queue’s spool.low notification');
+	assert.match(heldHook.message, /whole-spool\.gcode wasn’t started on Prusa MK4/);
+	assert.equal((await viewer.patch(`/api/queue/${heldJob.id}`, { release: true })).status, 403, 'viewers can’t release it');
 	// Library send-and-print: the slicer's 450 g against spool 3 (94.8 g).
 	assert.equal((await operator.put(`/api/printers/${mk4.id}/spools`, { tool: 0, spoolId: 3 })).status, 200);
 	r = await operator.post(`/api/library/${lib.id}/send`, { path: 'Big_vase_PLA_0.28mm.gcode', printerId: mk4.id, print: true });
@@ -263,8 +281,8 @@ async function main() {
 	assert.equal(r.data.filament, true);
 	assert.match(r.data.message, /PolyTerra Cotton White \(PLA\) has 95 g .* needs about 450 g/);
 	// spool.low: spool 3 was already below 100 g when it went on.
-	await waitFor(() => hooks.find((h) => h.event === 'spool.low'), 'a spool.low notification');
-	assert.match(hooks.find((h) => h.event === 'spool.low').message, /PolyTerra Cotton White \(PLA\) on Prusa MK4 is down to 95 g/);
+	await waitFor(() => hooks.find((h) => h.event === 'spool.low' && /PolyTerra/.test(h.message)), 'a spool.low notification');
+	assert.match(hooks.find((h) => h.event === 'spool.low' && /PolyTerra/.test(h.message)).message, /PolyTerra Cotton White \(PLA\) on Prusa MK4 is down to 95 g/);
 	assert.equal((await operator.put(`/api/printers/${mk4.id}/spools`, { tool: 0, spoolId: 1 })).status, 200);
 
 	// --- maintenance -------------------------------------------------------------------------------
@@ -397,6 +415,14 @@ async function main() {
 	await dark.click('dialog[open] button:has-text("Cancel")');
 	await sleep(500);
 	assert.equal(await opState(OP[0]), 'Operational', 'backing out starts nothing');
+
+	// The queue: the held job with its reason, "Check again" and "Print anyway".
+	await dark.goto(`${APP}/queue`);
+	await dark.waitForSelector('[data-job="whole-spool.gcode"] [data-testid=queue-held-reason]');
+	await dark.waitForSelector('[data-job="whole-spool.gcode"] button:has-text("Print anyway")');
+	await sleep(600);
+	await shot(dark, 'queue-held-filament');
+	assert.equal((await operator.del(`/api/queue/${heldJob.id}`)).status, 200);
 
 	// Maintenance: mark the bolts done with a note.
 	await dark.goto(`${APP}/maintenance`);

@@ -6,7 +6,7 @@
 //   E2E_KEEP=1 pnpm e2e:power        # leave the app and mocks running afterwards
 //   E2E_SKIP_BUILD=1 pnpm e2e:power  # reuse ./build
 //
-// Ports 3230–3236: app 3230, OctoPrint 3231–3232, plugs 3233–3234, camera 3235, webhook 3236.
+// Ports 3230–3236 (E2E_PORT_BASE moves them): app +0, OctoPrint +1–2, plugs +3–4, camera +5, webhook +6.
 // Needs a Playwright Chromium. Screenshots land in docs/screenshots/.
 import { execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -21,7 +21,8 @@ import { startMockOctoPrint } from './mock-octoprint.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const SHOTS = join(ROOT, 'docs/screenshots');
-const APP_PORT = 3230;
+const PORT_BASE = Number(process.env.E2E_PORT_BASE ?? 3230);
+const APP_PORT = PORT_BASE;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const ADMIN = { email: 'admin@example.com', name: 'Ada Admin', password: 'e2e-admin-password' };
 const OPERATOR = { email: 'operator@example.com', name: 'Otto Operator', password: 'e2e-operator-password' };
@@ -76,11 +77,11 @@ function client() {
 async function main() {
 	mkdirSync(SHOTS, { recursive: true });
 	log('starting mock plugs, mock OctoPrint servers and a test camera');
-	const shelly = await startMockPlug({ kind: 'shelly2', port: 3233, auth: { username: 'admin', password: SHELLY_PASSWORD }, on: false, watts: (on) => (on ? 38.6 : 0) });
-	const tasmota = await startMockPlug({ kind: 'tasmota', port: 3234, auth: { username: 'admin', password: TASMOTA_PASSWORD }, on: true, watts: (on) => (on ? 112.4 : 0) });
-	const mk4Op = await startMockOctoPrint({ port: 3231, apiKey: 'mk4-e2e-key', powered: () => shelly.state.on, printSeconds: 40, coolPerSecond: 0.3 });
-	const voronOp = await startMockOctoPrint({ port: 3232, apiKey: 'voron-e2e-key', powered: () => tasmota.state.on, printSeconds: 6, coolPerSecond: 0.35 });
-	const cam = await startMjpegSource({ port: 3235, host: '127.0.0.1' });
+	const shelly = await startMockPlug({ kind: 'shelly2', port: PORT_BASE + 3, auth: { username: 'admin', password: SHELLY_PASSWORD }, on: false, watts: (on) => (on ? 38.6 : 0) });
+	const tasmota = await startMockPlug({ kind: 'tasmota', port: PORT_BASE + 4, auth: { username: 'admin', password: TASMOTA_PASSWORD }, on: true, watts: (on) => (on ? 112.4 : 0) });
+	const mk4Op = await startMockOctoPrint({ port: PORT_BASE + 1, apiKey: 'mk4-e2e-key', powered: () => shelly.state.on, printSeconds: 40, coolPerSecond: 0.3 });
+	const voronOp = await startMockOctoPrint({ port: PORT_BASE + 2, apiKey: 'voron-e2e-key', powered: () => tasmota.state.on, printSeconds: 6, coolPerSecond: 0.35 });
+	const cam = await startMjpegSource({ port: PORT_BASE + 5, host: '127.0.0.1' });
 	const hookServer = createServer((req, res) => {
 		let body = '';
 		req.on('data', (d) => (body += d));
@@ -89,7 +90,7 @@ async function main() {
 			res.end('ok');
 		});
 	});
-	await new Promise((r) => hookServer.listen(3236, '127.0.0.1', r));
+	await new Promise((r) => hookServer.listen(PORT_BASE + 6, '127.0.0.1', r));
 	closers.push(shelly.close, tasmota.close, mk4Op.close, voronOp.close, cam.close, () => (hookServer.closeAllConnections(), new Promise((r) => hookServer.close(r))));
 	// The Voron is on and connected; the MK4 is off.
 	await fetch(`${voronOp.url}/api/connection`, { method: 'POST', headers: { 'x-api-key': 'voron-e2e-key', 'content-type': 'application/json' }, body: JSON.stringify({ command: 'connect' }) });
@@ -142,7 +143,7 @@ async function main() {
 	const audits = async (action) => (await admin.get(`/api/audit?action=${action}`)).data;
 	await waitFor(async () => (await stateOf(voron.id)) === 'operational' && (await stateOf(mk4.id)) === 'disconnected', 'Voron ready, MK4 unpowered');
 
-	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e hook', secrets: { url: 'http://127.0.0.1:3236/power' } });
+	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e hook', secrets: { url: `http://127.0.0.1:${PORT_BASE + 6}/power` } });
 	assert.equal(hookChannel.status, 201, hookChannel.text);
 	const saved = await admin.put('/api/settings/notifications', { rules: [{ name: 'Power', printers: 'all', events: ['power.on', 'power.off'], channels: [hookChannel.data.channel.id] }] });
 	assert.equal(saved.status, 200, saved.text);

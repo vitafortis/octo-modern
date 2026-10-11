@@ -127,6 +127,12 @@ export function patchJob(id: string, patch: Record<string, unknown>, failed = 'C
 	return done(api.patch<QueueJob>(`/api/queue/${encodeURIComponent(id)}`, patch), failed);
 }
 
+/** A job held for filament: back in the queue, checked again or (`anyway`, after asking) not. */
+export async function releaseJob(job: QueueJob, anyway = false) {
+	if (anyway && !(await confirmAction({ title: 'Print anyway?', body: `${job.error ?? 'The spool may run out during this print.'} The next start of ${job.name} skips the filament check.`, confirmLabel: 'Print anyway', danger: true }))) return;
+	return patchJob(job.id, anyway ? { release: true, printAnyway: true } : { release: true }, 'Could not release the job');
+}
+
 export function reorderJobs(ids: string[]) {
 	return done(api.post<QueueState>('/api/queue/order', { ids }), 'Could not reorder the queue');
 }

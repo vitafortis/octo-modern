@@ -5,7 +5,10 @@
  * - once the idle time since then is up AND every hotend is below the cool-down
  *   temperature, it fires (the service disconnects OctoPrint and switches the plug off);
  * - a new print, "Keep on", the plug going off by other means, or the feature being
- *   turned off cancels it.
+ *   turned off cancels it;
+ * - a countdown restored after a restart (`restore`) waits for a known printer state
+ *   (not "unknown"/"offline") before it may fire, so it never acts on a printer it
+ *   hasn't seen yet; a print running by then cancels it like any new print.
  */
 import { jobActive, type PrinterState, type TempReading } from '#lib/printer.ts';
 import type { AutoOffCountdown, AutoOffSettings } from '#lib/power.ts';
@@ -39,6 +42,21 @@ export class AutoOff {
 	private prev: PrinterState | null = null;
 	private lastHotend: number | null = null;
 	private heldBy: string | null = null;
+	/** Restored after a restart and no known state seen since. */
+	private unverified = false;
+
+	/** Resumes a countdown saved before a restart (see power/pending.ts). */
+	restore(armedAt: number) {
+		this.armedAt = armedAt;
+		this.prev = null;
+		this.heldBy = null;
+		this.unverified = true;
+	}
+
+	/** Restored and still waiting to see the printer. */
+	get resumed(): boolean {
+		return this.armedAt != null && this.unverified;
+	}
 
 	observe(o: AutoOffObservation, s: AutoOffSettings): AutoOffEvent {
 		const prev = this.prev;
@@ -46,6 +64,11 @@ export class AutoOff {
 		this.lastHotend = o.hotendC;
 		if (this.armedAt != null) {
 			if (!s.enabled) return this.cancel('Auto power-off was turned off');
+			if (this.unverified) {
+				// Resumed after a restart: nothing is known about the printer yet.
+				if (UNCERTAIN.includes(o.state)) return null;
+				this.unverified = false;
+			}
 			if (jobActive(o.state)) return this.cancel('A new print started');
 			if (o.plugOn === false) return this.cancel('The plug is off');
 			const idleDone = o.now - this.armedAt >= s.idleMinutes * 60_000;
@@ -68,6 +91,7 @@ export class AutoOff {
 		if (this.armedAt == null) return null;
 		this.armedAt = null;
 		this.heldBy = null;
+		this.unverified = false;
 		return { type: 'cancelled', reason };
 	}
 

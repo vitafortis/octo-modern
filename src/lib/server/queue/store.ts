@@ -3,7 +3,7 @@
  * migration `queue-001` in store.ts) and the global pause flag (kv `queue:paused`).
  */
 import { randomUUID } from 'node:crypto';
-import { getKv, setKv, sqlite } from '../store.ts';
+import { deleteKv, getKv, setKv, sqlite } from '../store.ts';
 import { parseTags, type QueueJob, type QueueJobStatus, type QueuePrinter, type QueueRun, type QueueSourceKind } from '#lib/queue.ts';
 
 type Row = Record<string, unknown>;
@@ -167,6 +167,7 @@ export function transition(id: string, from: QueueJobStatus | QueueJobStatus[], 
 }
 
 export function deleteJob(id: string): boolean {
+	setFilamentOverride(id, false);
 	return Number(db().prepare('DELETE FROM queue_jobs WHERE id = ?').run(id).changes) > 0;
 }
 
@@ -264,3 +265,16 @@ export function setHeld(printerId: string, held: boolean, reason: string | null 
 
 export const isPaused = () => getKv<boolean>('queue:paused', false);
 export const setPaused = (paused: boolean) => setKv('queue:paused', paused);
+
+// --- filament override -------------------------------------------------------------------------
+
+/**
+ * "Print anyway" on a job held for filament (kv `queue:filament-ok:<job id>`): its next
+ * start skips the filament check once.
+ */
+const filamentKey = (jobId: string) => `queue:filament-ok:${jobId}`;
+export const filamentOverride = (jobId: string) => getKv<boolean>(filamentKey(jobId), false);
+export function setFilamentOverride(jobId: string, on: boolean) {
+	if (on) setKv(filamentKey(jobId), true);
+	else deleteKv(filamentKey(jobId));
+}
