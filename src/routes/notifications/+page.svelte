@@ -7,6 +7,7 @@
 	import ChannelDialog from '#lib/components/notify/ChannelDialog.svelte';
 	import ChannelIcon from '#lib/components/notify/ChannelIcon.svelte';
 	import RuleDialog from '#lib/components/notify/RuleDialog.svelte';
+	import PushDevices from '#lib/components/notify/PushDevices.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { ago } from '#lib/client/format.ts';
 	import { DAYS, notifyApi, type NotifySettings } from '#lib/client/notify.ts';
@@ -252,11 +253,14 @@
 				{:else}
 					<div class="card flex flex-col items-center gap-3 px-6 py-10 text-center">
 						<span class="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary"><BellRing class="size-5" /></span>
-						<p class="max-w-sm text-[0.8125rem] text-muted-foreground">No channels yet. Add ntfy, Discord, Slack, Telegram, Pushover, Gotify, Matrix, email, Home Assistant or a webhook.</p>
+						<p class="max-w-sm text-[0.8125rem] text-muted-foreground">No channels yet. Add browser push, ntfy, Discord, Slack, Telegram, Pushover, Gotify, Matrix, email, Home Assistant or a webhook.</p>
 						<button class="btn btn-primary" onclick={addChannel}><Plus />Add channel</button>
 					</div>
 				{/each}
 			</section>
+
+			<!-- Browser push on this device (the signed-in admin's own devices). -->
+			<PushDevices admin />
 
 			<!-- Rules -->
 			<section class="card p-4 sm:p-5" aria-labelledby="rules-h">

@@ -342,6 +342,26 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 			);
 			CREATE INDEX IF NOT EXISTS maintenance_log_printer ON maintenance_log(printer_id, id DESC);
 		`)
+	],
+	[
+		'push-001',
+		(h) =>
+			h.exec(`
+			-- Browser push subscriptions, one per device (see push/subscriptions.ts). The keys are
+			-- sealed in "secret", bound to the id. No foreign key: OCM_AUTH=disabled uses the user "open".
+			CREATE TABLE IF NOT EXISTS push_subscriptions (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL,
+				endpoint TEXT NOT NULL UNIQUE,
+				secret TEXT NOT NULL,
+				vapid_key TEXT NOT NULL,
+				label TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				last_sent_at TEXT,
+				last_error TEXT
+			);
+			CREATE INDEX IF NOT EXISTS push_subscriptions_user ON push_subscriptions(user_id);
+		`)
 	]
 ];
 
@@ -557,6 +577,7 @@ export function touchUserLogin(id: string) {
 }
 
 export function deleteUser(id: string): boolean {
+	db().prepare('DELETE FROM push_subscriptions WHERE user_id = ?').run(id);
 	return Number(db().prepare('DELETE FROM users WHERE id = ?').run(id).changes) > 0;
 }
 
