@@ -15,7 +15,7 @@ const { hashPassword, verifyPassword } = await import('../../src/lib/server/cryp
 
 const PASSPHRASE = 'correct horse battery staple';
 const FAST = { N: 1024, r: 8, p: 1 };
-const ALL = { printers: true, users: true, settings: true, notifications: true, history: true, queue: true };
+const ALL = { printers: true, users: true, settings: true, notifications: true, history: true, queue: true, filament: true };
 const notify = await import('../../src/lib/server/notify/settings.ts');
 const hs = await import('../../src/lib/server/history/store.ts');
 const detect = await import('../../src/lib/server/detect/settings.ts');
@@ -33,6 +33,15 @@ if (role === 'export') {
 	store.setGrants(op.id, [mk4.id]);
 	saveSso({ issuer: 'https://id.example', clientId: 'ocm', clientSecret: 'sso-secret-value', name: 'Pocket', scopes: 'openid email', autoCreate: [], adminEmails: [], defaultRole: 'operator' });
 	store.setKv('local-login-disabled', true);
+	// Spoolman (auth header sealed), costs, a spool on the MK4, a maintenance task done once; a cost on a history entry later.
+	const spoolman = await import('../../src/lib/server/spools/spoolman.ts');
+	spoolman.saveSpoolmanSettings({ url: 'http://spoolman.lan:7912', authHeader: 'Authorization', authValue: 'Bearer spoolman-secret', lowThresholdG: 80 });
+	const costs = await import('../../src/lib/server/costs.ts');
+	costs.saveCostSettings({ ...costs.costSettings(), currency: 'EUR' }, [mk4.id]);
+	(await import('../../src/lib/server/spools/assignments.ts')).assignSpool(mk4.id, 0, 42, 'op');
+	const maint = await import('../../src/lib/server/maintenance.ts');
+	const t = maint.createTask(mk4.id, { name: 'Nozzle', metric: 'hours', interval: 500, notes: null } as Parameters<typeof maint.createTask>[1]);
+	maint.markDone(t, { userId: op.id, label: 'op' }, 'swapped');
 	// A smart plug with a password on the MK4.
 	const power = await import('../../src/lib/server/power/config.ts');
 	power.savePlug(mk4.id, { kind: 'shelly', label: 'Desk plug', config: { host: 'http://plug.lan', channel: 0, generation: 2 }, secrets: { username: 'admin', password: 'plug-password' }, settings: power.parseSettings({}) });
@@ -56,6 +65,7 @@ if (role === 'export') {
 	job.run('33333333-3333-3333-3333-333333333333', 3, 'busy.gcode', 'library', 'src-1', 'busy.gcode', 'printing', op.id);
 	store.sqlite().prepare(`INSERT INTO queue_runs (job_id, printer_id, printer_name, result, started_at) VALUES (?, ?, 'mk4', 'printing', '2026-10-01T01:00:00Z')`).run('33333333-3333-3333-3333-333333333333', mk4.id);
 	store.sqlite().prepare(`INSERT INTO queue_printers (printer_id, tags, updated_at) VALUES (?, '["pla","0.4"]', '2026-10-01T00:00:00Z')`).run(mk4.id);
+	store.sqlite().prepare(`UPDATE prints SET filament_g = 12.5, cost_filament = 0.31, material = 'PLA' WHERE file_name = 'gear.gcode'`).run();
 	const env = await encodeBackup(cb.snapshot(ALL, { historyImages: true }), PASSPHRASE, FAST);
 	writeFileSync(file, JSON.stringify(env));
 	const small = JSON.stringify(cb.snapshot({ ...ALL, history: true }, { historyImages: false })).includes('"thumbnail"');
@@ -100,6 +110,21 @@ if (role === 'export') {
 			sso: ssoConfig(),
 			localLogin: store.getKv('local-login-disabled', null),
 			detect: { ml: detect.mlConfig(), mk4: detect.printerSettings(printers.find((x) => x.name === 'mk4')!.id), baselines: (store.sqlite().prepare(`SELECT key FROM kv WHERE key LIKE 'detect:baseline:%'`).all() as unknown[]).length, preview: preview.settings.find((x: { label: string }) => x.label === 'Failure detection') },
+			filament: await (async () => {
+				const spoolman = await import('../../src/lib/server/spools/spoolman.ts');
+				const raw = store.getKv<{ sealed: string | null }>('spoolman:settings', { sealed: null });
+				return {
+					preview: preview.filament,
+					result: result.filament,
+					spoolman: spoolman.spoolmanSettings(),
+					authValue: raw.sealed ? (await import('../../src/lib/server/crypto.ts')).decrypt(raw.sealed, 'spoolman') : null,
+					currency: (await import('../../src/lib/server/costs.ts')).costSettings().currency,
+					assignments: store.sqlite().prepare('SELECT tool, spool_id FROM spool_assignments').all(),
+					tasks: store.sqlite().prepare('SELECT name, last_done_by FROM maintenance_tasks').all(),
+					log: store.sqlite().prepare('SELECT task_name, done_by, user_id, notes FROM maintenance_log').all(),
+					benchyCost: store.sqlite().prepare(`SELECT filament_g, cost_filament, material FROM prints WHERE filament_g IS NOT NULL`).all()
+				};
+			})(),
 			plug: await (async () => {
 				const power = await import('../../src/lib/server/power/config.ts');
 				const p = power.getPlug(printers.find((x) => x.name === 'mk4')!.id);

@@ -11,6 +11,7 @@
 	import { formatDuration } from '#lib/printer.ts';
 	import { RESULT_LABEL, resultTone, type HistoryFilter, type HistoryStats, type PrintRecord, type PrintResult } from '#lib/history.ts';
 	import type { LivePrinter } from '#lib/client/live.svelte.ts';
+	import { formatMoney } from '#lib/spools.ts';
 
 	/** With `printerId`, one printer's history (the printer tab); without, every printer's (the History page). */
 	let { printerId, live }: { printerId?: string; live?: LivePrinter } = $props();
@@ -92,6 +93,8 @@
 	const meters = (mm: number | null | undefined) => (mm == null ? '—' : `${(mm / 1000).toFixed(mm < 100_000 ? 2 : 0)} m`);
 	const when = (iso: string) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 	const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+	const money = (n: number | null | undefined) => formatMoney(n, stats?.currency ?? 'EUR');
+	const grams = (g: number | null | undefined) => (g == null ? '' : `${g < 10 ? g.toFixed(1) : Math.round(g)} g`);
 
 	function open(r: PrintRecord) {
 		selected = r;
@@ -186,7 +189,7 @@
 		</div>
 	{:else}
 		{#if stats}
-			<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+			<div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
 				<div class="card px-4 py-3.5">
 					<p class="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Success rate</p>
 					<p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{pct(stats.successRate)}</p>
@@ -209,16 +212,21 @@
 					<p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{stats.filamentMm ? meters(stats.filamentMm) : '—'}</p>
 					<p class="mt-0.5 text-xs text-muted-foreground">from the slicer’s estimate × progress</p>
 				</div>
+				<div class="card px-4 py-3.5" data-testid="cost-total">
+					<p class="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Cost</p>
+					<p class="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{stats.costed ? money(stats.cost) : '—'}</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">{stats.costed ? `${money(stats.cost / stats.costed)} per print` : 'set prices on the Filament page'}</p>
+				</div>
 			</div>
 
 			{#if stats.perWeek.length}
-				<div class="grid gap-3 {printerId ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]'}">
+				<div class="grid gap-3 {printerId ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]'}">
 					<div class="card px-4 pt-3.5 pb-3">
 						<p class="mb-2 text-[13px] font-medium">Prints per week</p>
 						<WeeklyChart weeks={stats.perWeek} />
 					</div>
 					{#if !printerId}
-						<div class="card overflow-hidden">
+						<div class="card overflow-x-auto">
 							<p class="px-4 pt-3.5 pb-2 text-[13px] font-medium">By printer</p>
 							<table class="w-full text-left text-xs">
 								<thead class="text-[11px] text-muted-foreground">
@@ -227,7 +235,8 @@
 										<th class="px-2 py-1.5 text-right font-medium">Prints</th>
 										<th class="px-2 py-1.5 text-right font-medium">Success</th>
 										<th class="px-2 py-1.5 text-right font-medium max-sm:hidden">Time</th>
-										<th class="px-4 py-1.5 text-right font-medium">Filament</th>
+										<th class="px-2 py-1.5 text-right font-medium">Filament</th>
+										<th class="px-4 py-1.5 text-right font-medium">Cost</th>
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-border">
@@ -237,7 +246,8 @@
 											<td class="px-2 py-2 text-right font-mono tabular-nums">{p.prints}</td>
 											<td class="px-2 py-2 text-right font-mono tabular-nums">{pct(p.prints ? p.success / p.prints : null)}</td>
 											<td class="px-2 py-2 text-right font-mono whitespace-nowrap tabular-nums max-sm:hidden">{formatDuration(p.printTime)}</td>
-											<td class="px-4 py-2 text-right font-mono whitespace-nowrap tabular-nums">{meters(p.filamentMm)}</td>
+											<td class="px-2 py-2 text-right font-mono whitespace-nowrap tabular-nums">{meters(p.filamentMm)}</td>
+											<td class="px-4 py-2 text-right font-mono whitespace-nowrap tabular-nums">{p.cost ? money(p.cost) : '—'}</td>
 										</tr>
 									{/each}
 								</tbody>
@@ -266,6 +276,7 @@
 										<span class="badge {badge(r.result)}" title={r.reason ?? undefined}>{#if r.result === 'printing'}<span class="size-1.5 animate-pulse rounded-full bg-current"></span>{/if}{RESULT_LABEL[r.result]}</span>
 										<span class="font-mono">{r.endedAt ? formatDuration(r.durationS) : ago(r.startedAt).replace(' ago', '')}</span>
 										<span>{when(r.startedAt)}</span>
+										{#if r.endedAt && r.cost != null}<span class="font-mono" data-cost={r.cost}>{money(r.cost)}</span>{/if}
 										{#if !printerId}<span class="truncate">· {printerName(r)}</span>{/if}
 									</span>
 									{#if r.notes}<span class="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground"><NotebookPen class="size-3 shrink-0" /><span class="truncate">{r.notes}</span></span>{/if}
@@ -287,6 +298,7 @@
 						<th class="hidden w-36 px-3 py-2 font-medium lg:table-cell">Started</th>
 						<th class="w-24 px-3 py-2 text-right font-medium">Duration</th>
 						<th class="hidden w-24 px-3 py-2 text-right font-medium md:table-cell">Filament</th>
+						<th class="hidden w-20 px-3 py-2 text-right font-medium md:table-cell">Cost</th>
 						<th class="hidden w-36 px-3 py-2 font-medium xl:table-cell">By</th>
 						<th class="w-24 px-3 py-2"><span class="sr-only">Actions</span></th>
 					</tr>
@@ -318,7 +330,8 @@
 							</td>
 							<td class="hidden px-3 py-2 text-xs whitespace-nowrap text-muted-foreground lg:table-cell" title={new Date(r.startedAt).toLocaleString()}>{when(r.startedAt)}</td>
 							<td class="px-3 py-2 text-right font-mono text-xs whitespace-nowrap tabular-nums">{r.endedAt ? formatDuration(r.durationS) : ago(r.startedAt).replace(' ago', '')}</td>
-							<td class="hidden px-3 py-2 text-right font-mono text-xs whitespace-nowrap tabular-nums md:table-cell">{r.endedAt ? meters(r.filamentMm) : '—'}</td>
+							<td class="hidden px-3 py-2 text-right font-mono text-xs whitespace-nowrap tabular-nums md:table-cell" title={r.filamentG != null ? `${grams(r.filamentG)}${r.material ? ` ${r.material}` : ''}` : undefined}>{r.endedAt ? meters(r.filamentMm) : '—'}</td>
+							<td class="hidden px-3 py-2 text-right font-mono text-xs whitespace-nowrap tabular-nums md:table-cell" data-cost={r.cost ?? ''}>{r.endedAt ? money(r.cost) : '—'}</td>
 							<td class="hidden truncate px-3 py-2 text-xs text-muted-foreground xl:table-cell" title={who(r)}>{who(r)}</td>
 							<td class="px-3 py-2 text-right whitespace-nowrap">
 								{#if canControl(r) && r.endedAt}
@@ -330,7 +343,7 @@
 							</td>
 						</tr>
 					{:else}
-						<tr><td colspan="9" class="px-4 py-10 text-center text-xs text-muted-foreground">{loading || !loaded ? 'Loading…' : 'No prints match these filters.'}</td></tr>
+						<tr><td colspan="10" class="px-4 py-10 text-center text-xs text-muted-foreground">{loading || !loaded ? 'Loading…' : 'No prints match these filters.'}</td></tr>
 					{/each}
 				</tbody>
 			</table>
@@ -362,7 +375,11 @@
 				<div><dt class="text-[11px] text-muted-foreground">Progress</dt><dd class="font-mono text-xs">{r.completion != null ? `${Math.round(r.completion)}%` : '—'}</dd></div>
 				<div><dt class="text-[11px] text-muted-foreground">Started</dt><dd class="text-xs">{new Date(r.startedAt).toLocaleString()}</dd></div>
 				<div><dt class="text-[11px] text-muted-foreground">Ended</dt><dd class="text-xs">{r.endedAt ? new Date(r.endedAt).toLocaleString() : 'still running'}</dd></div>
-				<div><dt class="text-[11px] text-muted-foreground">Filament</dt><dd class="font-mono text-xs">{meters(r.filamentMm)}</dd></div>
+				<div><dt class="text-[11px] text-muted-foreground">Filament</dt><dd class="font-mono text-xs">{meters(r.filamentMm)}{#if r.filamentG != null}<span class="text-muted-foreground"> · {grams(r.filamentG)}{r.material ? ` ${r.material}` : ''}</span>{/if}</dd></div>
+				<div>
+					<dt class="text-[11px] text-muted-foreground">Cost</dt>
+					<dd class="font-mono text-xs">{money(r.cost)}{#if r.cost != null}<span class="text-muted-foreground"> · filament {money(r.costFilament)}, power {money(r.costEnergy)}</span>{/if}</dd>
+				</div>
 				<div><dt class="text-[11px] text-muted-foreground">Started by</dt><dd class="text-xs">{who(r)}</dd></div>
 				<div class="col-span-2"><dt class="text-[11px] text-muted-foreground">File</dt><dd class="truncate font-mono text-xs" title={r.path}>{r.origin === 'sdcard' ? 'SD: ' : ''}{r.path}</dd></div>
 			</dl>

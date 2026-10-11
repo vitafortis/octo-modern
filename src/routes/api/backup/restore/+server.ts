@@ -10,7 +10,7 @@ const flag = (v: unknown) => v === true || v === 'true' || v === 'on' || v === '
 
 /**
  * Restores a backup. Takes multipart (`file`, `passphrase`, `mode`, and `printers`
- * / `users` / `settings` / `notifications` / `history` / `queue` flags) or JSON (`{ file, passphrase, mode, apply: {...} }`,
+ * / `users` / `settings` / `notifications` / `history` / `queue` / `filament` flags) or JSON (`{ file, passphrase, mode, apply: {...} }`,
  * where `file` is the file's text or parsed JSON). `mode: 'preview'` only decrypts and
  * reports what would change; `mode: 'apply'` merges the chosen categories.
  */
@@ -25,14 +25,14 @@ export const POST: RequestHandler = handler(async ({ request, locals }) => {
 		file = typeof f === 'string' ? f : f ? await f.text() : undefined;
 		passphrase = form.get('passphrase');
 		mode = form.get('mode');
-		choice = { printers: flag(form.get('printers')), users: flag(form.get('users')), settings: flag(form.get('settings')), notifications: flag(form.get('notifications')), history: flag(form.get('history')), queue: flag(form.get('queue')) };
+		choice = { printers: flag(form.get('printers')), users: flag(form.get('users')), settings: flag(form.get('settings')), notifications: flag(form.get('notifications')), history: flag(form.get('history')), queue: flag(form.get('queue')), filament: flag(form.get('filament')) };
 	} else {
 		const body = await request.json().catch(() => ({}));
 		file = body.file;
 		passphrase = body.passphrase;
 		mode = body.mode;
 		const a = body.apply && typeof body.apply === 'object' ? body.apply : {};
-		choice = { printers: flag(a.printers), users: flag(a.users), settings: flag(a.settings), notifications: flag(a.notifications), history: flag(a.history), queue: flag(a.queue) };
+		choice = { printers: flag(a.printers), users: flag(a.users), settings: flag(a.settings), notifications: flag(a.notifications), history: flag(a.history), queue: flag(a.queue), filament: flag(a.filament) };
 	}
 	if (!file) throw new BadRequest('Choose a backup file');
 	if (typeof passphrase !== 'string' || !passphrase) throw new BadRequest('Enter the backup passphrase');

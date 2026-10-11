@@ -33,6 +33,9 @@
 - **Timelapses**: watch OctoPrint's timelapses in the browser (with seeking), download and delete them, render unrendered ones, and change the timelapse settings.
 - **Notifications** to ntfy, Discord, Slack, Telegram, Pushover, Gotify, Matrix, email (SMTP), Home Assistant or any webhook, with the webcam snapshot: prints started, at milestones, paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom); printers offline, in error, back, or still hot after a print; plus the queue, failure detection and other features. Rules per printer and event, quiet hours per channel, de-duplication and a delivery log. See [Notifications](#notifications).
 - **Smart plug power**: switch each printer with a Shelly (Gen1 and Gen2+), Tasmota, Home Assistant or any HTTP switch, from the printer page, its overview card or a right-click in the sidebar, with the plug's watts and energy where it measures them. After power-on octo·modern connects the printer; after a print it can turn it off once the hotend has cooled; and it can switch a printer on when a print is sent to it. Turning off asks first while the printer is hot, and twice while it prints. See [Smart plugs](#smart-plugs).
+- **Spoolman**: pick the active [Spoolman](https://github.com/Donkie/Spoolman) spool per printer and extruder (search, colour, material, what's left), see it on the dashboard, and have each print's filament reported to Spoolman as it prints and when it ends. Before a print starts, octo·modern warns when the spool won't last. See [Spools, costs and maintenance](#spools-costs-and-maintenance).
+- **Cost per print**: filament (by the spool's price from Spoolman, or a price per kg per material) plus electricity (print time × each printer's power draw), on every history entry, in the History stats per printer and in the CSV export; earlier prints are costed too.
+- **Maintenance reminders**: per-printer tasks counted in print hours, filament used or days (nozzle, belts, rails, bed, e-steps offered), with due/overdue badges, "Done" with notes and a log of who did what when.
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
@@ -163,6 +166,9 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
 | Watch failure detection (score, last frame) | ✓ | ✓ | ✓ |
 | Turn failure detection on/off per printer, its sensitivity and action; mark a false alarm | ✓ | ✓ | |
+| See spools, print costs and maintenance tasks | ✓ | ✓ | ✓ |
+| Choose a printer's active spool; add, edit and complete maintenance tasks | ✓ | ✓ | |
+| Spoolman connection, cost settings | ✓ | | |
 | Timelapse settings, delete history entries, import history | ✓ | | |
 | Notifications: channels, rules, quiet hours, delivery log | ✓ | | |
 | Set up smart plugs and their automations, test them | ✓ | | |
@@ -261,7 +267,7 @@ A print shorter than one poll interval, started and finished while nobody watche
 
 Notifications about prints are set up on the [Notifications](#notifications) page.
 
-`GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`).
+`GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`), including `filament_g`, `material`, `cost_filament`, `cost_energy` and `cost_total`.
 
 ## Notifications
 
@@ -269,7 +275,7 @@ Admins set them up under **Notifications** in the sidebar.
 
 **Channels**: [ntfy](https://ntfy.sh) (server, topic, optional token), Discord (webhook), Slack (incoming webhook; Block Kit with the facts and a button back), Telegram (bot token and chat ID; the snapshot as a photo with the caption), Pushover (application token, user key; high priority for errors), Gotify (server, application token; markdown), Matrix (homeserver, room ID, access token of a bot account; the snapshot uploaded as an image), email over SMTP (STARTTLS, TLS or plain; HTML with the snapshot inline), Home Assistant (a webhook trigger, a `notify.*` service with a long-lived token, or both) and generic webhooks (JSON). Tokens, webhook URLs and passwords are stored encrypted and never sent back to the browser. **Send test** in the editor tries the settings on screen, with a test picture, and shows the service's answer word for word when it fails (`HTTP 400: Bad Request: chat not found`, `535 Authentication credentials invalid`…).
 
-**Events**: print started, progress milestones (percentages and/or minutes left, e.g. `25, 50, 75` and `10`), paused (with why: filament runout, M600, a pause in the G-code such as `M0`, the printer, or who pressed pause), finished, failed, cancelled (and who cancelled), printer offline (OctoPrint unreachable or the printer disconnected, after a grace period), printer error, printer back, and still hot after a print (bed or hotend above a threshold N minutes after it ended). Other features raise their own: **Bed clear needed** (queue), **Failure suspected** (failure detection), and **Spool low**, **Maintenance due** and **Power off** for features that plug in later.
+**Events**: print started, progress milestones (percentages and/or minutes left, e.g. `25, 50, 75` and `10`), paused (with why: filament runout, M600, a pause in the G-code such as `M0`, the printer, or who pressed pause), finished, failed, cancelled (and who cancelled), printer offline (OctoPrint unreachable or the printer disconnected, after a grace period), printer error, printer back, and still hot after a print (bed or hotend above a threshold N minutes after it ended). Other features raise their own: **Bed clear needed** (queue), **Failure suspected** (failure detection), **Spool low** and **Maintenance due** (Spoolman and maintenance), **Power on** and **Power off** (smart plugs).
 
 **Messages** carry the printer, file, progress, elapsed and estimated time, filament, who started (or cancelled) it, a link back to the printer page, and a fresh webcam snapshot where the channel can take one (the history's picture when there's no camera). Links need octo·modern's **public URL** (Options; `ORIGIN` when empty). Slack, Gotify and Home Assistant's notify service only show pictures by URL: with **Share snapshots by link** on, each snapshot gets an unguessable link under `/api/notify/media/`, readable without signing in for 48 hours.
 
@@ -291,13 +297,31 @@ A generic webhook receives a JSON `POST` (version 2; channels set up before this
 }
 ```
 
-`event` is one of `print.started`, `print.progress`, `print.paused`, `print.finished`, `print.failed`, `print.cancelled`, `printer.offline`, `printer.error`, `printer.online`, `printer.hot`, `queue.bed_clear_needed`, `failure.suspected`, `spool.low`, `maintenance.due`, `power.off` or `test`; `image` only when **Include the snapshot** is on. Home Assistant webhook triggers get the same document.
+`event` is one of `print.started`, `print.progress`, `print.paused`, `print.finished`, `print.failed`, `print.cancelled`, `printer.offline`, `printer.error`, `printer.online`, `printer.hot`, `queue.bed_clear_needed`, `failure.suspected`, `spool.low`, `maintenance.due`, `power.on`, `power.off` or `test`; `image` only when **Include the snapshot** is on. Home Assistant webhook triggers get the same document.
 
 **For developers**: other server code calls `notify({ kind, printerId, title?, message?, fields?, data?, snapshot? })` from `src/lib/server/notify/` with one of the kinds in `src/lib/notify.ts`; rules, quiet hours, de-dupe, snapshots and the log come with it.
 
+## Spools, costs and maintenance
+
+The **Filament** page shows which spool is on which printer, and holds the admin settings for Spoolman and costs. Each printer's dashboard has a **Filament** card with the active spool per extruder.
+
+**Connecting Spoolman** (admins, **Filament → Spoolman**): enter Spoolman's address, e.g. `http://spoolman.lan:7912` (the `/api/v1` address works too). Spoolman has no login of its own; if a reverse proxy in front of it wants one, add an auth header (name and value, e.g. `Authorization: Bearer …`): the value is stored encrypted and never sent back to the browser. **Test** shows Spoolman's version and how many spools it has. octo·modern talks to Spoolman's REST API only from the server, so the browser doesn't need to reach it.
+
+**Choosing the spool**: operators click **Choose** / **Change** on a printer's Filament card and pick from Spoolman's spools (not archived), searchable by name, vendor, material, location and lot, with the colour, material and what's left. A printer with several extruders (from its live temperatures: `tool0`, `tool1`, …) gets one spool per tool. A spool sits on one tool at a time; moving it elsewhere takes it off the first.
+
+**Reporting use**: while a print runs, octo·modern estimates the filament used per tool from OctoPrint's analysis × progress and reports it in steps of about a metre (`PUT /api/v1/spool/<id>/use` with `use_length` in mm; Spoolman converts to weight with the filament's density and diameter). When the print ends, the rest is reported, so the total matches the history entry (a cancelled print counts only what it got through). Reports that fail (Spoolman down) are retried for a week, and never sent twice. Turn off **Report use while printing** to report only at the end.
+
+**Before printing**: starting a print (a file's **Print**, the job **Print** button, **Print again** in the history, or **Send & print** from the library) compares the file's filament with what's left on each tool's spool. When it won't last, you're asked first (the API answers 409 with `confirmRequired`, then accepts `confirm: true`, or `confirmFilament: true` for library sends). If Spoolman can't be reached, printing isn't held up.
+
+**Low spools**: below the threshold (100 g by default) a spool turns red on the dashboard, and the `spool.low` notification is sent once per spool, again only after it was refilled or replaced.
+
+**Costs** (admins, **Filament → Print costs**): currency, electricity price per kWh, an average power draw while printing (a default and per printer), and a price per kg and density per material, with a default material and filament diameter for prints whose spool isn't known. Each print's cost is filament (grams from the spool's density, priced with the spool's price from Spoolman when it has one, else the material's) plus electricity (print time × draw × price). It's stored on the history entry when the print ends; entries without a cost (earlier and imported prints) are costed when the settings are saved and every few hours. **Recalculate history** re-costs every finished print with today's prices (prints priced from a Spoolman spool keep that price).
+
+**Maintenance** (the **Maintenance** page, and a tab per printer): tasks with an interval in print hours, kg of filament or days, counted from the print history since the task was last done (or since a "last done" date you give when adding it). New printers are offered nozzle change (500 h), belt tension (200 h), lubricating rods and rails (150 h), cleaning the bed (7 days) and checking e-steps (5 kg). A task is **due soon** at 90 % of its interval and **overdue** past it; the sidebar shows how many are overdue, and `maintenance.due` is sent once when a task becomes overdue. **Done** (operators) logs who did it, when, at what usage and your notes, and starts the count again.
+
 ## Smart plugs
 
-Admins set up a printer's plug from the **Power** card on its dashboard (**Set up a smart plug**, or the settings icon on the card). **Test** reads the plug's state without switching it. Usernames, passwords and tokens are sealed with AES-256-GCM like API keys and never sent back to the browser (leave a field empty to keep what's saved); credentials in a URL are refused. Plugs aren't part of backups yet.
+Admins set up a printer's plug from the **Power** card on its dashboard (**Set up a smart plug**, or the settings icon on the card). **Test** reads the plug's state without switching it. Usernames, passwords and tokens are sealed with AES-256-GCM like API keys and never sent back to the browser (leave a field empty to keep what's saved); credentials in a URL are refused. Backups include each printer's plug with its credentials.
 
 | Device | How octo·modern talks to it | Login | Watts / energy |
 | --- | --- | --- | --- |
@@ -521,6 +545,14 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **Notifications**: rules, options, delivery log | **Send test** shows the service's own answer |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
+| ![Filament card on the dashboard](docs/screenshots/spools-dashboard.png) | ![Choosing a spool](docs/screenshots/spool-picker.png) |
+| **Filament** card: the active spool per extruder | **Choose a spool** from Spoolman |
+| ![Not enough filament](docs/screenshots/filament-warning.png) | ![Filament page](docs/screenshots/filament-light.png) |
+| **Not enough filament**: asked before printing | **Filament**: spools, Spoolman and costs |
+| ![Maintenance](docs/screenshots/maintenance.png) | ![Mark done](docs/screenshots/maintenance-done.png) |
+| **Maintenance**: due and overdue per printer | **Done**, with notes, logged |
+| ![History with costs](docs/screenshots/history-costs.png) | ![Maintenance, light](docs/screenshots/maintenance-light.png) |
+| **Cost per print** in the history | **Maintenance**, light |
 | ![Smart plug](docs/screenshots/power.png) | ![Power overview](docs/screenshots/power-overview.png) |
 | **Power**: plug state, watts, auto power-off countdown | **Overview** and sidebar menu: on/off, Keep on |
 | ![Smart plug setup](docs/screenshots/power-config.png) | ![Second confirmation](docs/screenshots/power-confirm.png) |
@@ -565,7 +597,7 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 
 ## Backup & restore
 
-Under **Settings → Backup & restore**, admins download an encrypted file with printers (with their API keys and smart plugs), users (roles, password hashes, SSO links, printer access), settings (single sign-on, failure detection with its ML API token), notifications (channels with their tokens, rules, options), the print queue (jobs and printer tags; files uploaded to the queue aren't included, so such jobs come back asking for the file) and, when ticked, the print history (optionally with its pictures, up to 100 KB each; can make the file large). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, notifications are replaced as a whole, history entries and queued jobs already present are kept (no duplicates), nothing else is deleted, and your own account is never changed. The audit log, the delivery log and API tokens aren't included. A large backup needs a `BODY_SIZE_LIMIT` above adapter-node's 512 KB default outside the image (the image allows 4 GB).
+Under **Settings → Backup & restore**, admins download an encrypted file with printers (with their API keys and smart plugs), users (roles, password hashes, SSO links, printer access), settings (single sign-on, failure detection with its ML API token), notifications (channels with their tokens, rules, options), the print queue (jobs and printer tags; files uploaded to the queue aren't included, so such jobs come back asking for the file), spools & maintenance (the Spoolman connection with its auth header, cost settings, the spool on each printer, maintenance tasks and their log; not the per-print reports to Spoolman, so nothing is reported twice) and, when ticked, the print history (optionally with its pictures, up to 100 KB each; can make the file large). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, notifications are replaced as a whole, history entries, queued jobs and maintenance tasks already present are kept (no duplicates), nothing else is deleted, and your own account is never changed. The audit log, the delivery log and API tokens aren't included. A large backup needs a `BODY_SIZE_LIMIT` above adapter-node's 512 KB default outside the image (the image allows 4 GB).
 
 ## Security model
 

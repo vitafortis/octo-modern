@@ -4,7 +4,7 @@
  * in `?tab=<id>`.
  */
 import type { Component } from 'svelte';
-import { Camera, Clapperboard, FolderOpen, History, LayoutDashboard, ListOrdered, Move, ScanEye, SquareTerminal } from '@lucide/svelte';
+import { Camera, Clapperboard, FolderOpen, History, LayoutDashboard, ListOrdered, Move, ScanEye, SquareTerminal, Wrench } from '@lucide/svelte';
 import type { LivePrinter } from '#lib/client/live.svelte.ts';
 import type { Printer } from '#lib/types.ts';
 import DashboardTab from './DashboardTab.svelte';
@@ -16,6 +16,7 @@ import TimelapseTab from './TimelapseTab.svelte';
 import HistoryTab from './HistoryTab.svelte';
 import DetectionTab from './DetectionTab.svelte';
 import QueueTab from './QueueTab.svelte';
+import MaintenanceTab from './MaintenanceTab.svelte';
 
 export interface TabProps {
 	printer: Printer;
@@ -41,5 +42,6 @@ export const TABS: TabDef[] = [
 	{ id: 'timelapse', label: 'Timelapse', icon: Clapperboard, component: TimelapseTab },
 	{ id: 'history', label: 'History', icon: History, component: HistoryTab },
 	{ id: 'queue', label: 'Queue', icon: ListOrdered, component: QueueTab },
-	{ id: 'detection', label: 'Failure detection', icon: ScanEye, component: DetectionTab }
+	{ id: 'detection', label: 'Failure detection', icon: ScanEye, component: DetectionTab },
+	{ id: 'maintenance', label: 'Maintenance', icon: Wrench, component: MaintenanceTab }
 ];

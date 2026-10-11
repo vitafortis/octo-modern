@@ -94,6 +94,19 @@ test('store export restores on a fresh install with a different master key', () 
 	assert.equal(out.detect.baselines, 0);
 	assert.match(out.detect.preview.detail, /ML API http:\/\/ml\.lan:3333 · with token · 1 printer setting$/);
 
+	// Spools & maintenance: Spoolman's header re-sealed, costs, spool per printer, tasks and log (user remapped).
+	assert.equal(out.filament.preview.spoolman, 'http://spoolman.lan:7912');
+	assert.deepEqual(out.filament.result, { assignments: 1, tasks: 1, log: 1 });
+	assert.equal(out.filament.spoolman.url, 'http://spoolman.lan:7912');
+	assert.equal(out.filament.spoolman.lowThresholdG, 80);
+	assert.equal(out.filament.authValue, 'Bearer spoolman-secret');
+	assert.equal(out.filament.currency, 'EUR');
+	assert.deepEqual(out.filament.assignments, [{ tool: 0, spool_id: 42 }]);
+	assert.deepEqual(out.filament.tasks.map((t: { name: string }) => t.name), ['Nozzle']);
+	assert.deepEqual(out.filament.log, [{ task_name: 'Nozzle', done_by: 'op', user_id: out.operator.id, notes: 'swapped' }]);
+
+	assert.deepEqual(out.filament.benchyCost, [{ filament_g: 12.5, cost_filament: 0.31, material: 'PLA' }], 'history entries keep their cost');
+
 	// Smart plug: back with its credentials, re-sealed with the new key.
 	assert.deepEqual(out.plug, { kind: 'shelly', label: 'Desk plug', secrets: { username: 'admin', password: 'plug-password' }, previewed: 'shelly' });
 

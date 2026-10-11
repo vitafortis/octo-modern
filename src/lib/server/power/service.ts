@@ -10,7 +10,7 @@ import { clientFor, printers } from '../octoprint/manager.ts';
 import { currentState } from '../control.ts';
 import { audit } from '../permissions.ts';
 import { getPrinter, listPrinters } from '../store.ts';
-import { notifyPower } from '../history/notify.ts';
+import { notify } from '../notify/index.ts';
 import { createAdapter, type PlugAdapter } from './adapters.ts';
 import { getPlug, listPlugs, type StoredPlug } from './config.ts';
 import { AutoOff, maxHotend } from './autooff.ts';
@@ -202,7 +202,16 @@ export class PowerService {
 		if (cancelled && !on) rt.connectRun++;
 		audit(locals, action, { printer, detail });
 		const who = locals.user ? (locals.user.name ?? locals.user.email) : 'octo·modern';
-		void notifyPower(on ? 'power.on' : 'power.off', { id: printer.id, name: printer.name }, `${printer.name} was powered ${on ? 'on' : 'off'} by ${who}${detail ? ` (${detail})` : ''}.`).catch(() => {});
+		// No snapshot: the camera may well be on the same plug.
+		void notify({
+			kind: on ? 'power.on' : 'power.off',
+			printerId: printer.id,
+			printerName: printer.name,
+			title: `${on ? 'Power on' : 'Power off'}: ${printer.name}`,
+			message: `${printer.name} was powered ${on ? 'on' : 'off'} by ${who}${detail ? ` (${detail})` : ''}.`,
+			dedupeKey: `${on ? 'on' : 'off'}:${Date.now()}`,
+			snapshot: false
+		});
 	}
 
 	/** Switches the plug on and, when set up to, connects OctoPrint to the printer afterwards. */

@@ -5,6 +5,7 @@ import { deleteKv, getApiKey, getKv, setKv, sqlite } from './store.ts';
 import { isRole, type Role } from '#lib/types.ts';
 import { getPlug, parseSettings as parsePlugSettings, savePlug } from './power/config.ts';
 import { checkPortable, exportSettings, importSettings, load as loadNotify, type PortableSettings } from './notify/settings.ts';
+import { checkFilament, exportFilament, importFilament, previewFilament, type BackupFilament } from './spools/backup.ts';
 import { checkQueue, exportQueue, importQueue, previewQueue, type BackupQueue } from './queue/backup.ts';
 import { checkHistory, exportHistory, importHistoryRows, previewHistory, type BackupHistory } from './history/backup.ts';
 
@@ -24,6 +25,8 @@ export interface BackupInclude {
 	history: boolean;
 	/** Print queue jobs and printer tags (not the files uploaded to the queue). */
 	queue: boolean;
+	/** Spoolman connection, cost settings, spool assignments, maintenance tasks and log. */
+	filament: boolean;
 }
 
 /** Export-only: put the history's pictures in too (bigger file). */
@@ -31,7 +34,7 @@ export interface SnapshotOptions {
 	historyImages?: boolean;
 }
 
-export const NO_CATEGORIES: BackupInclude = { printers: false, users: false, settings: false, notifications: false, history: false, queue: false };
+export const NO_CATEGORIES: BackupInclude = { printers: false, users: false, settings: false, notifications: false, history: false, queue: false, filament: false };
 
 export interface BackupPrinter {
 	id: string;
@@ -106,6 +109,7 @@ export interface BackupPayload {
 	notifications?: PortableSettings;
 	history?: BackupHistory;
 	queue?: BackupQueue;
+	filament?: BackupFilament;
 }
 
 type Row = Record<string, unknown>;
@@ -123,6 +127,7 @@ export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): Ba
 	if (include.notifications) payload.notifications = exportSettings();
 	if (include.history) payload.history = exportHistory(!!opts.historyImages);
 	if (include.queue) payload.queue = exportQueue();
+	if (include.filament) payload.filament = exportFilament();
 	if (include.printers) {
 		payload.printers = (h.prepare('SELECT * FROM printers ORDER BY sort, name COLLATE NOCASE').all() as Row[]).map((r) => ({
 			id: r.id as string,
@@ -176,6 +181,7 @@ export function summarizeInclude(p: BackupPayload): string {
 	if (p.notifications) parts.push(`${p.notifications.channels.length} notification channels`);
 	if (p.history) parts.push(`${p.history.prints.length} history entries${p.history.images ? ' with pictures' : ''}`);
 	if (p.queue) parts.push(`${p.queue.jobs.length} queued jobs`);
+	if (p.filament) parts.push(`spools & maintenance (${p.filament.tasks.length} tasks)`);
 	return parts.join(', ') || 'nothing';
 }
 
@@ -216,12 +222,13 @@ export function validatePayload(raw: unknown): BackupPayload {
 		if (p.notifications !== undefined) checkPortable(p.notifications);
 		if (p.history !== undefined) checkHistory(p.history);
 		if (p.queue !== undefined) checkQueue(p.queue);
+		if (p.filament !== undefined) checkFilament(p.filament);
 	} catch (err) {
 		throw new BackupError(`Damaged backup: ${(err as Error).message}`);
 	}
 	return {
 		...p,
-		include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings, notifications: !!inc.notifications && !!p.notifications, history: !!inc.history && !!p.history, queue: !!inc.queue && !!p.queue }
+		include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings, notifications: !!inc.notifications && !!p.notifications, history: !!inc.history && !!p.history, queue: !!inc.queue && !!p.queue, filament: !!inc.filament && !!p.filament }
 	};
 }
 
@@ -240,6 +247,7 @@ export interface RestorePreview {
 	notifications: { channels: { name: string; type: string; status: 'new' | 'update' }[]; rules: number; replaces: number } | null;
 	history: { total: number; added: number; images: boolean } | null;
 	queue: { jobs: number; added: number; tags: number } | null;
+	filament: { spoolman: string | null; assignments: number; tasks: number; newTasks: number; log: number } | null;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -260,7 +268,8 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 		settings: [],
 		notifications: null,
 		history: null,
-		queue: p.queue ? previewQueue(p.queue) : null
+		queue: p.queue ? previewQueue(p.queue) : null,
+		filament: p.filament ? previewFilament(p.filament) : null
 	};
 	if (p.notifications) {
 		const here = loadNotify();
@@ -310,6 +319,7 @@ export interface RestoreResult {
 	notifications: boolean;
 	history: { added: number; skipped: number };
 	queue: { added: number; skipped: number; tags: number };
+	filament: { assignments: number; tasks: number; log: number } | null;
 	/** Printers whose live connections should be rebuilt. */
 	changedPrinterIds: string[];
 }
@@ -329,6 +339,7 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 		notifications: false,
 		history: { added: 0, skipped: 0 },
 		queue: { added: 0, skipped: 0, tags: 0 },
+		filament: null,
 		changedPrinterIds: []
 	};
 	const now = new Date().toISOString();
@@ -445,6 +456,10 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
 			result.history = importHistoryRows(p.history, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
 		}
+		if (choice.filament && p.filament) {
+			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
+			result.filament = importFilament(p.filament, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
+		}
 		if (choice.queue && p.queue) {
 			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
 			result.queue = importQueue(p.queue, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
@@ -464,6 +479,7 @@ export function summarizeResult(r: RestoreResult): string {
 	if (r.grants) parts.push(`${r.grants} grants`);
 	if (r.settings) parts.push('settings replaced');
 	if (r.notifications) parts.push('notifications replaced');
+	if (r.filament) parts.push(`spools & maintenance: ${r.filament.assignments} assignments, +${r.filament.tasks} tasks, +${r.filament.log} log`);
 	if (r.queue.added || r.queue.skipped || r.queue.tags) parts.push(`queue +${r.queue.added} (had ${r.queue.skipped}), ${r.queue.tags} printer tags`);
 	if (r.history.added || r.history.skipped) parts.push(`history +${r.history.added} (had ${r.history.skipped})`);
 	return parts.join('; ') || 'nothing changed';

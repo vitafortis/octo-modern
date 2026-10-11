@@ -49,8 +49,8 @@ export function refreshSoon(id: string, delays = [400, 1500]) {
 }
 
 /** 409 asking the client to confirm and resend with `confirm: true`. */
-export function confirmRequired(message: string): Response {
-	return json({ message, confirmRequired: true }, { status: 409 });
+export function confirmRequired(message: string, ask?: { title: string; confirmLabel?: string }): Response {
+	return json({ message, confirmRequired: true, ...ask }, { status: 409 });
 }
 
 // --- input validation ------------------------------------------------------------

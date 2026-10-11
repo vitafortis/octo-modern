@@ -3,7 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, BellRing } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, Disc3, Wrench, BellRing } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -52,6 +52,8 @@
 		{ href: '/queue', label: 'Queue', icon: ListOrdered },
 		{ href: '/library', label: 'Library', icon: LibraryBig },
 		{ href: '/history', label: 'History', icon: History },
+		{ href: '/filament', label: 'Filament', icon: Disc3 },
+		{ href: '/maintenance', label: 'Maintenance', icon: Wrench, badge: data.maintenanceOverdue },
 		...(isAdmin()
 			? [
 					{ href: '/discover', label: 'Discover', icon: Radar },
@@ -208,6 +210,13 @@
 						{#if active}<span class="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-primary"></span>{/if}
 						<item.icon class="size-4 shrink-0" />
 						{#if !rail}{item.label}{/if}
+						{#if 'badge' in item && item.badge}
+							<span
+								class="{rail ? 'absolute top-1 right-1 size-2 p-0' : 'ml-auto h-4 min-w-4 px-1'} grid place-items-center rounded-full bg-danger text-[10px] leading-none font-semibold text-white tabular-nums"
+								title="{item.badge} overdue maintenance task{item.badge === 1 ? '' : 's'}"
+								data-testid="maintenance-badge">{rail ? '' : item.badge}</span
+							>
+						{/if}
 					</a>
 				{/each}
 			</nav>
@@ -293,7 +302,9 @@
 		<!-- Phones and tablets: a slim bar with the menu, where you are, and search. -->
 		<header class="z-30 shrink-0 border-b border-border bg-surface/95 pt-safe backdrop-blur-md lg:hidden" style="padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)" data-testid="topbar">
 			<div class="flex h-13 items-center gap-1 px-1.5 short:h-11">
-				<button class="btn btn-ghost btn-icon" aria-label="Open menu" aria-expanded={drawerOpen} onclick={() => (drawerOpen = true)}><Menu class="size-5!" /></button>
+				<button class="btn btn-ghost btn-icon relative" aria-label="Open menu" aria-expanded={drawerOpen} onclick={() => (drawerOpen = true)}
+					><Menu class="size-5!" />{#if data.maintenanceOverdue}<span class="absolute top-2 right-2 size-2 rounded-full bg-danger" title="Maintenance overdue"></span>{/if}</button
+				>
 				<a href="/" class="shrink-0 p-1" aria-label="octo·modern home"><Logo size={24} /></a>
 				<div class="flex min-w-0 flex-1 items-center gap-2 pl-1.5">
 					{#if current.color}<StateDot state={current.state} />{/if}

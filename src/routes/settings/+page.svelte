@@ -40,20 +40,21 @@
 	// --- backup & restore ------------------------------------------------------
 
 	const MIN_PASSPHRASE = 12;
-	type Category = 'printers' | 'users' | 'settings' | 'notifications' | 'queue' | 'history';
+	type Category = 'printers' | 'users' | 'settings' | 'notifications' | 'queue' | 'filament' | 'history';
 	const CATEGORIES: { key: Category; label: string; hint: string }[] = [
 		{ key: 'printers', label: 'Printers', hint: 'OctoPrint servers with their API keys and smart plugs' },
 		{ key: 'users', label: 'Users', hint: 'roles, password hashes, SSO links, printer access' },
 		{ key: 'settings', label: 'Settings', hint: 'single sign-on, failure detection' },
 		{ key: 'notifications', label: 'Notifications', hint: 'channels with their tokens, rules, quiet hours' },
 		{ key: 'queue', label: 'Print queue', hint: 'jobs and printer tags; files uploaded to the queue aren’t included' },
+		{ key: 'filament', label: 'Spools & maintenance', hint: 'Spoolman connection, costs, spool per printer, maintenance tasks and log' },
 		{ key: 'history', label: 'Print history', hint: 'every entry; can make the file large' }
 	];
 
 	let exp = $state({
 		passphrase: '',
 		confirm: '',
-		include: { printers: true, users: true, settings: true, notifications: true, queue: true, history: false } as Record<Category, boolean>,
+		include: { printers: true, users: true, settings: true, notifications: true, queue: true, filament: true, history: false } as Record<Category, boolean>,
 		historyImages: false
 	});
 	let exporting = $state(false);
@@ -104,6 +105,7 @@
 		notifications: { channels: { name: string; type: string; status: 'new' | 'update' }[]; rules: number; replaces: number } | null;
 		history: { total: number; added: number; images: boolean } | null;
 		queue: { jobs: number; added: number; tags: number } | null;
+		filament: { spoolman: string | null; assignments: number; tasks: number; newTasks: number; log: number } | null;
 	};
 	type Result = {
 		printers: { added: number; updated: number };
@@ -113,13 +115,14 @@
 		notifications: boolean;
 		history: { added: number; skipped: number };
 		queue: { added: number; skipped: number; tags: number };
+		filament: { assignments: number; tasks: number; log: number } | null;
 	};
 
-	const NONE: Record<Category, boolean> = { printers: false, users: false, settings: false, notifications: false, queue: false, history: false };
+	const NONE: Record<Category, boolean> = { printers: false, users: false, settings: false, notifications: false, queue: false, filament: false, history: false };
 	let restoreFile = $state<File | null>(null);
 	let restorePass = $state('');
 	let preview = $state<Preview | null>(null);
-	let choose = $state<Record<Category, boolean>>({ printers: true, users: true, settings: true, notifications: true, queue: true, history: true });
+	let choose = $state<Record<Category, boolean>>({ printers: true, users: true, settings: true, notifications: true, queue: true, filament: true, history: true });
 	let restoring = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 
@@ -167,6 +170,7 @@
 				choose.settings && 'settings replaced',
 				choose.notifications && r.notifications && 'notifications replaced',
 				choose.queue && r.queue && `${r.queue.added} queued jobs added`,
+				choose.filament && r.filament && `${r.filament.tasks} maintenance tasks added`,
 				choose.history && `${r.history.added} history entries added`
 			].filter(Boolean);
 			toast('success', 'Backup restored', parts.join(' · '));
@@ -401,6 +405,11 @@
 										<td class="px-4 py-3 text-xs">
 											<span class="badge {p.queue.added ? 'badge-success' : ''}">add {p.queue.added}</span>
 											<span class="ml-2 text-muted-foreground">{p.queue.jobs - p.queue.added} already here (kept); printer tags replaced</span>
+										</td>
+									{:else if c.key === 'filament' && p.filament}
+										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.filament.tasks} tasks<br />{p.filament.assignments} spools on printers</td>
+										<td class="px-4 py-3 text-xs text-muted-foreground">
+											Spoolman {p.filament.spoolman ?? 'not set'} and cost settings replaced; spool per printer replaced; <span class="badge {p.filament.newTasks ? 'badge-success' : ''}">add {p.filament.newTasks}</span> tasks, {p.filament.log} log entries merged
 										</td>
 									{:else if c.key === 'history' && p.history}
 										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.history.total} entries<br />{p.history.images ? 'with pictures' : 'no pictures'}</td>

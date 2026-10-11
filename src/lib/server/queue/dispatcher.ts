@@ -16,7 +16,7 @@
 import { printers, clientFor } from '../octoprint/manager.ts';
 import { history } from '../history/tracker.ts';
 import { openPrints } from '../history/store.ts';
-import { notifyQueueEvent } from '../history/notify.ts';
+import { notify } from '../notify/index.ts';
 import { audit, canControl } from '../permissions.ts';
 import { currentState, refreshSoon } from '../control.ts';
 import { getPrinter, getUser, listPrinters } from '../store.ts';
@@ -119,6 +119,12 @@ const POWER_RETRY_MS = 5 * 60_000;
 const SEND_TIMEOUT_MS = 60 * 60_000;
 
 type Locals = { user: User | null; ip?: string };
+
+
+/** A queue event through notify() (with a webcam snapshot); tests replace `dispatcher.notify`. Never throws. */
+export async function notifyQueueEvent(event: 'queue.bed_clear_needed', o: { title: string; message: string; printer: { id: string; name: string } }): Promise<void> {
+	await notify({ kind: event, printerId: o.printer.id, printerName: o.printer.name, title: o.title, message: o.message, link: `/p/${encodeURIComponent(o.printer.id)}?tab=queue`, dedupeKey: o.message });
+}
 
 class Dispatcher {
 	/** Jobs this process is starting right now. */

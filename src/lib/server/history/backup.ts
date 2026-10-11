@@ -26,6 +26,8 @@ export interface BackupPrint {
 	source: 'live' | 'import';
 	notes: string | null;
 	externalKey: string | null;
+	/** Cost columns (costs.ts): filament_g, cost_filament, cost_energy, cost_source, material, price_per_kg. */
+	costs?: Record<string, string | number | null>;
 	/** base64, when the backup includes pictures. */
 	thumbnail?: string | null;
 	thumbnailType?: string | null;
@@ -66,10 +68,13 @@ export function exportHistory(images: boolean): BackupHistory {
 			source: r.source === 'import' ? 'import' : 'live',
 			notes: s(r.notes),
 			externalKey: s(r.external_key),
+			costs: Object.fromEntries(COST_COLUMNS.filter((c) => c in r).map((c) => [c, (r[c] as string | number | null) ?? null])),
 			...(images && r.thumbnail ? { thumbnail: Buffer.from(r.thumbnail as Uint8Array).toString('base64'), thumbnailType: s(r.thumbnail_type) ?? 'image/jpeg' } : {})
 		}))
 	};
 }
+
+const COST_COLUMNS = ['filament_g', 'cost_filament', 'cost_energy', 'cost_source', 'material', 'price_per_kg'];
 
 const RESULTS = new Set(['printing', 'paused', 'success', 'failed', 'cancelled']);
 
@@ -105,6 +110,9 @@ export function importHistoryRows(h: BackupHistory, mapUser: (id: string) => str
 		`INSERT INTO prints (printer_id, printer_name, file_name, file_path, origin, started_at, ended_at, duration_s, result, reason, filament_mm, estimated_s, completion, user_id, started_by, octoprint_user, source, notes, external_key, thumbnail, thumbnail_type)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	);
+	const have = new Set((sqlite().prepare('PRAGMA table_info(prints)').all() as { name: string }[]).map((c) => c.name));
+	const costCols = COST_COLUMNS.filter((c) => have.has(c));
+	const setCosts = costCols.length ? sqlite().prepare(`UPDATE prints SET ${costCols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`) : null;
 	let added = 0;
 	let skipped = 0;
 	for (const p of h.prints) {
@@ -115,7 +123,7 @@ export function importHistoryRows(h: BackupHistory, mapUser: (id: string) => str
 		}
 		const open = p.result === 'printing' || p.result === 'paused';
 		const thumb = typeof p.thumbnail === 'string' && p.thumbnail ? Buffer.from(p.thumbnail, 'base64') : null;
-		insert.run(
+		const r = insert.run(
 			p.printerId,
 			p.printerName ?? p.printerId,
 			p.file,
@@ -138,6 +146,12 @@ export function importHistoryRows(h: BackupHistory, mapUser: (id: string) => str
 			thumb,
 			thumb ? (s(p.thumbnailType) ?? 'image/jpeg') : null
 		);
+		if (setCosts && p.costs && typeof p.costs === 'object') {
+			setCosts.run(...(costCols.map((c) => {
+				const v = p.costs![c];
+				return typeof v === 'number' || typeof v === 'string' ? v : null;
+			}) as (string | number | null)[]), Number(r.lastInsertRowid));
+		}
 		added++;
 	}
 	return { added, skipped };
