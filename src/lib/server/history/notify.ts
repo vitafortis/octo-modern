@@ -21,7 +21,10 @@ export const QUEUE_EVENTS: QueueEventKind[] = ['queue.bed_clear_needed'];
 /** Smart plug events (power/service.ts). */
 export type PowerEvent = 'power.on' | 'power.off';
 export const POWER_EVENTS: PowerEvent[] = ['power.on', 'power.off'];
-export type NotifyOn = EndResult | 'failure.suspected' | QueueEventKind | PowerEvent;
+/** Spoolman and maintenance events (spools/usage.ts, maintenance.ts). */
+export type OtherEvent = 'spool.low' | 'maintenance.due';
+export const OTHER_EVENTS: OtherEvent[] = ['spool.low', 'maintenance.due'];
+export type NotifyOn = EndResult | 'failure.suspected' | QueueEventKind | PowerEvent | OtherEvent;
 
 export interface PrintNotification {
 	event: NotifyOn | 'test';
@@ -40,8 +43,8 @@ export interface OutgoingRequest {
 	body: string;
 }
 
-const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'failure.suspected': 'Failure suspected', 'queue.bed_clear_needed': 'Bed clear needed', 'power.on': 'Power on', 'power.off': 'Power off' };
-export const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'failure.suspected': 0xf97316, 'queue.bed_clear_needed': 0x8b5cf6, 'power.on': 0x22c55e, 'power.off': 0x64748b };
+const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'failure.suspected': 'Failure suspected', 'queue.bed_clear_needed': 'Bed clear needed', 'power.on': 'Power on', 'power.off': 'Power off', 'spool.low': 'Spool low', 'maintenance.due': 'Maintenance due' };
+export const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'failure.suspected': 0xf97316, 'queue.bed_clear_needed': 0x8b5cf6, 'power.on': 0x22c55e, 'power.off': 0x64748b, 'spool.low': 0xf59e0b, 'maintenance.due': 0xf59e0b };
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
 
 /** The notification for a finished print. */
@@ -85,7 +88,7 @@ export function buildRequest(kind: ChannelKind, config: Record<string, string>, 
 					title: n.title,
 					message: n.message,
 					priority: n.event === 'failed' ? 4 : 3,
-					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : n.event === 'queue.bed_clear_needed' ? 'broom' : n.event.startsWith('power.') ? 'electric_plug' : 'bell', 'octo-modern'],
+					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : n.event === 'queue.bed_clear_needed' ? 'broom' : n.event.startsWith('power.') ? 'electric_plug' : n.event === 'spool.low' ? 'thread' : n.event === 'maintenance.due' ? 'wrench' : 'bell', 'octo-modern'],
 					...(n.url ? { click: n.url } : {})
 				})
 			};
@@ -221,7 +224,7 @@ export function saveChannels(raw: unknown, publicUrl: string | null): ChannelInf
 			if (!config.topic) throw new Error(`${name}: an ntfy topic is required`);
 			if (config.server && !/^https?:\/\//i.test(config.server)) throw new Error(`${name}: the ntfy server must be an http(s) URL`);
 		} else if (!/^https?:\/\//i.test(secrets.url ?? '')) throw new Error(`${name}: a webhook URL (http or https) is required`);
-		const on = Array.isArray(o.on) ? [...RESULTS, ...QUEUE_EVENTS, ...POWER_EVENTS].filter((x) => (o.on as unknown[]).includes(x)) : ['failed' as const];
+		const on = Array.isArray(o.on) ? [...RESULTS, ...QUEUE_EVENTS, ...POWER_EVENTS, ...OTHER_EVENTS].filter((x) => (o.on as unknown[]).includes(x)) : ['failed' as const];
 		return {
 			id,
 			kind,
@@ -325,6 +328,36 @@ export async function notifyQueueEvent(event: QueueEventKind, opts: { title: str
 		targets.map(async (c) => {
 			try {
 				await deliver(c.kind, c.config, secretsOf(c), n);
+				record(c.id, null);
+			} catch (err) {
+				record(c.id, (err as Error).message);
+				console.warn(`[octo-modern] notification via ${c.name} failed: ${(err as Error).message}`);
+			}
+		})
+	);
+}
+
+/**
+ * Notifies every enabled channel subscribed to `event` (spool.low, maintenance.due). `path`
+ * is a link into octo·modern (e.g. `/maintenance`), made absolute with the known address. Never throws.
+ */
+export async function notifyEvent(event: OtherEvent, n: { title: string; message: string; printer: { id: string; name: string } | null; path?: string }): Promise<void> {
+	const s = load();
+	const targets = s.channels.filter((c) => c.enabled && c.on.includes(event));
+	if (!targets.length) return;
+	const note: PrintNotification = {
+		event,
+		title: n.title,
+		message: n.message,
+		printer: n.printer,
+		print: null,
+		at: new Date().toISOString(),
+		url: s.publicUrl && n.path ? `${trimSlash(s.publicUrl)}${n.path}` : null
+	};
+	await Promise.all(
+		targets.map(async (c) => {
+			try {
+				await deliver(c.kind, c.config, secretsOf(c), note);
 				record(c.id, null);
 			} catch (err) {
 				record(c.id, (err as Error).message);

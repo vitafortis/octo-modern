@@ -10,7 +10,7 @@
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
 	type Kind = 'ntfy' | 'discord' | 'webhook';
-	type Result = 'success' | 'failed' | 'cancelled' | 'failure.suspected' | 'queue.bed_clear_needed' | 'power.on' | 'power.off';
+	type Result = 'success' | 'failed' | 'cancelled' | 'failure.suspected' | 'queue.bed_clear_needed' | 'power.on' | 'power.off' | 'spool.low' | 'maintenance.due';
 	interface Channel {
 		id?: string;
 		kind: Kind;
@@ -41,7 +41,9 @@
 		{ value: 'cancelled', label: 'Cancelled' },
 		// Failure detection (warnings and detected failures, with the frame attached).
 		{ value: 'failure.suspected', label: 'Failure suspected' },
-		{ value: 'queue.bed_clear_needed', label: 'Queue: clear the bed' }
+		{ value: 'queue.bed_clear_needed', label: 'Queue: clear the bed' },
+		{ value: 'spool.low', label: 'Spool low' },
+		{ value: 'maintenance.due', label: 'Maintenance due' }
 	];
 	// Smart plug events (power control).
 	const POWER: { value: Result; label: string }[] = [

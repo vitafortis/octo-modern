@@ -5,6 +5,7 @@
  */
 import { api, ApiError, errorMessage } from './api.ts';
 import { confirmAction, toast } from './state.svelte.ts';
+import { act } from './actions.ts';
 import type { FileEntry, FileListing } from '#lib/types.ts';
 
 const base = (id: string) => `/api/printers/${encodeURIComponent(id)}/files`;
@@ -87,9 +88,11 @@ export function uploadFile(
 }
 
 export async function printFile(printerId: string, f: FileEntry, print: boolean): Promise<boolean> {
+	// Printing may ask first (409): e.g. when the active spool won't last.
+	if (print) return act(`${base(printerId)}/select`, { origin: f.origin, path: f.path, print }, { done: 'Print started', failed: 'Could not start the print' });
 	try {
 		await api.post(`${base(printerId)}/select`, { origin: f.origin, path: f.path, print });
-		toast('success', print ? 'Print started' : 'File selected', f.display);
+		toast('success', 'File selected', f.display);
 		return true;
 	} catch (err) {
 		toast('error', print ? 'Could not start the print' : 'Could not select the file', errorMessage(err));

@@ -250,6 +250,70 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 				updated_at TEXT NOT NULL
 			);
 		`)
+	],
+	[
+		'spools-001',
+		(h) =>
+			h.exec(`
+			-- Active Spoolman spool per printer and tool (see spools/assignments.ts).
+			CREATE TABLE IF NOT EXISTS spool_assignments (
+				printer_id TEXT NOT NULL REFERENCES printers(id) ON DELETE CASCADE,
+				tool INTEGER NOT NULL,
+				spool_id INTEGER NOT NULL,
+				assigned_at TEXT NOT NULL,
+				assigned_by TEXT,
+				PRIMARY KEY (printer_id, tool)
+			);
+			-- Filament use per print and tool, and how much of it Spoolman has been told (spools/usage.ts).
+			CREATE TABLE IF NOT EXISTS spool_usage (
+				print_id INTEGER NOT NULL REFERENCES prints(id) ON DELETE CASCADE,
+				tool INTEGER NOT NULL,
+				spool_id INTEGER NOT NULL,
+				planned_mm REAL,
+				target_mm REAL NOT NULL DEFAULT 0,
+				reported_mm REAL NOT NULL DEFAULT 0,
+				final INTEGER NOT NULL DEFAULT 0,
+				updated_at TEXT NOT NULL,
+				last_error TEXT,
+				PRIMARY KEY (print_id, tool)
+			);
+			-- Cost per print (costs.ts).
+			ALTER TABLE prints ADD COLUMN filament_g REAL;
+			ALTER TABLE prints ADD COLUMN cost_filament REAL;
+			ALTER TABLE prints ADD COLUMN cost_energy REAL;
+			ALTER TABLE prints ADD COLUMN cost_source TEXT;
+			ALTER TABLE prints ADD COLUMN material TEXT;
+			ALTER TABLE prints ADD COLUMN price_per_kg REAL;
+			-- Maintenance reminders (maintenance.ts).
+			CREATE TABLE IF NOT EXISTS maintenance_tasks (
+				id TEXT PRIMARY KEY,
+				printer_id TEXT NOT NULL REFERENCES printers(id) ON DELETE CASCADE,
+				name TEXT NOT NULL,
+				metric TEXT NOT NULL,
+				interval REAL NOT NULL,
+				notes TEXT,
+				sort INTEGER NOT NULL DEFAULT 0,
+				created_at TEXT NOT NULL,
+				last_done_at TEXT,
+				last_done_by TEXT,
+				notified_at TEXT
+			);
+			CREATE TABLE IF NOT EXISTS maintenance_log (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				task_id TEXT NOT NULL,
+				printer_id TEXT NOT NULL,
+				printer_name TEXT NOT NULL,
+				task_name TEXT NOT NULL,
+				metric TEXT NOT NULL,
+				interval REAL NOT NULL,
+				used REAL NOT NULL,
+				done_at TEXT NOT NULL,
+				user_id TEXT,
+				done_by TEXT,
+				notes TEXT
+			);
+			CREATE INDEX IF NOT EXISTS maintenance_log_printer ON maintenance_log(printer_id, id DESC);
+		`)
 	]
 ];
 

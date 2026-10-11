@@ -215,6 +215,11 @@ const rec = (o: Partial<PrintRecord>): PrintRecord => ({
 	source: 'live',
 	hasThumbnail: false,
 	notes: null,
+	filamentG: null,
+	material: null,
+	costFilament: null,
+	costEnergy: null,
+	cost: null,
 	...o
 });
 
@@ -287,8 +292,8 @@ test('CSV export: header, one row per print, CRLF', () => {
 	const lines = csv.split('\r\n');
 	assert.equal(lines.at(-1), '', 'ends with a line break');
 	assert.equal(lines[0].split(',')[0], 'id');
-	assert.equal(lines[0].split(',').length, 17);
-	assert.match(lines[1], /^7,MK4,"part, v2\.gcode",a\.gcode,local,2026-10-05T10:00:00\.000Z,2026-10-05T11:00:00\.000Z,3600,success,,41\.3,812\.3,3500,,,live,layer shift at 3 mm$/);
+	assert.equal(lines[0].split(',').length, 22);
+	assert.match(lines[1], /^7,MK4,"part, v2\.gcode",a\.gcode,local,2026-10-05T10:00:00\.000Z,2026-10-05T11:00:00\.000Z,3600,success,,41\.3,812\.3,3500,,,live,layer shift at 3 mm,,,,,$/);
 	assert.match(lines[2], /^8,.*,cancelled,.*,Otto,/);
 	assert.equal(toCsv([]), `${lines[0]}\r\n`);
 });

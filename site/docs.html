@@ -98,6 +98,7 @@
 								<li><a href="#power">Smart plugs</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
 								<li><a href="#detection">Failure detection</a></li>
+								<li><a href="#spools">Spools, costs and maintenance</a></li>
 								<li><a href="#images">Images</a></li>
 								<li><a href="#security">Security model</a></li>
 								<li><a href="#backup">Backup &amp; restore</a></li>
@@ -170,6 +171,8 @@
 								<tr><td>Start, pause, resume, cancel prints</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Set temperatures, connect/disconnect, G-code, emergency stop</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Upload, print and delete files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Choose a printer's active spool; add, edit and complete maintenance tasks</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Spoolman connection, cost settings</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Turn failure detection on per printer, sensitivity, action; mark a false alarm</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Add, reorder and remove queued jobs, confirm a bed is clear</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Printer tags, slicer upload keys</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
@@ -363,6 +366,20 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 							<li><strong>Score</strong>: Obico's own algorithm: the frame's confidences summed, smoothed over 12 frames, minus a long-term baseline per printer, times the sensitivity. Warning from 33 %, failure from 67 % on Obico's 0–100 % scale.</li>
 							<li><strong>Actions</strong>: a warning sends a <code>failure.suspected</code> notification with the annotated frame (tick <strong>Failure suspected</strong> on a channel). A failure does nothing, notifies, or pauses the print, audited as <code>octo·modern detector</code>. <strong>This is a false alarm</strong> turns it off until the print ends.</li>
 						</ul>
+					</section>
+
+					<section id="spools">
+						<h2>Spools, costs and maintenance</h2>
+						<p>The <strong>Filament</strong> page shows which <a href="https://github.com/Donkie/Spoolman">Spoolman</a> spool is on which printer and holds the admin settings; each printer's dashboard has a <strong>Filament</strong> card with the active spool per extruder.</p>
+						<ul>
+							<li><strong>Connecting</strong> (admins): Spoolman's address, e.g. <code>http://spoolman.lan:7912</code>, and optionally an auth header for a reverse proxy in front of it (stored encrypted, never sent back to the browser). Only the server talks to Spoolman.</li>
+							<li><strong>Choosing a spool</strong> (operators): search Spoolman's spools by name, vendor, material or location, with the colour and what's left. One spool per extruder; a spool sits on one tool at a time.</li>
+							<li><strong>Reporting use</strong>: while printing, about every metre, and the rest when the print ends (<code>PUT /api/v1/spool/&lt;id&gt;/use</code> with <code>use_length</code>), so Spoolman's total matches the history. Failed reports are retried for a week and never sent twice.</li>
+							<li><strong>Before printing</strong>: when the file needs more than the spool has, starting it asks first (the API answers 409 with <code>confirmRequired</code>). An unreachable Spoolman never holds a print up.</li>
+							<li><strong>Low spools</strong> turn red below the threshold (100 g by default) and send a <code>spool.low</code> notification once.</li>
+						</ul>
+						<p><strong>Cost per print</strong> (admins set the prices): filament by weight, at the spool's price from Spoolman or a price per kg per material, plus electricity (print time × the printer's power draw × the price per kWh). It's on every history entry, in the History stats per printer and in the CSV export (<code>filament_g</code>, <code>material</code>, <code>cost_filament</code>, <code>cost_energy</code>, <code>cost_total</code>); earlier prints are costed too, and <strong>Recalculate history</strong> applies new prices.</p>
+						<p><strong>Maintenance</strong>: per-printer tasks every so many print hours, kg of filament or days, counted from the print history since they were last done. Nozzle change, belt tension, lubrication, bed cleaning and e-steps are offered. Tasks are <em>due soon</em> at 90 % and <em>overdue</em> past their interval; the sidebar counts overdue ones and <code>maintenance.due</code> is sent once. <strong>Done</strong> logs who, when and your notes, and restarts the count.</p>
 					</section>
 
 					<section id="images">

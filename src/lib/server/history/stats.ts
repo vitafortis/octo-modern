@@ -19,17 +19,17 @@ export function weekOf(iso: string): string {
  * and per week. Weeks without prints between the first and last are filled with zeros
  * (at most `maxWeeks`, the most recent ones), so a chart shows gaps as gaps.
  */
-export function aggregate(records: Pick<PrintRecord, 'printerId' | 'printerName' | 'result' | 'startedAt' | 'durationS' | 'filamentMm'>[], maxWeeks = 26): HistoryStats {
+export function aggregate(records: (Pick<PrintRecord, 'printerId' | 'printerName' | 'result' | 'startedAt' | 'durationS' | 'filamentMm'> & { cost?: number | null })[], maxWeeks = 26): HistoryStats {
 	const perPrinter = new Map<string, PrinterStats>();
 	const perWeek = new Map<string, WeekStats>();
-	const total = { prints: 0, success: 0, failed: 0, cancelled: 0, printTime: 0, filamentMm: 0 };
+	const total = { prints: 0, success: 0, failed: 0, cancelled: 0, printTime: 0, filamentMm: 0, cost: 0, costed: 0 };
 	for (const r of records) {
 		if (!FINISHED.has(r.result)) continue;
 		const result = r.result as 'success' | 'failed' | 'cancelled';
 		const time = r.durationS != null && Number.isFinite(r.durationS) && r.durationS > 0 ? r.durationS : 0;
 		const fil = r.filamentMm != null && Number.isFinite(r.filamentMm) && r.filamentMm > 0 ? r.filamentMm : 0;
 		let p = perPrinter.get(r.printerId);
-		if (!p) perPrinter.set(r.printerId, (p = { printerId: r.printerId, printerName: r.printerName, prints: 0, success: 0, failed: 0, cancelled: 0, printTime: 0, filamentMm: 0 }));
+		if (!p) perPrinter.set(r.printerId, (p = { printerId: r.printerId, printerName: r.printerName, prints: 0, success: 0, failed: 0, cancelled: 0, printTime: 0, filamentMm: 0, cost: 0 }));
 		const wk = weekOf(r.startedAt);
 		let w = perWeek.get(wk);
 		if (!w && wk) perWeek.set(wk, (w = { week: wk, prints: 0, success: 0, failed: 0, cancelled: 0, printTime: 0, filamentMm: 0 }));
@@ -39,6 +39,11 @@ export function aggregate(records: Pick<PrintRecord, 'printerId' | 'printerName'
 			t[result]++;
 			t.printTime += time;
 			t.filamentMm += fil;
+		}
+		if (r.cost != null && Number.isFinite(r.cost)) {
+			total.cost += r.cost;
+			total.costed++;
+			p.cost += r.cost;
 		}
 	}
 	const weeks = [...perWeek.keys()].sort();
@@ -91,7 +96,12 @@ export const CSV_COLUMNS = [
 	'started_by',
 	'octoprint_user',
 	'source',
-	'notes'
+	'notes',
+	'filament_g',
+	'material',
+	'cost_filament',
+	'cost_energy',
+	'cost_total'
 ] as const;
 
 /** The history as CSV (RFC 4180, CRLF line ends, with a header row). */
@@ -115,7 +125,12 @@ export function toCsv(records: PrintRecord[]): string {
 			r.startedBy,
 			r.octoprintUser,
 			r.source,
-			r.notes
+			r.notes,
+			round(r.filamentG, 2),
+			r.material,
+			round(r.costFilament, 4),
+			round(r.costEnergy, 4),
+			round(r.cost, 4)
 		]
 			.map(csvField)
 			.join(',')
