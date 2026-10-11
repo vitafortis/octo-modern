@@ -432,8 +432,13 @@ export function updatePrinter(id: string, input: PrinterInput): Printer | undefi
 	return getPrinter(id);
 }
 
+/** Per-printer settings kept in kv (failure detection, history import); removed with the printer. */
+const PRINTER_KV_KEYS = (id: string) => [`detect:printer:${id}`, `detect:baseline:${id}`, `history:imported:${id}`];
+
 export function deletePrinter(id: string): boolean {
-	return Number(db().prepare('DELETE FROM printers WHERE id = ?').run(id).changes) > 0;
+	const removed = Number(db().prepare('DELETE FROM printers WHERE id = ?').run(id).changes) > 0;
+	if (removed) for (const key of PRINTER_KV_KEYS(id)) db().prepare('DELETE FROM kv WHERE key = ?').run(key);
+	return removed;
 }
 
 /** Records a successful contact (and the version), at most once a minute per printer. */

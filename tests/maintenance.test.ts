@@ -120,3 +120,12 @@ test('deleting a printer removes its tasks', () => {
 	store.deletePrinter(other.id);
 	assert.equal(m.listTasks([other.id]).length, 0);
 });
+
+test('deleting a printer removes its per-printer settings rows', () => {
+	const p = store.createPrinter({ name: 'Temp', baseUrl: 'http://127.0.0.1:9', apiKey: 'key-for-temp', verifyTls: true, webcamUrl: null, color: 'violet' });
+	for (const key of [`detect:printer:${p.id}`, `detect:baseline:${p.id}`, `history:imported:${p.id}`]) store.setKv(key, { x: 1 });
+	store.setKv('detect:settings', { keep: true });
+	store.deletePrinter(p.id);
+	for (const key of [`detect:printer:${p.id}`, `detect:baseline:${p.id}`, `history:imported:${p.id}`]) assert.equal(store.getKv(key, null), null);
+	assert.deepEqual(store.getKv('detect:settings', null), { keep: true });
+});
