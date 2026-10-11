@@ -29,7 +29,8 @@
 - **Discover**: find OctoPrint in Docker (through a read-only socket proxy), in [Arcane](https://getarcane.app), over mDNS and with a subnet scan, see which serial port each container owns, and add one by approving octo·modern in OctoPrint (Application Keys), no key to copy. See [Discover](#discover).
 - **Print history**: every print on every printer, recorded whether or not anyone has a browser open: file, start and end, duration, result (success, failed, cancelled), filament used, who started it, a webcam picture of how it ended, and notes. A History tab per printer and a History page across all of them, with filters, success rate, print time and filament per printer and per week, CSV export, and "print again". Earlier prints are imported from OctoPrint. See [Print history](#print-history).
 - **Timelapses**: watch OctoPrint's timelapses in the browser (with seeking), download and delete them, render unrendered ones, and change the timelapse settings.
-- **Notifications** when a print finishes, fails or is cancelled: ntfy, Discord or any webhook.
+- **Notifications** when a print finishes, fails or is cancelled, or a printer is powered on or off: ntfy, Discord or any webhook.
+- **Smart plug power**: switch each printer with a Shelly (Gen1 and Gen2+), Tasmota, Home Assistant or any HTTP switch, from the printer page, its overview card or a right-click in the sidebar, with the plug's watts and energy where it measures them. After power-on octo·modern connects the printer; after a print it can turn it off once the hotend has cooled; and it can switch a printer on when a print is sent to it. Turning off asks first while the printer is hot, and twice while it prints. See [Smart plugs](#smart-plugs).
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
@@ -148,12 +149,14 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Watch printers: state, temperatures, webcam, files | ✓ | ✓ | ✓ |
 | Start, pause, resume, cancel prints | ✓ | ✓ | |
 | Set temperatures, connect/disconnect, G-code, emergency stop | ✓ | ✓ | |
+| Power printers on and off (smart plug), "Keep on" | ✓ | ✓ | |
 | Upload, print and delete files | ✓ | ✓ | |
 | Browse the library | ✓ | ✓ | ✓ |
 | Send library files to printers, save printer files to the library | ✓ | ✓ | |
 | Watch the print history and timelapses, export CSV | ✓ | ✓ | ✓ |
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
 | Timelapse settings, delete history entries, import history, notifications | ✓ | | |
+| Set up smart plugs and their automations, test them | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
 | Users, Integrations, Audit log, Settings, backups, library sources | ✓ | | |
 
@@ -261,6 +264,27 @@ A print shorter than one poll interval, started and finished while nobody watche
 ```
 
 `GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`).
+
+## Smart plugs
+
+Admins set up a printer's plug from the **Power** card on its dashboard (**Set up a smart plug**, or the settings icon on the card). **Test** reads the plug's state without switching it. Usernames, passwords and tokens are sealed with AES-256-GCM like API keys and never sent back to the browser (leave a field empty to keep what's saved); credentials in a URL are refused. Plugs aren't part of backups yet.
+
+| Device | How octo·modern talks to it | Login | Watts / energy |
+| --- | --- | --- | --- |
+| **Shelly Gen1** (Plug S, 1PM, …) | `/relay/<n>?turn=on\|off`, state and meter from `/status` | Basic (if set) | ✓ |
+| **Shelly Gen2+** (Plus, Pro, Gen3/4) | RPC `Switch.Set` / `Switch.GetStatus` (generation detected from `/shelly`) | Digest, user `admin` | ✓ |
+| **Tasmota** | `/cm?cmnd=Power<n> On\|Off`, energy from `Status 8` | web admin password, as `user`/`password` | ✓ (energy-monitoring builds) |
+| **Home Assistant** | `switch.*`, `light.*` or `input_boolean.*` over the REST API | long-lived access token | optional `sensor.*` entities (W, kWh) |
+| **HTTP** | your own on/off (and optional status) URLs and methods; the status answer is matched against a text or `/regex/` | Basic/Digest or an `Authorization` header | – |
+
+Operators switch printers from the printer header, the **Power** card, the overview card, or by right-clicking (long-pressing) a printer in the sidebar:
+
+- **Turning off** disconnects OctoPrint from the printer first. While a hotend or the bed is hot (50 °C / 40 °C by default) it asks first; while a print runs it always asks twice, and the server enforces both (`409` with `confirmField: "confirm"`, then `"confirmPrinting"`).
+- **Connect after power-on** (on by default): once the plug is on, octo·modern waits for the printer and asks OctoPrint to connect, retrying for about three minutes.
+- **Power off after a print**: when a print ends, a countdown starts; once the printer has been idle for N minutes (default 10) *and* every hotend is below X °C (default 50), octo·modern disconnects it and switches the plug off. A new print cancels the countdown, and **Keep on** (card, overview, sidebar menu) cancels it for this print. The countdown lives in memory: a restart in between forgets it.
+- **Power on for new prints**: printing a file (or sending one from the library with **Send & print**) to a printer whose plug is off switches it on and waits for it to connect first. Other features (the print queue) call `ensurePrinterOn(printerId)` from `src/lib/server/power/service.ts`.
+
+Every switch, test, setup change, auto power-on/off, countdown and "Keep on" is in the audit log (`power.*`; automatic ones without a user), and notification channels can subscribe to **Power on** / **Power off** (`event: "power.on"` / `"power.off"` in the webhook JSON, with `print: null`). Plug readings refresh every 15 s; the API is `GET /api/power` (every visible printer's plug: state, watts, countdown, no addresses), `GET/POST /api/printers/<id>/power` (`{ action: "on" | "off" | "keep_on" }`), and for admins `GET/PUT/DELETE /api/printers/<id>/power/config` and `POST …/power/test`.
 
 ## Timelapses
 
@@ -391,6 +415,10 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **Timelapse**: play with seeking, download | **Timelapse settings**, light |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
+| ![Smart plug](docs/screenshots/power.png) | ![Power overview](docs/screenshots/power-overview.png) |
+| **Power**: plug state, watts, auto power-off countdown | **Overview** and sidebar menu: on/off, Keep on |
+| ![Smart plug setup](docs/screenshots/power-config.png) | ![Second confirmation](docs/screenshots/power-confirm.png) |
+| **Smart plug setup** with Test | Cutting power mid-print asks **twice** |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
 | **Discover**, light | **Setup** offers what it found |
 | ![Approve in OctoPrint](docs/screenshots/discover-approve.png) | ![Discover: Arcane](docs/screenshots/discover-arcane.png) |
@@ -459,7 +487,7 @@ pnpm e2e:history                      # print history, notifications and timelap
 pnpm e2e:mobile                       # phones: no sideways scrolling at 360/390/430 px, thumb-sized controls
 ```
 
-`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.
+`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. `pnpm e2e:power` (ports `:3230`–`:3236`) needs no Docker: it runs two mock OctoPrint servers powered by a mock Shelly Gen2 (Digest login) and a mock Tasmota, and checks plug setup and tests (admins only, sealed passwords), power-on with auto-connect, the hot and printing confirmations (in Chromium too), auto power-on for a print, the auto power-off countdown with Keep on and cancelling, the webhooks, the audit log and a 390 px phone, then writes the `power*.png` screenshots. The adapters are unit-tested against the same mocks (`scripts/e2e/mock-plugs.mjs`); nothing contacts a real device. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.
 
 `pnpm e2e:discover` starts three OctoPrint servers on `:5151`–`:5153` and has octo·modern discover them through a mock Docker API (fictional containers, devices and networks pointing at the real ports, on `:5251`), a mock Arcane (`:5252`), a unicast mDNS responder (`OCM_MDNS_TARGET=127.0.0.1:5253`), the real local Docker socket (read-only) and a subnet scan of `127.0.0.1`. It runs the setup wizard in Chromium, adds printers through the Application Keys flow (approving and denying in OctoPrint by logging in to its API as its admin), pastes a key, moves a published port and relinks the saved printer, then writes the Discover screenshots and cleans up.
 

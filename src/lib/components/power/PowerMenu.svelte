@@ -6,8 +6,8 @@
 <script lang="ts">
 	import { ExternalLink, Power, PowerOff, Timer } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
-	import { clock, countdownText, keepOn, plugs, pollPower, powerOff, powerOn, tickClock } from '#lib/client/power.svelte.ts';
-	import { formatWatts } from '#lib/power.ts';
+	import { clock, keepOn, plugs, pollPower, powerOff, powerOn, tickClock } from '#lib/client/power.svelte.ts';
+	import { formatCountdown, formatWatts } from '#lib/power.ts';
 
 	$effect(() => pollPower());
 	const t = $derived(powerMenu.target);
@@ -36,7 +36,7 @@
 		{#if t.control}
 			{#if info.reading?.on !== true}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => powerOn(t.id, t.name))}><Power class="size-4 text-success" />Power on</button>{/if}
 			{#if info.reading?.on !== false}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 text-danger hover:bg-danger/10" onclick={() => run(() => powerOff(t.id, t.name))}><PowerOff class="size-4" />Power off</button>{/if}
-			{#if info.countdown}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => keepOn(t.id))}><Timer class="size-4 text-warning" /><span class="flex-1 text-left">Keep on</span><span class="font-mono text-[11px] text-muted-foreground">{countdownText(info, clock.now).replace(/^Off in /, '')}</span></button>{/if}
+			{#if info.countdown}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => keepOn(t.id))}><Timer class="size-4 text-warning" /><span class="flex-1 text-left">Keep on</span><span class="font-mono text-[11px] text-muted-foreground">{info.countdown.cooling ? 'cooling' : formatCountdown(info.countdown.offAt - clock.now)}</span></button>{/if}
 		{/if}
 		<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => goto(`/p/${t.id}`))}><ExternalLink class="size-4 text-muted-foreground" />Open printer</button>
 	</div>

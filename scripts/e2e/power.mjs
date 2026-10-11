@@ -117,6 +117,7 @@ async function main() {
 	let appLog = '';
 	app.stdout.on('data', (d) => (appLog += d));
 	app.stderr.on('data', (d) => (appLog += d));
+	app.on('exit', (code, signal) => (appLog += `\n[app exited: ${code ?? signal}]\n`));
 	process.on('exit', () => {
 		try {
 			writeFileSync(join(dataDir, 'app.log'), appLog);
@@ -182,7 +183,7 @@ async function main() {
 	assert.ok(mk4Op.state.connects >= 1);
 	await waitFor(() => hooks.some((h) => h.event === 'power.on' && h.printer.name === 'Prusa MK4'), 'power.on webhook');
 	assert.match(hooks.find((h) => h.event === 'power.on').message, /powered on by Otto Operator/);
-	assert.ok((await audits('power.autoconnect')).some((e) => /connected/.test(e.detail)));
+	await waitFor(async () => (await audits('power.autoconnect')).some((e) => /connected/.test(e.detail)), 'auto-connect audited', { tries: 30 });
 
 	// --- off: hot needs one confirmation, printing two ------------------------------------------------
 	log('power off: confirmations');
@@ -200,6 +201,7 @@ async function main() {
 	await waitFor(() => hooks.some((h) => h.event === 'power.off'), 'power.off webhook');
 
 	await operator.post(`/api/printers/${mk4.id}/power`, { action: 'on' });
+	await waitFor(() => mk4Op.state.state === 'Operational', 'MK4 connected again', { tries: 60 });
 	await waitFor(async () => (await stateOf(mk4.id)) === 'operational', 'MK4 ready again', { tries: 60 });
 	await fetch(`${mk4Op.url}/__mock/print?file=gearbox-housing.gcode`);
 	await waitFor(async () => (await stateOf(mk4.id)) === 'printing', 'MK4 printing');
@@ -216,7 +218,8 @@ async function main() {
 	// --- browser ------------------------------------------------------------------------------------
 	browser = await chromium.launch();
 	const newPage = async (theme, width = 1440, height = 900) => {
-		const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, colorScheme: theme });
+		const mobile = width < 640 ? { hasTouch: true, isMobile: true } : {};
+		const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: width < 640 ? 2 : 1, colorScheme: theme, ...mobile });
 		await ctx.addInitScript((t) => localStorage.setItem('ocm-theme', t), theme);
 		const page = await ctx.newPage();
 		const errors = [];
@@ -327,10 +330,25 @@ async function main() {
 	await dark.waitForSelector('dialog[open] [data-testid=power-test-result]:has-text("Reached it")');
 	await sleep(300);
 	await shot(dark, 'power-config');
-	await dark.click('dialog[open] [data-testid=power-save]');
+	const [saveRes] = await Promise.all([dark.waitForResponse((r) => r.url().endsWith('/power/config') && r.request().method() === 'PUT'), dark.click('dialog[open] [data-testid=power-save]')]);
+	assert.equal(saveRes.status(), 200, await saveRes.text());
 	await dark.waitForSelector('dialog[open]', { state: 'detached' });
 	assert.equal((await admin.get(`/api/printers/${mk4.id}/power/config`)).data.plug.settings.autoOff.enabled, true);
 	assert.equal((await admin.post(`/api/printers/${mk4.id}/power/test`, { ...mk4Plug, secrets: { username: 'admin' } })).status, 200, 'saving from the UI kept the password');
+
+	// Phones: the power buttons stay in the printer header, the card in the one-column dashboard.
+	log('browser: 390 px phone');
+	const phone = await newPage('dark', 390, 844);
+	await signIn(phone, OPERATOR);
+	await phone.goto(`${APP}/p/${mk4.id}`);
+	await phone.waitForSelector('[data-testid=power-card] [data-testid=plug-state]:has-text("On")');
+	const offBtn = await phone.locator('header [data-testid=power-off]').boundingBox();
+	assert.ok(offBtn && offBtn.height >= 44 && offBtn.x + offBtn.width <= 390, `header power button reachable on a phone (${JSON.stringify(offBtn)})`);
+	await phone.locator('[data-testid=power-card]').scrollIntoViewIfNeeded();
+	assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'no sideways scroll');
+	await sleep(600);
+	await shot(phone, 'power-phone');
+	assert.deepEqual(phone.errors, [], 'no browser errors on the phone');
 
 	// Viewers see the state but get no buttons.
 	const viewPage = await newPage('dark');

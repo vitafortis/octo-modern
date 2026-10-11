@@ -93,6 +93,7 @@
 								<li><a href="#roles">Users and roles</a></li>
 								<li><a href="#configuration">Configuration</a></li>
 								<li><a href="#status-api">Status API</a></li>
+								<li><a href="#power">Smart plugs</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
 								<li><a href="#images">Images</a></li>
 								<li><a href="#security">Security model</a></li>
@@ -290,6 +291,18 @@
         unit_of_measurement: s</code></pre>
 						</div>
 						<p style="margin-top: 16px"><strong>Uptime Kuma</strong>: an HTTP monitor on <code>/api/status/&lt;id&gt;?strict=1&amp;token=ocm_…</code> goes down when OctoPrint is unreachable or the printer reports an error.</p>
+					</section>
+
+					<section id="power">
+						<h2>Smart plugs</h2>
+						<p>Admins set up a printer's plug from the <strong>Power</strong> card on its dashboard; <strong>Test</strong> reads its state without switching it. Passwords and tokens are sealed like API keys and never sent back to the browser.</p>
+						<ul>
+							<li><strong>Shelly</strong> Gen1 (<code>/relay/&lt;n&gt;</code>, Basic login) and Gen2+ (RPC <code>Switch.Set</code>/<code>Switch.GetStatus</code>, Digest login), with watts and energy.</li>
+							<li><strong>Tasmota</strong> (<code>/cm?cmnd=Power&lt;n&gt; On</code>, optional web admin password), energy from <code>Status 8</code>.</li>
+							<li><strong>Home Assistant</strong>: a <code>switch</code>, <code>light</code> or <code>input_boolean</code> entity with a long-lived token, plus optional power and energy sensors.</li>
+							<li><strong>HTTP</strong>: your own on, off and status requests; the status answer is matched against a text or <code>/regex/</code>.</li>
+						</ul>
+						<p>Operators switch printers from the printer header, the Power card, the overview card or the sidebar's right-click menu. Turning off disconnects OctoPrint first; it asks while the hotend or bed is hot, and always twice while a print runs (the server insists). After power-on octo·modern connects the printer, retrying for about three minutes. <strong>Power off after a print</strong> waits until the printer has been idle N minutes (default 10) and the hotend is below X °C (default 50); a new print or <strong>Keep on</strong> cancels it. <strong>Power on for new prints</strong> switches an off printer on when a file is sent to print. Everything is audited (<code>power.*</code>), and notification channels can subscribe to power on/off.</p>
 					</section>
 
 					<section id="webcams">
