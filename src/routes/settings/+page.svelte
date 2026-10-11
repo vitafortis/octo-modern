@@ -170,7 +170,7 @@
 <div class="h-full overflow-y-auto">
 	<PageHeader title="Settings" description="How octo·modern protects your API keys and talks to OctoPrint." />
 
-	<div class="max-w-5xl space-y-5 px-8 pb-10">
+	<div class="max-w-5xl space-y-5 page-x pb-10">
 		<a href="/integrations" class="card flex items-center gap-3 p-4 transition-colors hover:bg-accent/40">
 			<span class="grid size-9 place-items-center rounded-lg bg-primary-soft text-primary"><Plug class="size-4" /></span>
 			<div class="flex-1">
@@ -213,10 +213,10 @@
 		<section class="card p-5">
 			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><ShieldCheck class="size-4 text-primary" />Security</h2>
 			{#if env}
-				<div class="mt-4 grid gap-x-8 gap-y-3 text-[13px] md:grid-cols-2">
+				<div class="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 text-[13px] md:grid-cols-2 [&>div]:min-w-0">
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Credential encryption</span><span class="font-mono text-xs">AES-256-GCM</span></div>
 					<div class="flex items-center justify-between gap-4"><span class="flex items-center gap-1.5 text-muted-foreground"><KeyRound class="size-3.5" />Master key</span><span class="font-mono text-xs">{env.keySource}</span></div>
-					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Data directory</span><span class="truncate font-mono text-xs">{env.dataDir}</span></div>
+					<div class="flex items-center justify-between gap-4"><span class="shrink-0 text-muted-foreground">Data directory</span><span class="min-w-0 truncate font-mono text-xs" title={env.dataDir}>{env.dataDir}</span></div>
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Sign-in</span>{#if env.authDisabled}<span class="badge badge-warning">disabled (OCM_AUTH)</span>{:else if access && !access.requireSignIn}<span class="badge badge-warning">optional (guests: {access.guestRole})</span>{:else}<span class="badge badge-success">required</span>{/if}</div>
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Status poll (idle printers)</span><span class="font-mono text-xs">every {env.pollIntervalMs / 1000}s</span></div>
 					<div class="flex items-center justify-between gap-4"><span class="text-muted-foreground">Request timeout</span><span class="font-mono text-xs">{env.requestTimeoutMs / 1000}s</span></div>
@@ -284,7 +284,7 @@
 						<input
 							id="bk-file"
 							bind:this={fileInput}
-							class="input py-1.5 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-2.5 file:py-0.5 file:text-xs file:font-medium file:text-foreground"
+							class="input py-1.5 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-2.5 file:py-0.5 file:text-xs file:font-medium file:text-foreground touch:file:mr-2 touch:file:h-8 touch:file:bg-accent touch:file:px-3 touch:file:text-sm"
 							type="file"
 							accept=".ocmbackup,application/json"
 							onchange={(e) => ((restoreFile = e.currentTarget.files?.[0] ?? null), (preview = null))}

@@ -39,7 +39,7 @@
 	</div>
 	<div class="p-4">
 		{#if file}
-			<p class="truncate text-[15px] font-semibold tracking-tight" title={file.path}>{file.display}</p>
+			<p class="text-[15px] font-semibold tracking-tight [overflow-wrap:anywhere] sm:truncate" title={file.path}>{file.display}</p>
 			<p class="mt-0.5 text-[11px] text-muted-foreground">{ORIGIN[file.origin] ?? file.origin}{file.size != null ? ` · ${bytes(file.size)}` : ''}{s.job?.user ? ` · started by ${s.job.user}` : ''}</p>
 		{:else}
 			<p class="text-[13px] text-muted-foreground">No file selected. Choose one in the Files tab{canControl ? '' : ' (operators)'}.</p>
@@ -76,7 +76,8 @@
 	</div>
 
 	{#if canControl}
-		<div class="flex flex-wrap items-center gap-2 border-t border-border bg-surface px-4 py-2.5">
+		<div class="flex flex-wrap items-center gap-2 border-t border-border bg-surface px-4 py-2.5 {s.state === 'printing' || s.state === 'resuming' ? 'max-sm:hidden' : ''}">
+			<!-- On phones while printing, Pause and Cancel are in the bar at the bottom of the screen instead. -->
 			{#if s.state === 'operational' && file}
 				<button class="btn btn-primary btn-sm" disabled={busy} onclick={() => run('start')}><CirclePlay />Print</button>
 			{/if}

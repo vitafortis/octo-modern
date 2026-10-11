@@ -205,7 +205,7 @@
 										role="radio"
 										aria-checked={draft.type === t.value}
 										title={t.hint}
-										class="h-7 rounded-md px-1 text-[11px] font-medium transition-colors {draft.type === t.value ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+										class="h-7 rounded-md px-1 text-[11px] font-medium transition-colors touch:h-10 touch:text-xs {draft.type === t.value ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 										onclick={() => (draft!.type = t.value)}>{t.label}</button
 									>
 								{/each}

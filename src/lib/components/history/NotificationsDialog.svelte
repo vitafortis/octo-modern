@@ -121,13 +121,13 @@
 					<button class="btn btn-ghost btn-icon btn-sm hover:text-danger" title="Remove" aria-label="Remove channel" onclick={() => channels.splice(i, 1)}><Trash2 /></button>
 				</div>
 				{#if c.kind === 'ntfy'}
-					<div class="grid grid-cols-3 gap-2">
+					<div class="grid gap-2 sm:grid-cols-3">
 						<label><span class="label">Server</span><input class="input h-8 text-xs" placeholder="https://ntfy.sh" bind:value={c.config.server} /></label>
 						<label><span class="label">Topic</span><input class="input h-8 text-xs" placeholder="my-printers" bind:value={c.config.topic} /></label>
 						<label><span class="label">Access token</span><input class="input h-8 text-xs" type="password" autocomplete="off" placeholder={c.secrets.token ?? 'optional'} bind:value={c.input.token} /></label>
 					</div>
 				{:else}
-					<div class="grid {c.kind === 'webhook' ? 'grid-cols-[2fr_1fr]' : ''} gap-2">
+					<div class="grid {c.kind === 'webhook' ? 'sm:grid-cols-[2fr_1fr]' : ''} gap-2">
 						<label><span class="label">{c.kind === 'discord' ? 'Discord webhook URL' : 'URL (receives a JSON POST)'}</span><input class="input h-8 text-xs" type="password" autocomplete="off" placeholder={c.secrets.url ?? 'https://…'} bind:value={c.input.url} /></label>
 						{#if c.kind === 'webhook'}
 							<label><span class="label">Authorization header</span><input class="input h-8 text-xs" type="password" autocomplete="off" placeholder={c.secrets.authorization ?? 'optional'} bind:value={c.input.authorization} /></label>
