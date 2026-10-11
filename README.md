@@ -341,7 +341,7 @@ The **Filament** page shows which spool is on which printer, and holds the admin
 
 ## Smart plugs
 
-Admins set up a printer's plug from the **Power** card on its dashboard (**Set up a smart plug**, or the settings icon on the card). **Test** reads the plug's state without switching it. Usernames, passwords and tokens are sealed with AES-256-GCM like API keys and never sent back to the browser (leave a field empty to keep what's saved); credentials in a URL are refused. Backups include each printer's plug with its credentials.
+Admins set up a printer's plug from its settings (the settings icon in the printer header → **Smart plug** → **Set up**); once a plug exists, the dashboard shows a **Power** card, whose settings icon opens the same dialog. Printers without a plug show no Power card, and without Spoolman there is no Filament card. **Test** reads the plug's state without switching it. Usernames, passwords and tokens are sealed with AES-256-GCM like API keys and never sent back to the browser (leave a field empty to keep what's saved); credentials in a URL are refused. Backups include each printer's plug with its credentials.
 
 | Device | How octo·modern talks to it | Login | Watts / energy |
 | --- | --- | --- | --- |

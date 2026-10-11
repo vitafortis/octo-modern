@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { CircleAlert, LoaderCircle, Plug, PlugZap, Settings2 } from '@lucide/svelte';
+	import { CircleAlert, LoaderCircle, PlugZap, Settings2 } from '@lucide/svelte';
 	import AutoOffNotice from './AutoOffNotice.svelte';
 	import PowerButtons from './PowerButtons.svelte';
 	import PowerConfigDialog from './PowerConfigDialog.svelte';
-	import { plugs, plugsLoaded, pollPower } from '#lib/client/power.svelte.ts';
+	import { plugs, pollPower } from '#lib/client/power.svelte.ts';
 	import { ago } from '#lib/client/format.ts';
 	import { isAdmin } from '#lib/client/state.svelte.ts';
 	import { formatEnergy, formatWatts, PLUG_LABEL } from '#lib/power.ts';
 	import type { Printer } from '#lib/types.ts';
 
-	/** The printer's smart plug on the dashboard: state, draw, auto power-off countdown, and setup for admins. */
+	/** The printer's smart plug on the dashboard: state, draw, auto power-off countdown. Only shown once a plug is set up (admins do that in the printer's settings). */
 	let { printer, canControl }: { printer: Printer; canControl: boolean } = $props();
 
 	$effect(() => pollPower());
@@ -52,12 +52,6 @@
 			</p>
 		{/if}
 		{#if canControl}<div class="mt-3 flex flex-wrap gap-2"><PowerButtons printerId={printer.id} name={printer.name} /></div>{/if}
-	</section>
-{:else if isAdmin() && plugsLoaded.value}
-	<section class="card p-4 text-[0.8125rem]">
-		<h2 class="flex items-center gap-2 text-sm font-semibold"><Plug class="size-4 text-primary" />Power</h2>
-		<p class="mt-2 text-xs text-muted-foreground">Switch this printer with a smart plug (Shelly, Tasmota, Home Assistant or any HTTP switch), and turn it off by itself after a print.</p>
-		<button class="btn btn-secondary btn-sm mt-3" onclick={() => (configOpen = true)} data-testid="power-setup"><PlugZap />Set up a smart plug</button>
 	</section>
 {/if}
 

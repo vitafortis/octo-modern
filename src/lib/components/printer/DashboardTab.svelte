@@ -13,7 +13,7 @@
 </script>
 
 <div class="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
-	<!-- xl: job, spools, power and server on the left; webcam and temperatures on the right. -->
+	<!-- xl: server, job, filament and power on the left; webcam and temperatures on the right. -->
 	<div class="contents min-w-0 space-y-4 xl:order-last xl:block">
 		{#if s.state === 'error' && s.printerError}
 			<div class="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[0.8125rem]">
@@ -21,15 +21,12 @@
 				<div><p class="font-medium">The printer reported an error</p><p class="mt-0.5 font-mono text-xs text-muted-foreground">{s.printerError}</p></div>
 			</div>
 		{/if}
-		<!-- Below xl one column: webcam, job, temperatures, server. -->
-		<WebcamView printerId={printer.id} compact class="order-1 w-full short:mx-auto short:max-w-[calc(75dvh*16/9)]" height="min(24rem, 40vh)" />
-		<div class="order-3 min-w-0"><TemperatureCard {live} {canControl} /></div>
+		<!-- Below xl one column: server, job, webcam, temperatures, filament, power. -->
+		<WebcamView printerId={printer.id} compact class="order-3 w-full short:mx-auto short:max-w-[calc(75dvh*16/9)]" height="min(24rem, 40vh)" />
+		<div class="order-4 min-w-0"><TemperatureCard {live} {canControl} /></div>
 	</div>
 	<div class="contents space-y-4 xl:block">
-		<div class="order-2"><JobCard {live} {canControl} /></div>
-		<div class="order-2 min-w-0 empty:hidden"><SpoolCard {printer} {live} {canControl} /></div>
-		<div class="order-4 min-w-0 empty:hidden"><PowerCard {printer} {canControl} /></div>
-		<section class="card order-5 p-4 text-[0.8125rem]">
+		<section class="card order-1 p-4 text-[0.8125rem]">
 			<h2 class="flex items-center gap-2 text-sm font-semibold"><Gauge class="size-4 text-primary" />Server</h2>
 			<dl class="mt-3 space-y-2">
 				<div class="flex justify-between gap-3"><dt class="text-muted-foreground">OctoPrint</dt><dd class="font-mono text-xs">{s.version ?? printer.octoprintVersion ?? '—'}</dd></div>
@@ -43,5 +40,8 @@
 				<div class="flex justify-between gap-3"><dt class="text-muted-foreground">Last update</dt><dd class="text-xs">{s.updatedAt ? ago(new Date(s.updatedAt).toISOString()) : 'never'}</dd></div>
 			</dl>
 		</section>
+		<div class="order-2"><JobCard {live} {canControl} /></div>
+		<div class="order-5 min-w-0 empty:hidden"><SpoolCard {printer} {live} {canControl} /></div>
+		<div class="order-6 min-w-0 empty:hidden"><PowerCard {printer} {canControl} /></div>
 	</div>
 </div>

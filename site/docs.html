@@ -339,7 +339,7 @@
 
 					<section id="power">
 						<h2>Smart plugs</h2>
-						<p>Admins set up a printer's plug from the <strong>Power</strong> card on its dashboard; <strong>Test</strong> reads its state without switching it. Passwords and tokens are sealed like API keys and never sent back to the browser.</p>
+						<p>Admins set up a printer's plug from its settings (the settings icon in the printer header → <strong>Smart plug</strong>); the dashboard shows a <strong>Power</strong> card once a plug exists. <strong>Test</strong> reads its state without switching it. Passwords and tokens are sealed like API keys and never sent back to the browser.</p>
 						<ul>
 							<li><strong>Shelly</strong> Gen1 (<code>/relay/&lt;n&gt;</code>, Basic login) and Gen2+ (RPC <code>Switch.Set</code>/<code>Switch.GetStatus</code>, Digest login), with watts and energy.</li>
 							<li><strong>Tasmota</strong> (<code>/cm?cmnd=Power&lt;n&gt; On</code>, optional web admin password), energy from <code>Status 8</code>.</li>

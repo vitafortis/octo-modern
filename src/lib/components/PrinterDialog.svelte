@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { CircleAlert, CircleCheck, LoaderCircle, Lock, Trash2, TriangleAlert, Zap } from '@lucide/svelte';
+	import { CircleAlert, CircleCheck, LoaderCircle, Lock, PlugZap, Trash2, TriangleAlert, Zap } from '@lucide/svelte';
 	import Dialog from './Dialog.svelte';
+	import PowerConfigDialog from './power/PowerConfigDialog.svelte';
 	import Switch from './Switch.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { COLORS } from '#lib/client/format.ts';
 	import { removePrinter } from '#lib/client/printers.ts';
-	import { editor, refreshPrinters, refreshStatuses, toast } from '#lib/client/state.svelte.ts';
+	import { editor, isAdmin, refreshPrinters, refreshStatuses, toast } from '#lib/client/state.svelte.ts';
+	import { plugs } from '#lib/client/power.svelte.ts';
 	import type { Printer, TestResult } from '#lib/types.ts';
 
 	type Form = { name: string; baseUrl: string; apiKey: string; verifyTls: boolean; webcamUrl: string; color: string };
@@ -20,6 +22,15 @@
 
 	const editing = $derived(editor.target && editor.target !== 'new' ? editor.target : null);
 	const open = $derived(editor.target !== null);
+	// Smart plug setup lives here (the dashboard shows a Power card only once a plug exists).
+	let plugFor = $state<Printer | null>(null);
+	let plugOpen = $state(false);
+	function setUpPlug() {
+		if (!editing) return;
+		plugFor = editing;
+		editor.target = null;
+		plugOpen = true;
+	}
 
 	$effect(() => {
 		const t = editor.target;
@@ -133,6 +144,16 @@
 			</div>
 		</details>
 
+		{#if editing && isAdmin()}
+			<div class="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+				<div class="min-w-0">
+					<p class="text-[0.8125rem] font-medium">Smart plug</p>
+					<p class="text-[0.6875rem] text-muted-foreground">{plugs[editing.id] ? 'Set up. Change it or turn auto power-off on or off.' : 'Switch this printer with Shelly, Tasmota, Home Assistant or any HTTP switch.'}</p>
+				</div>
+				<button type="button" class="btn btn-secondary btn-sm shrink-0" onclick={setUpPlug} data-testid="power-setup"><PlugZap />{plugs[editing.id] ? 'Change' : 'Set up'}</button>
+			</div>
+		{/if}
+
 		{#if test}
 			<div class="flex items-start gap-2 rounded-lg border p-3 text-xs {test.ok ? (test.missing.length ? 'border-warning/30 bg-warning/5' : 'border-success/30 bg-success/5') : 'border-danger/30 bg-danger/5'}">
 				{#if test.ok}
@@ -165,3 +186,5 @@
 		<button class="btn btn-primary" form="printer-form" disabled={saving}>{#if saving}<LoaderCircle class="animate-spin" />{/if}{editing ? 'Save changes' : 'Add printer'}</button>
 	{/snippet}
 </Dialog>
+
+{#if plugFor && isAdmin()}<PowerConfigDialog bind:open={plugOpen} printer={plugFor} />{/if}

@@ -196,10 +196,10 @@ async function main() {
 	await waitFor(async () => (await admin.get('/api/printers/status')).data.every((s) => s.state === 'operational'), 'both printers ready');
 	assert.equal((await admin.post('/api/library/sources', { name: 'NAS prints', kind: 'folder', config: { path: libDir } })).status, 201);
 	const lib = (await admin.get('/api/library/sources')).data[0];
-	assert.equal(
-		(await admin.put('/api/settings/notifications', { channels: [{ kind: 'webhook', name: 'e2e', on: ['success', 'spool.low', 'maintenance.due'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/` } }] })).status,
-		200
-	);
+	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e', secrets: { url: `http://127.0.0.1:${HOOK_PORT}/` } });
+	assert.equal(hookChannel.status, 201, JSON.stringify(hookChannel.data));
+	const rules = await admin.put('/api/settings/notifications', { rules: [{ name: 'Spools and maintenance', printers: 'all', events: ['success', 'spool.low', 'maintenance.due'], channels: [hookChannel.data.channel.id] }] });
+	assert.equal(rules.status, 200, JSON.stringify(rules.data));
 
 	// --- Spoolman connection --------------------------------------------------------------------
 	log('Spoolman: admin-only settings, sealed auth header, test');

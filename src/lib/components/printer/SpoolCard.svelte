@@ -38,12 +38,10 @@
 	const byTool = $derived(new Map((data?.assignments ?? []).map((a) => [a.tool, a])));
 </script>
 
-{#if data && (data.configured || isAdmin())}
+<!-- Only when Spoolman is set up (Filament page); nothing to show otherwise. -->
+{#if data?.configured}
 	<section class="card p-4 text-[0.8125rem]" data-testid="spool-card">
 		<h2 class="flex items-center gap-2 text-sm font-semibold"><Disc3 class="size-4 text-primary" />{title ?? 'Filament'}</h2>
-		{#if !data.configured}
-			<p class="mt-2 text-xs text-muted-foreground">Connect Spoolman to track which spool is loaded and how much is left. <a class="text-primary hover:underline" href="/filament">Set it up →</a></p>
-		{:else}
 			{#if data.error}<p class="mt-2 flex items-center gap-1.5 text-xs text-warning"><TriangleAlert class="size-3.5" />{data.error}</p>{/if}
 			<ul class="mt-3 space-y-3">
 				{#each tools as t (t)}
@@ -74,7 +72,6 @@
 					</li>
 				{/each}
 			</ul>
-		{/if}
 	</section>
 	{#if picking != null}
 		<SpoolPicker
