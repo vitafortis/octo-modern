@@ -36,14 +36,12 @@ const base = (id: string) => `/api/printers/${encodeURIComponent(id)}`;
 
 export type JobCommand = 'start' | 'pause' | 'resume' | 'cancel' | 'restart';
 
-export function jobCommand(id: string, command: JobCommand, file?: string | null) {
+export async function jobCommand(id: string, command: JobCommand, file?: string | null) {
 	const ask: Confirm | undefined =
-		command === 'cancel'
-			? { title: 'Cancel this print?', body: 'The print stops and can’t be resumed. Heaters follow OctoPrint’s cancel script.', detail: file ?? undefined, confirmLabel: 'Cancel print', danger: true }
-			: command === 'restart'
-				? { title: 'Restart this print from the beginning?', detail: file ?? undefined, confirmLabel: 'Restart' }
-				: undefined;
+		command === 'cancel' ? { title: 'Cancel this print?', body: 'The print stops and can’t be resumed. Heaters follow OctoPrint’s cancel script.', detail: file ?? undefined, confirmLabel: 'Cancel print', danger: true } : undefined;
 	const done: Record<JobCommand, string> = { start: 'Print started', pause: 'Pausing…', resume: 'Resuming…', cancel: 'Cancelling…', restart: 'Print restarted' };
+	// Restart asks here, then lets the server ask too (like start) when a spool won't last the print.
+	if (command === 'restart' && !(await confirmAction({ title: 'Restart this print from the beginning?', detail: file ?? undefined, confirmLabel: 'Restart' }))) return false;
 	return act(`${base(id)}/job`, { command }, { ask, done: done[command], failed: `Could not ${command} the job` });
 }
 

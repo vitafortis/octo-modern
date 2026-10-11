@@ -22,7 +22,7 @@ const SHOTS = join(ROOT, 'docs/screenshots');
 const APP_PORT = Number(process.env.E2E_APP_PORT ?? 3210);
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const OP_BASE = Number(process.env.E2E_OP_PORT_BASE ?? 3211);
-const OP_PREFIX = 'octo-modern-queue-e2e-op';
+const OP_PREFIX = process.env.E2E_OP_PREFIX ?? 'octo-modern-queue-e2e-op';
 const HOOK_PORT = Number(process.env.E2E_HOOK_PORT ?? 3215);
 const OP = [1, 2].map((i) => ({ url: `http://127.0.0.1:${OP_BASE + i - 1}`, key: `ocm-dev-key-${i}` }));
 const ADMIN = { email: 'admin@example.com', name: 'Ada Admin', password: 'e2e-admin-password' };

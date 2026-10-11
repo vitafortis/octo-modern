@@ -13,8 +13,8 @@ type Command = (typeof COMMANDS)[number];
 
 /**
  * Job control: `{ command: start | pause | resume | cancel | restart }`. Cancelling
- * needs `confirm: true`; so does starting when an active Spoolman spool holds less
- * filament than the file needs.
+ * needs `confirm: true`; so does starting or restarting when an active Spoolman spool
+ * holds less filament than the file needs (409 `confirmRequired`, then resend).
  */
 export const POST: RequestHandler = handler(async ({ params, locals, request }) => {
 	const { printer, client } = controlTarget(locals.user, params.id);
@@ -22,7 +22,7 @@ export const POST: RequestHandler = handler(async ({ params, locals, request }) 
 	const command = b.command as Command;
 	if (!COMMANDS.includes(command)) throw new BadRequest(`"command" must be one of ${COMMANDS.join(', ')}`);
 	if (command === 'cancel' && b.confirm !== true) return confirmRequired('Cancelling ends the print and can’t be undone. Send confirm: true to cancel.');
-	if (command === 'start' && b.confirm !== true && wantsFilamentCheck(printer.id)) {
+	if ((command === 'start' || command === 'restart') && b.confirm !== true && wantsFilamentCheck(printer.id)) {
 		const job = parseJobResponse(await client.job().catch(() => null)).job;
 		const perTool = perToolMm(job?.filament);
 		const warning = Object.keys(perTool).length ? await filamentWarning(printer.id, { perTool }) : null;
