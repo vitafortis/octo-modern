@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import {
 		ArrowDownAZ,
+		Box,
 		ChevronRight,
 		CircleCheck,
 		CircleX,
@@ -34,6 +35,9 @@
 	import type { LibrarySourceSummary } from '#lib/library.ts';
 
 	let { printer, live, canControl }: TabProps = $props();
+
+	/** The printer page's Preview tab for a file (the date busts the parsed-file cache after a re-upload). */
+	const previewHref = (f: FileEntry) => `?tab=preview&file=${encodeURIComponent(f.path)}&v=${f.date ?? ''}-${f.size ?? ''}`;
 
 	let listing = $state<FileListing | null>(null);
 	let error = $state('');
@@ -302,8 +306,11 @@
 								{/if}
 							</td>
 							<td class="px-4 py-2">
-								{#if canControl}
-									<div class="flex items-center justify-end gap-1">
+								<div class="flex items-center justify-end gap-1">
+									{#if f.type === 'machinecode' && f.origin === 'local' && !/\.bgcode$/i.test(f.name)}
+										<a class="btn btn-ghost btn-icon btn-sm" href={previewHref(f)} title="Preview toolpath" aria-label="Preview {f.display}"><Box /></a>
+									{/if}
+									{#if canControl}
 										{#if f.type === 'machinecode'}
 											<button
 												class="btn btn-primary btn-sm"
@@ -323,8 +330,8 @@
 											disabled={inUse}
 											onclick={async () => (await deleteFile(printer.id, f)) && load()}><Trash2 /></button
 										>
-									</div>
-								{/if}
+									{/if}
+								</div>
 							</td>
 						</tr>
 					{:else}

@@ -4,7 +4,7 @@
  * in `?tab=<id>`.
  */
 import type { Component } from 'svelte';
-import { Camera, Clapperboard, FolderOpen, History, LayoutDashboard, Move, SquareTerminal } from '@lucide/svelte';
+import { Box, Camera, Clapperboard, FolderOpen, History, LayoutDashboard, Move, SquareTerminal } from '@lucide/svelte';
 import type { LivePrinter } from '#lib/client/live.svelte.ts';
 import type { Printer } from '#lib/types.ts';
 import DashboardTab from './DashboardTab.svelte';
@@ -14,6 +14,7 @@ import TerminalTab from './TerminalTab.svelte';
 import WebcamTab from './WebcamTab.svelte';
 import TimelapseTab from './TimelapseTab.svelte';
 import HistoryTab from './HistoryTab.svelte';
+import PreviewTab from './PreviewTab.svelte';
 
 export interface TabProps {
 	printer: Printer;
@@ -33,6 +34,7 @@ export interface TabDef {
 export const TABS: TabDef[] = [
 	{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, component: DashboardTab },
 	{ id: 'files', label: 'Files', icon: FolderOpen, component: FilesTab },
+	{ id: 'preview', label: 'Preview', icon: Box, component: PreviewTab },
 	{ id: 'control', label: 'Control', icon: Move, component: ControlTab },
 	{ id: 'terminal', label: 'Terminal', icon: SquareTerminal, component: TerminalTab },
 	{ id: 'webcam', label: 'Webcam', icon: Camera, component: WebcamTab },
