@@ -4,7 +4,7 @@
  * in `?tab=<id>`.
  */
 import type { Component } from 'svelte';
-import { Box, Camera, Clapperboard, FolderOpen, History, LayoutDashboard, ListOrdered, Move, ScanEye, SquareTerminal, Wrench } from '@lucide/svelte';
+import { Box, Camera, Grid3x3, Clapperboard, FolderOpen, History, LayoutDashboard, ListOrdered, Move, ScanEye, SquareTerminal, Wrench } from '@lucide/svelte';
 import type { LivePrinter } from '#lib/client/live.svelte.ts';
 import type { Printer } from '#lib/types.ts';
 import DashboardTab from './DashboardTab.svelte';
@@ -18,6 +18,7 @@ import DetectionTab from './DetectionTab.svelte';
 import QueueTab from './QueueTab.svelte';
 import MaintenanceTab from './MaintenanceTab.svelte';
 import PreviewTab from './PreviewTab.svelte';
+import BedMeshTab from './BedMeshTab.svelte';
 
 export interface TabProps {
 	printer: Printer;
@@ -32,6 +33,8 @@ export interface TabDef {
 	label: string;
 	icon: Component;
 	component: Component<TabProps>;
+	/** Only shown when the printer has this optional feature (e.g. an OctoPrint plugin). */
+	requires?: 'bedmesh';
 }
 
 export const TABS: TabDef[] = [
@@ -40,6 +43,7 @@ export const TABS: TabDef[] = [
 	{ id: 'preview', label: 'Preview', icon: Box, component: PreviewTab },
 	{ id: 'control', label: 'Control', icon: Move, component: ControlTab },
 	{ id: 'terminal', label: 'Terminal', icon: SquareTerminal, component: TerminalTab },
+	{ id: 'bed', label: 'Bed', icon: Grid3x3, component: BedMeshTab, requires: 'bedmesh' },
 	{ id: 'webcam', label: 'Webcam', icon: Camera, component: WebcamTab },
 	{ id: 'timelapse', label: 'Timelapse', icon: Clapperboard, component: TimelapseTab },
 	{ id: 'history', label: 'History', icon: History, component: HistoryTab },
@@ -47,3 +51,6 @@ export const TABS: TabDef[] = [
 	{ id: 'detection', label: 'Failure detection', icon: ScanEye, component: DetectionTab },
 	{ id: 'maintenance', label: 'Maintenance', icon: Wrench, component: MaintenanceTab }
 ];
+
+/** The tabs a printer has, given its optional features. */
+export const tabsFor = (features: Partial<Record<NonNullable<TabDef['requires']>, boolean>> | undefined) => TABS.filter((t) => !t.requires || features?.[t.requires]);

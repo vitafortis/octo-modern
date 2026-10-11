@@ -5,7 +5,7 @@
 	import StateBadge from '#lib/components/printer/StateBadge.svelte';
 	import ConnectionControls from '#lib/components/printer/ConnectionControls.svelte';
 	import PowerButtons from '#lib/components/power/PowerButtons.svelte';
-	import { TABS } from '#lib/components/printer/tabs.ts';
+	import { tabsFor } from '#lib/components/printer/tabs.ts';
 	import { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { emergencyStop, jobCommand } from '#lib/client/actions.ts';
 	import { COLORS } from '#lib/client/format.ts';
@@ -29,6 +29,7 @@
 	// The queue's "bed is clear" prompt for this printer.
 	$effect(() => pollQueue());
 
+	const TABS = $derived(tabsFor(data.features));
 	const tab = $derived(TABS.find((t) => t.id === page.url.searchParams.get('tab')) ?? TABS[0]);
 	function openTab(id: string) {
 		const url = new URL(page.url.href);
