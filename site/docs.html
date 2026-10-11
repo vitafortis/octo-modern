@@ -100,6 +100,7 @@
 								<li><a href="#notifications">Notifications</a></li>
 								<li><a href="#detection">Failure detection</a></li>
 								<li><a href="#spools">Spools, costs and maintenance</a></li>
+								<li><a href="#bedmesh">Bed mesh</a></li>
 								<li><a href="#preview">G-code preview</a></li>
 								<li><a href="#cameras">Camera wall</a></li>
 								<li><a href="#images">Images</a></li>
@@ -176,6 +177,8 @@
 								<tr><td>G-code preview (printer and library files), camera wall</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
 								<tr><td>Upload, print and delete files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Choose a printer's active spool; add, edit and complete maintenance tasks</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>See bed meshes, their history and comparisons</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Update the bed mesh, drift alerts and reference, delete meshes</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Spoolman connection, cost settings</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Turn failure detection on per printer, sensitivity, action; mark a false alarm</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Add, reorder and remove queued jobs, confirm a bed is clear</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
@@ -364,7 +367,7 @@
 						<p>Admins set them up under <strong>Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
 						<ul>
 							<li><strong>Channels</strong>: ntfy, Discord, Slack (incoming webhook, Block Kit), Telegram (bot token and chat ID, the snapshot as a photo), Pushover, Gotify, Matrix (homeserver, room ID, access token), email over SMTP (STARTTLS or TLS, snapshot inline), Home Assistant (webhook trigger and/or a <code>notify.*</code> service) and generic JSON webhooks.</li>
-							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code> and <code>power.off</code> from other features.</li>
+							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.off</code> and <code>bed.drift</code> from other features.</li>
 							<li><strong>Messages</strong>: printer, file, elapsed and estimated time, filament, who started it, a link back (set the public URL, or <code>ORIGIN</code>) and the webcam snapshot. Slack, Gotify and Home Assistant show pictures only by link: turn on <strong>Share snapshots by link</strong> (unguessable links, 48 hours).</li>
 							<li><strong>Rules, quiet hours, limits</strong>: rules pick printers × events → channels; quiet hours per channel can still let errors through; the same event goes to a channel once per 10 minutes and at most 20 messages per 10 minutes, so flapping printers stay quiet. <strong>Recent deliveries</strong> shows the last 100 with their status.</li>
 						</ul>
@@ -396,6 +399,18 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 						</ul>
 						<p><strong>Cost per print</strong> (admins set the prices): filament by weight, at the spool's price from Spoolman or a price per kg per material, plus electricity (print time × the printer's power draw × the price per kWh). It's on every history entry, in the History stats per printer and in the CSV export (<code>filament_g</code>, <code>material</code>, <code>cost_filament</code>, <code>cost_energy</code>, <code>cost_total</code>); earlier prints are costed too, and <strong>Recalculate history</strong> applies new prices.</p>
 						<p><strong>Maintenance</strong>: per-printer tasks every so many print hours, kg of filament or days, counted from the print history since they were last done. Nozzle change, belt tension, lubrication, bed cleaning and e-steps are offered. Tasks are <em>due soon</em> at 90 % and <em>overdue</em> past their interval; the sidebar counts overdue ones and <code>maintenance.due</code> is sent once. <strong>Done</strong> logs who, when and your notes, and restarts the count.</p>
+					</section>
+
+					<section id="bedmesh">
+						<h2>Bed mesh</h2>
+						<p>Printers whose OctoPrint has the <a href="https://github.com/jneilliii/OctoPrint-BedLevelVisualizer">Bed Visualizer</a> plugin get a <strong>Bed</strong> tab; others show no bed-mesh UI (their settings dialog says how to get it). octo·modern checks for the plugin in OctoPrint's settings when the printer page first opens and every 15 minutes.</p>
+						<ul>
+							<li><strong>The mesh</strong>: a heatmap with each point's value (back of the bed at the top, lowest and highest outlined) and a 3D surface to rotate and zoom (drag, wheel or pinch, arrow keys), with flatness (max − min), the lowest and highest point and the mean. Missing points (<code>nan</code>) are grey and left out.</li>
+							<li><strong>Update mesh</strong> (operators): sends <code>@BEDLEVELVISUALIZER</code> and the plugin's probe G-code, as the plugin's own button does. It asks first, is refused while printing or disconnected, shows progress and refreshes when the plugin reports the mesh. The mesh is written back to the plugin so OctoPrint shows it too.</li>
+							<li><strong>History</strong>: every distinct mesh is kept with when it was seen, including ones probed from OctoPrint. Compare any two as a difference map (different probe counts are interpolated), follow flatness over time, choose a reference mesh, delete bad runs.</li>
+							<li><strong>Drift alerts</strong>: a flatness limit and/or a limit on how far any point moved from the reference; a new mesh past them sends <code>bed.drift</code> (<strong>Bed mesh drift</strong> in notification rules).</li>
+						</ul>
+					</section>
 					<section id="preview">
 						<h2>G-code preview</h2>
 						<p>The <strong>Preview</strong> tab on a printer shows the job's toolpath; the cube button next to a file in <strong>Files</strong> or the <strong>Library</strong> previews any other. Drag to orbit (right-drag or Shift to pan), scroll or pinch to zoom, double-tap to reset; the slider and ↑/↓ change the layer. <strong>Layer</strong> shows one layer from above; <strong>Travel</strong> adds moves without extrusion; the legend hides feature types.</p>
