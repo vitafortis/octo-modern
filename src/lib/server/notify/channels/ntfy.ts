@@ -14,7 +14,7 @@ export function ntfyTags(m: Message): string[] {
 	return [tag, 'octo-modern'];
 }
 
-export const ntfyPriority = (m: Message) => (m.kind === 'failure.detected' ? 5 : m.severity === 'error' ? 4 : 3);
+export const ntfyPriority = (m: Message) => (m.kind === 'failure.suspected' ? 5 : m.severity === 'error' ? 4 : 3);
 
 export const ntfy: ChannelAdapter = {
 	type: 'ntfy',

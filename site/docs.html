@@ -94,6 +94,7 @@
 								<li><a href="#configuration">Configuration</a></li>
 								<li><a href="#status-api">Status API</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
+								<li><a href="#detection">Failure detection</a></li>
 								<li><a href="#images">Images</a></li>
 								<li><a href="#security">Security model</a></li>
 								<li><a href="#backup">Backup &amp; restore</a></li>
@@ -166,8 +167,9 @@
 								<tr><td>Start, pause, resume, cancel prints</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Set temperatures, connect/disconnect, G-code, emergency stop</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Upload, print and delete files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Turn failure detection on per printer, sensitivity, action; mark a false alarm</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Add, edit and remove printers (and their API keys)</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Users, Integrations, Audit log, Settings, backups</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Users, Integrations, Audit log, Settings (including the ML API), backups</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 							</tbody>
 						</table>
 						<p style="margin-top: 16px">Operators and viewers see every printer, or only the ones you pick under <strong>Users → Printers</strong>. Roles are enforced on the server for every route, not just hidden in the UI.</p>
@@ -189,6 +191,9 @@
 								<tr><td class="var"><code>OCM_ADMIN_EMAIL</code>, <code>OCM_ADMIN_PASSWORD</code>, <code>OCM_ADMIN_NAME</code></td><td data-label="Default">—</td><td data-label="What it does">Create the first admin on start instead of using the setup wizard</td></tr>
 								<tr><td class="var"><code>OCM_AUTH</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> skips sign-in and gives everyone admin access (trusted networks only). For guests, use <strong>Settings → Sign-in</strong> instead</td></tr>
 								<tr><td class="var"><code>OCM_LOCAL_LOGIN</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> hides the email/password form (SSO only); <code>enabled</code> forces it back on</td></tr>
+								<tr><td class="var"><code>OCM_ML_API_URL</code></td><td data-label="Default">—</td><td data-label="What it does">Obico's ML API for failure detection, e.g. <code>http://ml_api:3333</code> (Settings → Failure detection overrides it)</td></tr>
+								<tr><td class="var"><code>OCM_ML_API_TOKEN</code></td><td data-label="Default">—</td><td data-label="What it does">The ml_api container's <code>ML_API_TOKEN</code>, sent as a Bearer token</td></tr>
+								<tr><td class="var"><code>OCM_DETECT_PUBLIC_URL</code></td><td data-label="Default">—</td><td data-label="What it does">octo·modern's address as the ML container reaches it, e.g. <code>http://octo-modern:3000</code></td></tr>
 								<tr><td class="var"><code>OCM_OIDC_ISSUER</code></td><td data-label="Default">—</td><td data-label="What it does">OIDC issuer URL; enables SSO (or configure it under Integrations)</td></tr>
 								<tr><td class="var"><code>OCM_OIDC_CLIENT_ID</code>, <code>OCM_OIDC_CLIENT_SECRET</code></td><td data-label="Default">—</td><td data-label="What it does">Client credentials from your identity provider</td></tr>
 								<tr><td class="var"><code>OCM_OIDC_NAME</code></td><td data-label="Default"><code>SSO</code></td><td data-label="What it does">Login button label</td></tr>
@@ -302,6 +307,19 @@
 						<p>Uploads go to OctoPrint's local storage and are streamed as they arrive, so memory use doesn't grow with the file; the image allows up to 4 GB (<code>BODY_SIZE_LIMIT</code>). A reverse proxy in front may have its own limit (nginx: <code>client_max_body_size</code>).</p>
 					</section>
 
+					<section id="detection">
+						<h2>Failure detection</h2>
+						<p>octo·modern watches printing printers with Obico's failure-detection model (the "Spaghetti Detective"), in your own <code>ml_api</code> container from <a href="https://github.com/TheSpaghettiDetective/obico-server">obico-server</a>; no Obico account or cloud. Add it with <code>compose.detect.yaml</code> from the repository:</p>
+						<pre><code>echo "ML_API_TOKEN=$(openssl rand -hex 32)" &gt;&gt; .env
+docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
+						<p>Check <strong>Settings → Failure detection</strong> (ML API URL, token, and octo·modern's address as the container sees it, usually <code>http://octo-modern:3000</code>), press <strong>Test</strong> for a full round trip, then turn detection on in a printer's <strong>Failure detection</strong> tab.</p>
+						<ul>
+							<li><strong>Frames</strong>: after the first minutes of a print (default 5), a webcam snapshot every 10 s goes to <code>GET /p/?img=&lt;url&gt;</code>; the container downloads it and answers boxes and confidences. That's the ML API's only interface: it takes no image bytes, so octo·modern serves each frame through a single-use, 30-second link.</li>
+							<li><strong>Score</strong>: Obico's own algorithm: the frame's confidences summed, smoothed over 12 frames, minus a long-term baseline per printer, times the sensitivity. Warning from 33 %, failure from 67 % on Obico's 0–100 % scale.</li>
+							<li><strong>Actions</strong>: a warning sends a <code>failure.suspected</code> notification with the annotated frame (tick <strong>Failure suspected</strong> on a channel). A failure does nothing, notifies, or pauses the print, audited as <code>octo·modern detector</code>. <strong>This is a false alarm</strong> turns it off until the print ends.</li>
+						</ul>
+					</section>
+
 					<section id="images">
 						<h2>Images</h2>
 						<p>Published to the GitHub Container Registry for <code>linux/amd64</code> and <code>linux/arm64</code>.</p>
@@ -327,6 +345,7 @@
 							<li><strong>API tokens</strong> (<code>ocm_</code> + 32 random bytes, SHA-256 hashed at rest) only work on <code>GET /api/status…</code>; they never become sessions, and repeated bad tokens from one address are throttled.</li>
 							<li><strong>Sign-in</strong> is by OIDC or local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies that end when the user is disabled or their role changes. Writes from another origin are rejected.</li>
 							<li><strong>Discovery</strong> is admin-only and read-only: Docker and Arcane are only read, a socket proxy keeps writes blocked, and subnet scans are capped at 4096 addresses and audited.</li>
+							<li><strong>Failure detection frames</strong> are served at <code>/api/detect/frame/&lt;token&gt;</code>: a random 256-bit, single-use token, valid 30 s, for one captured frame (never the camera). It's the only path besides the status API that works without a session, and only for <code>GET</code>.</li>
 							<li><strong>Backup files</strong> hold decrypted API keys and the SSO client secret, re-encrypted with AES-256-GCM under a key derived from your passphrase (scrypt). Treat them like a password manager export.</li>
 						</ul>
 					</section>

@@ -59,6 +59,36 @@ export interface BackupSettings {
 	sso: Record<string, unknown> | null;
 	ssoClientSecret: string | null;
 	localLoginDisabled: boolean | null;
+	/** Failure detection: the `detect:settings` and `detect:printer:*` rows, the ML API token decrypted (learned baselines are left out). */
+	detect?: { rows: Record<string, unknown>; mlToken: string | null };
+}
+
+const DETECT_GLOBAL = 'detect:settings';
+const isDetectSetting = (key: string) => key === DETECT_GLOBAL || key.startsWith('detect:printer:');
+
+function exportDetect(): BackupSettings['detect'] {
+	const rows: Record<string, unknown> = {};
+	let mlToken: string | null = null;
+	for (const r of sqlite().prepare(`SELECT key, value FROM kv WHERE key LIKE 'detect:%' ORDER BY key`).all() as { key: string; value: string }[]) {
+		if (!isDetectSetting(r.key)) continue;
+		const v = JSON.parse(r.value);
+		if (r.key === DETECT_GLOBAL && v && typeof v === 'object') {
+			mlToken = v.sealedToken ? decrypt(v.sealedToken, 'detect:ml-api') : null;
+			rows[r.key] = { ...v, sealedToken: null };
+		} else rows[r.key] = v;
+	}
+	return { rows, mlToken };
+}
+
+/** Replaces the failure detection settings (call inside the restore's transaction). */
+function importDetect(d: NonNullable<BackupSettings['detect']>) {
+	const h = sqlite();
+	for (const r of h.prepare(`SELECT key FROM kv WHERE key LIKE 'detect:%'`).all() as { key: string }[]) if (isDetectSetting(r.key)) deleteKv(r.key);
+	for (const [key, value] of Object.entries(d.rows ?? {})) {
+		if (!isDetectSetting(key)) continue;
+		if (key === DETECT_GLOBAL && value && typeof value === 'object') setKv(key, { ...value, sealedToken: d.mlToken ? encrypt(d.mlToken, 'detect:ml-api') : null });
+		else setKv(key, value);
+	}
 }
 
 export interface BackupPayload {
@@ -117,7 +147,8 @@ export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): Ba
 		payload.settings = {
 			sso: getKv<Record<string, unknown> | null>('sso', null),
 			ssoClientSecret: sealed ? decrypt(sealed, 'sso') : null,
-			localLoginDisabled: getKv<boolean | null>('local-login-disabled', null)
+			localLoginDisabled: getKv<boolean | null>('local-login-disabled', null),
+			detect: exportDetect()
 		};
 	}
 	return payload;
@@ -233,6 +264,15 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 			detail: sso ? `${sso.name ?? 'SSO'} · ${sso.issuer ?? ''}${s.ssoClientSecret ? ' · with client secret' : ''}` : 'not configured',
 			status: status(s.sso, getKv('sso', null))
 		});
+		if (s.detect) {
+			const g = s.detect.rows?.[DETECT_GLOBAL] as { mlApiUrl?: string | null } | undefined;
+			const printersSet = Object.keys(s.detect.rows ?? {}).filter((k) => k.startsWith('detect:printer:')).length;
+			preview.settings.push({
+				label: 'Failure detection',
+				detail: `${g?.mlApiUrl ? `ML API ${g.mlApiUrl}${s.detect.mlToken ? ' · with token' : ''}` : 'no ML API'} · ${printersSet} printer setting${printersSet === 1 ? '' : 's'}`,
+				status: g || printersSet ? 'update' : 'same'
+			});
+		}
 		preview.settings.push({
 			label: 'Password sign-in',
 			detail: s.localLoginDisabled ? 'disabled (SSO only)' : 'enabled',
@@ -362,6 +402,8 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 			else deleteKv('sso-secret');
 			if (s.localLoginDisabled != null) setKv('local-login-disabled', !!s.localLoginDisabled);
 			else deleteKv('local-login-disabled');
+			// Backups from before failure detection have no `detect`: leave it as it is.
+			if (s.detect && typeof s.detect === 'object') importDetect(s.detect);
 			result.settings = true;
 		}
 

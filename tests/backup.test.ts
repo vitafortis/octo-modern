@@ -87,6 +87,13 @@ test('store export restores on a fresh install with a different master key', () 
 	assert.equal(out.sso.defaultRole, 'operator');
 	assert.equal(out.localLogin, true);
 
+	// Failure detection: the ML token re-sealed, printer settings back, learned baselines not carried.
+	assert.deepEqual(out.detect.ml, { url: 'http://ml.lan:3333', token: 'ml-secret-token', publicUrl: 'http://octo.lan' });
+	assert.equal(out.detect.mk4.enabled, true);
+	assert.equal(out.detect.mk4.onFailure, 'pause');
+	assert.equal(out.detect.baselines, 0);
+	assert.match(out.detect.preview.detail, /ML API http:\/\/ml\.lan:3333 · with token · 1 printer setting$/);
+
 	// Notifications: secrets re-sealed with the new key, rules still point at their printer and channel.
 	assert.deepEqual(out.notify.channels, [
 		{ name: 'Team chat', type: 'telegram', config: { chatId: '-1001' }, quiet: { enabled: true, start: '22:00', end: '07:00', days: [], allowCritical: true }, secrets: { botToken: '123:telegram-secret' } }

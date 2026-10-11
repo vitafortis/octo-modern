@@ -18,6 +18,8 @@ const FAST = { N: 1024, r: 8, p: 1 };
 const ALL = { printers: true, users: true, settings: true, notifications: true, history: true };
 const notify = await import('../../src/lib/server/notify/settings.ts');
 const hs = await import('../../src/lib/server/history/store.ts');
+const detect = await import('../../src/lib/server/detect/settings.ts');
+const { DETECT_DEFAULTS } = await import('../../src/lib/detect.ts');
 
 if (role === 'export') {
 	const mk4 = store.createPrinter({ name: 'mk4', baseUrl: 'http://mk4.lan', apiKey: 'app-key-mk4', verifyTls: true, webcamUrl: null, color: 'violet' });
@@ -31,6 +33,10 @@ if (role === 'export') {
 	store.setGrants(op.id, [mk4.id]);
 	saveSso({ issuer: 'https://id.example', clientId: 'ocm', clientSecret: 'sso-secret-value', name: 'Pocket', scopes: 'openid email', autoCreate: [], adminEmails: [], defaultRole: 'operator' });
 	store.setKv('local-login-disabled', true);
+	// Failure detection: the ML API with its token, and one printer's settings.
+	detect.saveGlobal({ mlApiUrl: 'http://ml.lan:3333', token: 'ml-secret-token', publicUrl: 'http://octo.lan' });
+	detect.savePrinterSettings(mk4.id, { ...DETECT_DEFAULTS, enabled: true, onFailure: 'pause' });
+	store.setKv(`detect:baseline:${mk4.id}`, { learned: true });
 	// Notifications: a channel with secrets, quiet hours and a rule for one printer.
 	const tg = notify.createChannel({ type: 'telegram', name: 'Team chat', config: { chatId: '-1001' }, secrets: { botToken: '123:telegram-secret' }, quiet: { enabled: true, start: '22:00', end: '07:00', allowCritical: true } });
 	notify.saveSettings({ publicUrl: 'https://octo.example', progressPercents: [50], rules: [{ name: 'MK4 failures', printers: [mk4.id], events: ['print.failed'], channels: [tg.id] }] });
@@ -81,6 +87,7 @@ if (role === 'export') {
 			operatorGrants: store.listGrants(operator.id),
 			sso: ssoConfig(),
 			localLogin: store.getKv('local-login-disabled', null),
+			detect: { ml: detect.mlConfig(), mk4: detect.printerSettings(printers.find((x) => x.name === 'mk4')!.id), baselines: (store.sqlite().prepare(`SELECT key FROM kv WHERE key LIKE 'detect:baseline:%'`).all() as unknown[]).length, preview: preview.settings.find((x: { label: string }) => x.label === 'Failure detection') },
 			notify: {
 				channels: ns.channels.map((c) => ({ name: c.name, type: c.type, config: c.config, quiet: c.quiet, secrets: notify.secretsOf(c) })),
 				rules: ns.rules.map((r) => ({ name: r.name, printers: r.printers, events: r.events, channels: r.channels.map((id) => ns.channels.find((c) => c.id === id)?.name) })),
