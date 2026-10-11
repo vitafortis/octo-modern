@@ -137,7 +137,7 @@
 		{#if !push.channelReady}
 			<p class="mt-3 flex items-start gap-2 rounded-lg bg-surface px-3 py-2 text-xs text-muted-foreground" data-testid="push-not-ready">
 				<Info class="mt-0.5 size-3.5 shrink-0" />
-				<span>{admin ? 'No rule sends to browser push yet: add a Browser push channel and a rule for it under Channels and Rules.' : 'No notification rule sends to browser push yet; an admin sets that up under Notifications.'}</span>
+				<span>{admin ? 'No rule sends to browser push yet: add a Browser push channel and a rule for it under Notifications.' : 'No notification rule sends to browser push yet; an admin sets that up under Notifications.'}</span>
 			</p>
 		{/if}
 
