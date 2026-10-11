@@ -43,7 +43,7 @@
 	let strip = $state<HTMLElement>();
 	$effect(() => {
 		void tab.id;
-		strip?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+		strip?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
 	});
 </script>
 
