@@ -20,10 +20,10 @@
 <div class="mx-auto max-w-5xl space-y-4">
 	<section class="card flex flex-wrap items-center gap-3 p-4">
 		<div class="min-w-0 flex-1 basis-60">
-			<h2 class="text-[14px] font-semibold tracking-tight">Print queue</h2>
+			<h2 class="text-sm font-semibold tracking-tight">Print queue</h2>
 			<p class="mt-0.5 text-xs text-muted-foreground">
 				{#if queue.paused}The whole queue is paused.{:else if q?.held}Paused for this printer: {q.heldReason ?? 'by hand'}.{:else if q?.awaitingClear && !printing}Waiting for someone to confirm the bed is clear.{:else if printing}Printing; the next job starts after the bed is cleared.{:else}Ready for the next job.{/if}
-				{#if tags.length}<span class="ml-1">Tags: {#each tags as t (t)}<span class="badge mr-1 font-mono text-[10px]">{t}</span>{/each}</span>{/if}
+				{#if tags.length}<span class="ml-1">Tags: {#each tags as t (t)}<span class="badge mr-1 font-mono text-[0.625rem]">{t}</span>{/each}</span>{/if}
 			</p>
 		</div>
 		{#if canControl}
@@ -35,7 +35,7 @@
 		{/if}
 	</section>
 	<QueueList {jobs} reorderable={false} empty="Nothing queued for this printer. Add jobs here, from the Files tab, the Library or the Queue page." />
-	<p class="text-[11px] text-muted-foreground">Order and copies for every printer are on the <a class="text-primary hover:underline" href="/queue">Queue</a> page.</p>
+	<p class="text-[0.6875rem] text-muted-foreground">Order and copies for every printer are on the <a class="text-primary hover:underline" href="/queue">Queue</a> page.</p>
 </div>
 
 <AddJobDialog bind:open={adding} printerId={printer.id} />

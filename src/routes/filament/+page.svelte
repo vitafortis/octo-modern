@@ -90,7 +90,7 @@
 	<PageHeader title="Filament" description="Which spool is on which printer, what's left on it, and what each print costs." />
 	<div class="page-x space-y-6 pb-10">
 		<section>
-			<h2 class="mb-2 flex items-center gap-2 text-[14px] font-semibold"><Disc3 class="size-4 text-primary" />Active spools</h2>
+			<h2 class="mb-2 flex items-center gap-2 text-sm font-semibold"><Disc3 class="size-4 text-primary" />Active spools</h2>
 			{#key cardsKey}
 				<div class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 					{#each printers.list as p (p.id)}
@@ -108,7 +108,7 @@
 		{#if isAdmin()}
 			<div class="grid gap-4 xl:grid-cols-2">
 				<section class="card p-5" id="spoolman">
-					<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Plug class="size-4 text-primary" />Spoolman</h2>
+					<h2 class="flex items-center gap-2 text-sm font-semibold"><Plug class="size-4 text-primary" />Spoolman</h2>
 					<p class="mt-1 text-xs text-muted-foreground">
 						octo·modern reads your spools from <a class="text-primary hover:underline" href="https://github.com/Donkie/Spoolman" target="_blank" rel="noreferrer">Spoolman</a> and reports the filament each print uses. Before a print starts, it warns when the active spool won't last.
 					</p>
@@ -136,7 +136,7 @@
 
 				{#if costs}
 					<section class="card p-5" id="costs">
-						<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Coins class="size-4 text-primary" />Print costs</h2>
+						<h2 class="flex items-center gap-2 text-sm font-semibold"><Coins class="size-4 text-primary" />Print costs</h2>
 						<p class="mt-1 text-xs text-muted-foreground">Each finished print is costed as filament (by weight) plus electricity (print time × power draw). History, its stats and the CSV export show it.</p>
 						<form class="mt-4 space-y-4" onsubmit={saveCosts}>
 							<div class="grid gap-3 sm:grid-cols-3">
@@ -149,7 +149,7 @@
 									<p class="label">Average draw per printer (W, empty uses the default)</p>
 									<div class="grid gap-2 sm:grid-cols-2">
 										{#each printers.list as p (p.id)}
-											<label class="flex items-center gap-2 text-[13px]">
+											<label class="flex items-center gap-2 text-[0.8125rem]">
 												<span class="min-w-0 flex-1 truncate">{p.name}</span>
 												<input class="input w-28" type="number" min="0" step="any" aria-label="{p.name} power draw" placeholder={costs.defaultPowerW != null ? String(costs.defaultPowerW) : '—'}
 													bind:value={() => costs!.printerPowerW[p.id] ?? '', (v) => { const n = numOrNull(v); if (n == null) delete costs!.printerPowerW[p.id]; else costs!.printerPowerW[p.id] = n; }} />
@@ -161,8 +161,8 @@
 							<div>
 								<p class="label">Materials (used when a print's spool isn't known, and for its density)</p>
 								<div class="overflow-x-auto rounded-xl border border-border">
-									<table class="w-full text-left text-[13px]">
-										<thead class="bg-surface text-[11px] text-muted-foreground">
+									<table class="w-full text-left text-[0.8125rem]">
+										<thead class="bg-surface text-[0.6875rem] text-muted-foreground">
 											<tr><th class="px-3 py-1.5 font-medium">Material</th><th class="px-3 py-1.5 font-medium">Price / kg</th><th class="px-3 py-1.5 font-medium">Density g/cm³</th><th class="px-3 py-1.5 font-medium">Default</th><th></th></tr>
 										</thead>
 										<tbody class="divide-y divide-border">

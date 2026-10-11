@@ -121,8 +121,8 @@
 		<div class="flex items-start gap-2">
 			<KeyRound class="mt-0.5 size-4 shrink-0 text-success" />
 			<div class="min-w-0 flex-1">
-				<p class="text-[13px] font-medium">Token “{created.record.name}” created — copy it now</p>
-				<p class="text-[11px] text-muted-foreground">Only a hash is stored, so it can't be shown again. Treat it like a password.</p>
+				<p class="text-[0.8125rem] font-medium">Token “{created.record.name}” created — copy it now</p>
+				<p class="text-[0.6875rem] text-muted-foreground">Only a hash is stored, so it can't be shown again. Treat it like a password.</p>
 			</div>
 			<button class="btn btn-ghost btn-icon btn-sm -mt-1 -mr-1" aria-label="Dismiss" onclick={() => (created = null)}><X /></button>
 		</div>
@@ -131,14 +131,14 @@
 			<button class="btn btn-secondary btn-sm" onclick={() => copy(created!.token, 'Token copied')}><Copy />Copy</button>
 		</div>
 		{#if scope === 'upload'}
-			<div class="mt-2 grid gap-1 text-[12px] sm:grid-cols-[8rem_1fr]">
+			<div class="mt-2 grid gap-1 text-xs sm:grid-cols-[8rem_1fr]">
 				<span class="text-muted-foreground">Host / URL</span>
 				<span class="flex min-w-0 items-center gap-2"><code class="min-w-0 truncate font-mono">{slicerUrl}</code><button class="btn btn-ghost btn-sm" onclick={() => copy(slicerUrl, 'URL copied')}><Copy />Copy</button></span>
 				<span class="text-muted-foreground">Host type</span><span>OctoPrint</span>
 				<span class="text-muted-foreground">API key</span><span>the key above (Cura: without <code class="font-mono">ocm_</code> if it refuses the underscore)</span>
 			</div>
 		{/if}
-		<div class="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+		<div class="mt-2 flex items-center gap-2 text-[0.6875rem] text-muted-foreground">
 			<code class="min-w-0 flex-1 truncate font-mono">{curl}</code>
 			<button class="btn btn-ghost btn-sm" onclick={() => copy(curl, 'Command copied')}><Copy />curl</button>
 		</div>
@@ -148,7 +148,7 @@
 {#if tokens.length}
 	<div class="mt-4 overflow-hidden rounded-lg border border-border">
 		<table class="w-full text-xs">
-			<thead class="bg-surface text-left text-[11px] text-muted-foreground">
+			<thead class="bg-surface text-left text-[0.6875rem] text-muted-foreground">
 				<tr>
 					<th class="px-3 py-2 font-medium">Name</th>
 					<th class="px-3 py-2 font-medium max-sm:hidden">Token</th>
@@ -165,10 +165,10 @@
 							<span class="font-medium {dead ? 'line-through' : ''}">{t.name}</span>
 							{#if t.includeAddresses}<span class="badge badge-warning ml-1.5">addresses</span>{/if}
 							{#if t.options?.bedClear}<span class="badge ml-1.5">bed clear</span>{/if}
-							{#if t.destination}<p class="text-[11px] text-muted-foreground">→ {t.destination}</p>{/if}
-							{#if t.problem}<p class="text-[11px] text-danger">{t.problem}</p>{/if}
+							{#if t.destination}<p class="text-[0.6875rem] text-muted-foreground">→ {t.destination}</p>{/if}
+							{#if t.problem}<p class="text-[0.6875rem] text-danger">{t.problem}</p>{/if}
 							{#if t.revokedAt}<span class="badge ml-1.5">revoked</span>{:else if expired(t)}<span class="badge ml-1.5">expired</span>{/if}
-							<p class="text-[11px] text-muted-foreground">created {ago(t.createdAt)}{t.createdBy ? ` by ${t.createdBy}` : ''}<span class="sm:hidden"> · {t.prefix}… · used {t.lastUsedAt ? ago(t.lastUsedAt) : 'never'}</span></p>
+							<p class="text-[0.6875rem] text-muted-foreground">created {ago(t.createdAt)}{t.createdBy ? ` by ${t.createdBy}` : ''}<span class="sm:hidden"> · {t.prefix}… · used {t.lastUsedAt ? ago(t.lastUsedAt) : 'never'}</span></p>
 						</td>
 						<td class="px-3 py-2 font-mono text-muted-foreground max-sm:hidden">{t.prefix}…</td>
 						<td class="px-3 py-2 text-muted-foreground max-sm:hidden">{t.lastUsedAt ? ago(t.lastUsedAt) : 'never'}</td>
@@ -243,7 +243,7 @@
 	</div>
 {/if}
 {#if scope === 'upload'}
-	<p class="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+	<p class="mt-3 flex items-start gap-1.5 text-[0.6875rem] text-muted-foreground">
 		<CircleAlert class="mt-px size-3.5 shrink-0" />
 		<span>
 			In the slicer, add a physical printer / print host of type <b>OctoPrint</b> with the URL <code class="font-mono">{slicerUrl}</code> and the key as its API key. The key only opens
@@ -251,7 +251,7 @@
 		</span>
 	</p>
 {:else}
-<p class="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+<p class="mt-3 flex items-start gap-1.5 text-[0.6875rem] text-muted-foreground">
 	<CircleAlert class="mt-px size-3.5 shrink-0" />
 	<span>
 		Send it as <code class="font-mono">Authorization: Bearer ocm_…</code>. Widgets that can't set headers may use <code class="font-mono">?token=ocm_…</code>, but

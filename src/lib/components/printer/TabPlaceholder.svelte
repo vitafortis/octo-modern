@@ -9,8 +9,8 @@
 	<div class="dot-grid mask-fade pointer-events-none absolute inset-0"></div>
 	<div class="relative mx-auto max-w-md">
 		<div class="mx-auto grid size-11 place-items-center rounded-xl bg-primary-soft text-primary"><Icon class="size-5" /></div>
-		<h2 class="mt-4 text-[15px] font-semibold tracking-tight">{title}</h2>
-		<p class="mt-1.5 text-[13px] text-muted-foreground">{description}</p>
+		<h2 class="mt-4 text-[0.9375rem] font-semibold tracking-tight">{title}</h2>
+		<p class="mt-1.5 text-[0.8125rem] text-muted-foreground">{description}</p>
 		<span class="badge mt-4">Coming soon</span>
 	</div>
 </div>

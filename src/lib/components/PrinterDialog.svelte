@@ -98,15 +98,15 @@
 
 		<div>
 			<label class="label" for="p-url">OctoPrint URL</label>
-			<input id="p-url" class="input font-mono text-[13px]" required placeholder="http://octopi.lan or https://print.example.com/octoprint" bind:value={form.baseUrl} oninput={() => (test = null)} />
-			<p class="mt-1 text-[11px] text-muted-foreground">As octo·modern’s server reaches it. Inside Docker, use the host’s IP rather than <code class="font-mono">localhost</code>; <code class="font-mono">.local</code> names usually don’t resolve in containers.</p>
+			<input id="p-url" class="input font-mono text-[0.8125rem]" required placeholder="http://octopi.lan or https://print.example.com/octoprint" bind:value={form.baseUrl} oninput={() => (test = null)} />
+			<p class="mt-1 text-[0.6875rem] text-muted-foreground">As octo·modern’s server reaches it. Inside Docker, use the host’s IP rather than <code class="font-mono">localhost</code>; <code class="font-mono">.local</code> names usually don’t resolve in containers.</p>
 		</div>
 
 		<div>
 			<label class="label" for="p-key">API key</label>
 			{#if changeKey}
-				<input id="p-key" class="input font-mono text-[13px]" type="password" autocomplete="off" required={!editing} placeholder="Application Key or user API key" bind:value={form.apiKey} oninput={() => (test = null)} />
-				<p class="mt-1 text-[11px] text-muted-foreground">
+				<input id="p-key" class="input font-mono text-[0.8125rem]" type="password" autocomplete="off" required={!editing} placeholder="Application Key or user API key" bind:value={form.apiKey} oninput={() => (test = null)} />
+				<p class="mt-1 text-[0.6875rem] text-muted-foreground">
 					In OctoPrint: <b class="font-medium text-foreground">Settings → Application Keys</b> (generate one for “octo·modern”), or <b class="font-medium text-foreground">User Settings → API key</b>. The key acts with that user’s permissions.
 				</p>
 			{:else}
@@ -118,18 +118,18 @@
 
 		<div class="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 {https ? '' : 'opacity-60'}">
 			<div class="flex-1">
-				<p class="text-[13px] font-medium">Verify TLS certificate</p>
-				<p class="text-[11px] text-muted-foreground">{https ? 'Turn off for a self-signed certificate on your LAN.' : 'Only applies to https:// URLs.'}</p>
+				<p class="text-[0.8125rem] font-medium">Verify TLS certificate</p>
+				<p class="text-[0.6875rem] text-muted-foreground">{https ? 'Turn off for a self-signed certificate on your LAN.' : 'Only applies to https:// URLs.'}</p>
 			</div>
 			<Switch label="Verify TLS certificate" bind:checked={form.verifyTls} disabled={!https} />
 		</div>
 
 		<details class="rounded-lg border border-border px-3 py-2.5" open={!!form.webcamUrl}>
-			<summary class="cursor-pointer text-[13px] font-medium select-none">Webcam <span class="font-normal text-muted-foreground">· optional override</span></summary>
+			<summary class="cursor-pointer text-[0.8125rem] font-medium select-none">Webcam <span class="font-normal text-muted-foreground">· optional override</span></summary>
 			<div class="mt-3">
 				<label class="label" for="p-cam">Stream or snapshot URL</label>
-				<input id="p-cam" class="input font-mono text-[13px]" placeholder="http://octopi.lan/webcam/?action=stream" bind:value={form.webcamUrl} />
-				<p class="mt-1 text-[11px] text-muted-foreground">Leave empty to use OctoPrint’s webcam settings. Paths like <code class="font-mono">/webcam/?action=snapshot</code> are relative to the OctoPrint host; octo·modern fetches the images, so the browser doesn’t need to reach the camera.</p>
+				<input id="p-cam" class="input font-mono text-[0.8125rem]" placeholder="http://octopi.lan/webcam/?action=stream" bind:value={form.webcamUrl} />
+				<p class="mt-1 text-[0.6875rem] text-muted-foreground">Leave empty to use OctoPrint’s webcam settings. Paths like <code class="font-mono">/webcam/?action=snapshot</code> are relative to the OctoPrint host; octo·modern fetches the images, so the browser doesn’t need to reach the camera.</p>
 			</div>
 		</details>
 

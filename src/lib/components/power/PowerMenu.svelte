@@ -29,14 +29,14 @@
 <svelte:window onclick={(e) => t && el && !el.contains(e.target as Node) && close()} onkeydown={(e) => e.key === 'Escape' && close()} onblur={close} />
 
 {#if t && info}
-	<div bind:this={el} role="menu" aria-label="{t.name} power" class="card fixed z-50 w-56 p-1.5 text-[13px] shadow-surface-lg" style="left:{pos.x}px; top:{pos.y}px" data-testid="power-menu">
-		<p class="truncate px-2.5 pt-1 pb-1.5 text-[11px] text-muted-foreground">
+	<div bind:this={el} role="menu" aria-label="{t.name} power" class="card fixed z-50 w-56 p-1.5 text-[0.8125rem] shadow-surface-lg" style="left:{pos.x}px; top:{pos.y}px" data-testid="power-menu">
+		<p class="truncate px-2.5 pt-1 pb-1.5 text-[0.6875rem] text-muted-foreground">
 			{t.name} · {info.reading?.on === true ? 'on' : info.reading?.on === false ? 'off' : 'unknown'}{info.reading?.on && info.reading.powerW != null ? ` · ${formatWatts(info.reading.powerW)}` : ''}
 		</p>
 		{#if t.control}
 			{#if info.reading?.on !== true}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => powerOn(t.id, t.name))}><Power class="size-4 text-success" />Power on</button>{/if}
 			{#if info.reading?.on !== false}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 text-danger hover:bg-danger/10" onclick={() => run(() => powerOff(t.id, t.name))}><PowerOff class="size-4" />Power off</button>{/if}
-			{#if info.countdown}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => keepOn(t.id))}><Timer class="size-4 text-warning" /><span class="flex-1 text-left">Keep on</span><span class="font-mono text-[11px] text-muted-foreground">{info.countdown.cooling ? 'cooling' : formatCountdown(info.countdown.offAt - clock.now)}</span></button>{/if}
+			{#if info.countdown}<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => keepOn(t.id))}><Timer class="size-4 text-warning" /><span class="flex-1 text-left">Keep on</span><span class="font-mono text-[0.6875rem] text-muted-foreground">{info.countdown.cooling ? 'cooling' : formatCountdown(info.countdown.offAt - clock.now)}</span></button>{/if}
 		{/if}
 		<button role="menuitem" class="flex h-9 touch:h-11 w-full items-center gap-2 rounded-lg px-2.5 hover:bg-accent" onclick={() => run(() => goto(`/p/${t.id}`))}><ExternalLink class="size-4 text-muted-foreground" />Open printer</button>
 	</div>

@@ -18,8 +18,8 @@
 		<div class="flex items-center gap-2">
 			{#if c.cooling}<Thermometer class="size-3.5 shrink-0 text-warning" />{:else}<Timer class="size-3.5 shrink-0 text-warning" />{/if}
 			<div class="min-w-0 flex-1">
-				{#if !compact}<p class="text-[11px] font-medium text-muted-foreground uppercase">Auto power-off</p>{/if}
-				<p class="{compact ? 'truncate' : ''} font-mono text-[12px] tabular-nums" data-testid="auto-off-text">{countdownText(info, clock.now)}</p>
+				{#if !compact}<p class="text-[0.6875rem] font-medium text-muted-foreground uppercase">Auto power-off</p>{/if}
+				<p class="{compact ? 'truncate' : ''} font-mono text-xs tabular-nums" data-testid="auto-off-text">{countdownText(info, clock.now)}</p>
 			</div>
 			{#if canControl}
 				<button

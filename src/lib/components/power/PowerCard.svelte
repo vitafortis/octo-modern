@@ -20,9 +20,9 @@
 </script>
 
 {#if info}
-	<section class="card p-4 text-[13px]" data-testid="power-card">
+	<section class="card p-4 text-[0.8125rem]" data-testid="power-card">
 		<div class="flex items-center gap-2">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><PlugZap class="size-4 text-primary" />Power</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><PlugZap class="size-4 text-primary" />Power</h2>
 			{#if on === true}<span class="badge badge-success" data-testid="plug-state">On</span>{:else if on === false}<span class="badge" data-testid="plug-state">Off</span>{:else}<span class="badge badge-warning" data-testid="plug-state">Unknown</span>{/if}
 			{#if isAdmin()}<button class="btn btn-ghost btn-icon btn-sm ml-auto" title="Smart plug settings" aria-label="Smart plug settings" onclick={() => (configOpen = true)}><Settings2 /></button>{/if}
 		</div>
@@ -47,15 +47,15 @@
 		{/if}
 		{#if info.countdown}<div class="mt-3"><AutoOffNotice {info} {canControl} /></div>{/if}
 		{#if s}
-			<p class="mt-3 text-[11px] text-muted-foreground">
+			<p class="mt-3 text-[0.6875rem] text-muted-foreground">
 				{s.autoOff.enabled ? `Auto power-off ${s.autoOff.idleMinutes} min after a print, below ${s.autoOff.hotendC} °C` : 'No auto power-off'} · auto-connect {s.autoConnect ? 'on' : 'off'}{s.autoOn ? ' · powers on for new prints' : ''}
 			</p>
 		{/if}
 		{#if canControl}<div class="mt-3 flex flex-wrap gap-2"><PowerButtons printerId={printer.id} name={printer.name} /></div>{/if}
 	</section>
 {:else if isAdmin() && plugsLoaded.value}
-	<section class="card p-4 text-[13px]">
-		<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Plug class="size-4 text-primary" />Power</h2>
+	<section class="card p-4 text-[0.8125rem]">
+		<h2 class="flex items-center gap-2 text-sm font-semibold"><Plug class="size-4 text-primary" />Power</h2>
 		<p class="mt-2 text-xs text-muted-foreground">Switch this printer with a smart plug (Shelly, Tasmota, Home Assistant or any HTTP switch), and turn it off by itself after a print.</p>
 		<button class="btn btn-secondary btn-sm mt-3" onclick={() => (configOpen = true)} data-testid="power-setup"><PlugZap />Set up a smart plug</button>
 	</section>

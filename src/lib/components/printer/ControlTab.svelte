@@ -165,16 +165,16 @@
 
 <div class="space-y-4" data-testid="control-tab">
 	{#if !canControl}
-		<div class="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-[13px] text-muted-foreground" data-testid="viewer-hint">
+		<div class="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-[0.8125rem] text-muted-foreground" data-testid="viewer-hint">
 			<Lock class="size-4 shrink-0" />Your role can only watch this printer. Ask an admin for operator access to move it.
 		</div>
 	{:else if blocked}
-		<div class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 text-[13px]" data-testid="movement-blocked">
+		<div class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 text-[0.8125rem]" data-testid="movement-blocked">
 			<CircleAlert class="size-4 shrink-0 text-warning" />
 			<span>{blocked}{#if connected}{' '}Speed, flow and fan still work.{/if}</span>
 		</div>
 	{:else if s.state === 'paused'}
-		<div class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 text-[13px]">
+		<div class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2.5 text-[0.8125rem]">
 			<CircleAlert class="size-4 shrink-0 text-warning" />
 			<span>The print is paused. You can move the head; make sure it’s back in place (or that OctoPrint’s resume script restores it) before resuming.</span>
 		</div>
@@ -212,8 +212,8 @@
 			}}
 		>
 			<div class="flex items-center gap-2">
-				<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Move class="size-4 text-primary" />Move</h2>
-				<span class="text-[11px] touch:hidden {padFocused ? 'text-primary' : 'text-muted-foreground'}">{padFocused ? 'Keyboard active' : 'Click here to use the keyboard'}</span>
+				<h2 class="flex items-center gap-2 text-sm font-semibold"><Move class="size-4 text-primary" />Move</h2>
+				<span class="text-[0.6875rem] touch:hidden {padFocused ? 'text-primary' : 'text-muted-foreground'}">{padFocused ? 'Keyboard active' : 'Click here to use the keyboard'}</span>
 				<div class="relative ml-auto touch:hidden">
 					<button class="btn btn-ghost btn-icon btn-sm" aria-label="Keyboard shortcuts" aria-expanded={showKeys} onclick={() => (showKeys = !showKeys)}><Keyboard /></button>
 					{#if showKeys}
@@ -230,7 +230,7 @@
 									</div>
 								{/each}
 							</dl>
-							<p class="mt-2.5 text-[11px] text-muted-foreground">Only while the Move card has focus.</p>
+							<p class="mt-2.5 text-[0.6875rem] text-muted-foreground">Only while the Move card has focus.</p>
 						</div>
 					{/if}
 				</div>
@@ -239,7 +239,7 @@
 			<div class="mt-4 flex flex-wrap items-start justify-center gap-x-5 gap-y-5 sm:justify-start sm:gap-8">
 				<!-- X/Y pad -->
 				<div>
-					<p class="mb-2 text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">X / Y</p>
+					<p class="mb-2 text-center text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">X / Y</p>
 					<div class="grid grid-cols-3 gap-1.5">
 						<span></span>
 						{@render padButton('Y+ (back)', { y: 1 }, ArrowUp)}
@@ -260,7 +260,7 @@
 				</div>
 				<!-- Z -->
 				<div>
-					<p class="mb-2 text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Z</p>
+					<p class="mb-2 text-center text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">Z</p>
 					<div class="grid gap-1.5">
 						{@render padButton('Z+ (up)', { z: 1 }, ChevronsUp)}
 						<button
@@ -302,7 +302,7 @@
 
 		<!-- Extruder -->
 		<section class="card p-4">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><ArrowDownToLine class="size-4 text-primary" />Extruder</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><ArrowDownToLine class="size-4 text-primary" />Extruder</h2>
 			{#if profile.extruders > 1}
 				<div class="mt-3">
 					<p class="label">Tool</p>
@@ -325,7 +325,7 @@
 				<div class="flex flex-wrap items-center gap-1.5">
 					<div class="relative">
 						<input id="extrude-length" class="input h-8 w-24 pr-9 text-right font-mono text-xs" type="number" min="0.1" max={MAX_EXTRUDE_MM} step="0.1" bind:value={extrudeLength} disabled={!canMove} />
-						<span class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[11px] text-muted-foreground">mm</span>
+						<span class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[0.6875rem] text-muted-foreground">mm</span>
 					</div>
 					{#each EXTRUDE_LENGTHS as n (n)}
 						<button class="btn btn-ghost btn-sm font-mono {Number(extrudeLength) === n ? 'bg-accent text-foreground' : ''}" disabled={!canMove} onclick={() => (extrudeLength = n)}>{n}</button>
@@ -350,12 +350,12 @@
 
 		<!-- Speed & flow -->
 		<section class="card p-4">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Gauge class="size-4 text-primary" />Speed &amp; flow</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><Gauge class="size-4 text-primary" />Speed &amp; flow</h2>
 			<p class="mt-0.5 text-xs text-muted-foreground">Overrides apply to the running print too.</p>
 			{#each [{ key: 'feedrate', label: 'Feed rate', code: 'M220', range: FEEDRATE }, { key: 'flowrate', label: 'Flow rate', code: 'M221', range: FLOWRATE }] as r (r.key)}
 				<div class="mt-3">
 					<div class="flex items-baseline justify-between">
-						<label class="label" for="r-{r.key}">{r.label} <span class="font-mono text-[10px] text-muted-foreground/70">{r.code}</span></label>
+						<label class="label" for="r-{r.key}">{r.label} <span class="font-mono text-[0.625rem] text-muted-foreground/70">{r.code}</span></label>
 						<span class="font-mono text-sm font-semibold tabular-nums">{r.key === 'feedrate' ? feed : flow}%</span>
 					</div>
 					<div class="flex items-center gap-2">
@@ -382,9 +382,9 @@
 
 		<!-- Fan -->
 		<section class="card p-4">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Fan class="size-4 text-primary" />Part cooling fan</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><Fan class="size-4 text-primary" />Part cooling fan</h2>
 			<div class="mt-3 flex items-baseline justify-between">
-				<label class="label" for="fan-speed">Speed <span class="font-mono text-[10px] text-muted-foreground/70">M106 / M107</span></label>
+				<label class="label" for="fan-speed">Speed <span class="font-mono text-[0.625rem] text-muted-foreground/70">M106 / M107</span></label>
 				<span class="font-mono text-sm font-semibold tabular-nums">{fan}%</span>
 			</div>
 			<div class="flex items-center gap-2">
@@ -401,7 +401,7 @@
 	<!-- OctoPrint's custom controls -->
 	{#if info && (info.controls.length || info.controlsError)}
 		<section class="card p-4" data-testid="custom-controls">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><SlidersHorizontal class="size-4 text-primary" />Custom controls</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><SlidersHorizontal class="size-4 text-primary" />Custom controls</h2>
 			<p class="mt-0.5 text-xs text-muted-foreground">From OctoPrint’s <span class="font-mono">config.yaml</span> (<span class="font-mono">controls</span>). Commands are sent as G-code; while printing, you’ll be asked first.</p>
 			<div class="mt-3">
 				{#if info.controlsError}

@@ -98,39 +98,39 @@
 							<div class="space-y-4 p-4">
 								{#if !sheet}
 									<div>
-										<h2 class="text-[14px] leading-snug font-semibold break-all">{selected.name}</h2>
-										<p class="mt-0.5 truncate text-[11px] text-muted-foreground">{source?.name}{parentPath(selected.path) ? ` / ${parentPath(selected.path)}` : ''}</p>
+										<h2 class="text-sm leading-snug font-semibold break-all">{selected.name}</h2>
+										<p class="mt-0.5 truncate text-[0.6875rem] text-muted-foreground">{source?.name}{parentPath(selected.path) ? ` / ${parentPath(selected.path)}` : ''}</p>
 									</div>
 								{/if}
 								{#if m === undefined && isPrintable(selected.name)}
 									<p class="flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle class="size-3.5 animate-spin" />Reading slicer details…</p>
 								{/if}
-								<dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+								<dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-[0.8125rem]">
 									{#if m?.estimatedTime != null}
-										<div><dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock class="size-3" />Print time</dt><dd class="font-mono tabular-nums">{formatDuration(m.estimatedTime)}</dd></div>
+										<div><dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Clock class="size-3" />Print time</dt><dd class="font-mono tabular-nums">{formatDuration(m.estimatedTime)}</dd></div>
 									{/if}
 									{#if m?.filamentG != null || m?.filamentMm != null}
 										<div>
-											<dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Weight class="size-3" />Filament</dt>
+											<dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Weight class="size-3" />Filament</dt>
 											<dd class="font-mono tabular-nums">{m.filamentG != null ? `${m.filamentG.toFixed(1)} g` : ''}{m.filamentG != null && m.filamentMm != null ? ' · ' : ''}{m.filamentMm != null ? `${(m.filamentMm / 1000).toFixed(2)} m` : ''}</dd>
 										</div>
 									{/if}
 									{#if m?.layerHeight != null}
-										<div><dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Layers class="size-3" />Layers</dt><dd class="font-mono tabular-nums">{m.layerHeight} mm{m.layers ? ` × ${m.layers}` : ''}</dd></div>
+										<div><dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Layers class="size-3" />Layers</dt><dd class="font-mono tabular-nums">{m.layerHeight} mm{m.layers ? ` × ${m.layers}` : ''}</dd></div>
 									{/if}
 									{#if m?.nozzle != null || m?.filamentType}
-										<div><dt class="text-[11px] text-muted-foreground">Nozzle · material</dt><dd>{m.nozzle != null ? `${m.nozzle} mm` : '—'}{m.filamentType ? ` · ${m.filamentType}` : ''}</dd></div>
+										<div><dt class="text-[0.6875rem] text-muted-foreground">Nozzle · material</dt><dd>{m.nozzle != null ? `${m.nozzle} mm` : '—'}{m.filamentType ? ` · ${m.filamentType}` : ''}</dd></div>
 									{/if}
 									{#if m?.nozzleTemp != null || m?.bedTemp != null}
-										<div><dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Thermometer class="size-3" />Hotend · bed</dt><dd class="font-mono tabular-nums">{m.nozzleTemp ?? '—'}° · {m.bedTemp ?? '—'}°</dd></div>
+										<div><dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Thermometer class="size-3" />Hotend · bed</dt><dd class="font-mono tabular-nums">{m.nozzleTemp ?? '—'}° · {m.bedTemp ?? '—'}°</dd></div>
 									{/if}
 									{#if m?.printerModel}
-										<div><dt class="text-[11px] text-muted-foreground">Sliced for</dt><dd class="truncate" title={m.printerModel}>{m.printerModel}</dd></div>
+										<div><dt class="text-[0.6875rem] text-muted-foreground">Sliced for</dt><dd class="truncate" title={m.printerModel}>{m.printerModel}</dd></div>
 									{/if}
-									<div><dt class="text-[11px] text-muted-foreground">Size</dt><dd class="font-mono tabular-nums">{bytes(selected.size)}</dd></div>
-									<div><dt class="text-[11px] text-muted-foreground">Modified</dt><dd title={selected.mtime ? new Date(selected.mtime).toLocaleString() : ''}>{selected.mtime ? ago(new Date(selected.mtime).toISOString()) : '—'}</dd></div>
+									<div><dt class="text-[0.6875rem] text-muted-foreground">Size</dt><dd class="font-mono tabular-nums">{bytes(selected.size)}</dd></div>
+									<div><dt class="text-[0.6875rem] text-muted-foreground">Modified</dt><dd title={selected.mtime ? new Date(selected.mtime).toLocaleString() : ''}>{selected.mtime ? ago(new Date(selected.mtime).toISOString()) : '—'}</dd></div>
 									{#if m?.slicer}
-										<div class="col-span-2"><dt class="text-[11px] text-muted-foreground">Slicer</dt><dd>{m.slicer}{m.slicerVersion ? ` ${m.slicerVersion}` : ''}{m.format === 'binary' ? ' · binary G-code' : ''}</dd></div>
+										<div class="col-span-2"><dt class="text-[0.6875rem] text-muted-foreground">Slicer</dt><dd>{m.slicer}{m.slicerVersion ? ` ${m.slicerVersion}` : ''}{m.format === 'binary' ? ' · binary G-code' : ''}</dd></div>
 									{/if}
 								</dl>
 								{#if targets.length && isPrintable(selected.name)}
@@ -140,7 +140,7 @@
 									</div>
 									<button class="btn btn-secondary w-full" onclick={() => (queueing = { source: source!, entry: selected! })}><ListPlus />Add to queue</button>
 								{:else if !targets.length && source}
-									<p class="text-[11px] text-muted-foreground">{source.printers.length ? 'Your role can only browse the library.' : 'No printer you can see may use this source.'}</p>
+									<p class="text-[0.6875rem] text-muted-foreground">{source.printers.length ? 'Your role can only browse the library.' : 'No printer you can see may use this source.'}</p>
 								{/if}
 							</div>
 						</section>
@@ -166,12 +166,12 @@
 		{:else if !sources.length}
 			<div class="card mx-auto mt-6 max-w-md px-6 py-10 text-center">
 				<span class="mx-auto grid size-12 place-items-center rounded-xl bg-primary-soft text-primary"><LibraryBig class="size-6" /></span>
-				<h2 class="mt-4 text-[15px] font-semibold tracking-tight">No library yet</h2>
+				<h2 class="mt-4 text-[0.9375rem] font-semibold tracking-tight">No library yet</h2>
 				{#if isAdmin()}
-					<p class="mt-1 text-[13px] text-muted-foreground">Point octo·modern at the folder on your NAS where your slicer saves G-code: an NFS or SMB share mounted into the container, an SMB share, SFTP or WebDAV.</p>
+					<p class="mt-1 text-[0.8125rem] text-muted-foreground">Point octo·modern at the folder on your NAS where your slicer saves G-code: an NFS or SMB share mounted into the container, an SMB share, SFTP or WebDAV.</p>
 					<a href="/library/sources?new=1" class="btn btn-primary mt-5">Add a library source</a>
 				{:else}
-					<p class="mt-1 text-[13px] text-muted-foreground">An admin hasn't shared a library source with you yet.</p>
+					<p class="mt-1 text-[0.8125rem] text-muted-foreground">An admin hasn't shared a library source with you yet.</p>
 				{/if}
 			</div>
 		{:else}
@@ -197,7 +197,7 @@
 
 					{#if sends.length}
 						<section class="card divide-y divide-border">
-							<h3 class="px-4 py-2.5 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Recent transfers</h3>
+							<h3 class="px-4 py-2.5 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">Recent transfers</h3>
 							{#each sends as s (s.id)}
 								{@const pct = s.size ? Math.round((s.sent / s.size) * 100) : 0}
 								<div class="px-4 py-2.5 text-xs">
@@ -206,10 +206,10 @@
 										<span class="min-w-0 flex-1 truncate font-medium" title={s.path}>{s.path.split('/').pop()}</span>
 										{#if s.state === 'sending'}<button class="text-muted-foreground hover:text-danger" title="Cancel" aria-label="Cancel transfer" onclick={async () => (await cancelSend(s.id), refreshSends())}><X class="size-3.5" /></button>{/if}
 									</div>
-									<p class="mt-0.5 pl-5.5 text-[11px] text-muted-foreground">
+									<p class="mt-0.5 pl-5.5 text-[0.6875rem] text-muted-foreground">
 										→ {s.printerName}{s.state === 'sending' ? ` · ${pct}%` : s.state === 'processing' ? ' · saving…' : s.state === 'done' ? (s.printing ? ' · printing' : ' · sent') : s.state === 'aborted' ? ' · cancelled' : ''} · {ago(s.startedAt)}
 									</p>
-									{#if s.error && s.state === 'error'}<p class="mt-0.5 pl-5.5 text-[11px] text-danger">{s.error}</p>{/if}
+									{#if s.error && s.state === 'error'}<p class="mt-0.5 pl-5.5 text-[0.6875rem] text-danger">{s.error}</p>{/if}
 								</div>
 							{/each}
 						</section>

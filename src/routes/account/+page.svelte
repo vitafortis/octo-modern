@@ -50,7 +50,7 @@
 	<PageHeader title="My account" description="Your profile and how you sign in." />
 	<form class="max-w-2xl space-y-5 page-x pb-10" onsubmit={saveProfile}>
 		<section class="card p-5">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><UserRound class="size-4 text-primary" />Profile</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><UserRound class="size-4 text-primary" />Profile</h2>
 			<div class="mt-4 grid gap-3 sm:grid-cols-2">
 				<div>
 					<label class="label" for="p-name">Name</label>
@@ -59,7 +59,7 @@
 				<div>
 					<label class="label" for="p-email">Email</label>
 					<input id="p-email" class="input" type="email" autocomplete="email" disabled={data.user.sso} bind:value={email} />
-					{#if data.user.sso}<p class="mt-1 text-[11px] text-muted-foreground">Managed by your identity provider.</p>{/if}
+					{#if data.user.sso}<p class="mt-1 text-[0.6875rem] text-muted-foreground">Managed by your identity provider.</p>{/if}
 				</div>
 			</div>
 			<div class="mt-4 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
@@ -71,7 +71,7 @@
 		</section>
 
 		<section class="card p-5">
-			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Lock class="size-4 text-primary" />{data.user.hasPassword ? 'Change password' : 'Set a password'}</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><Lock class="size-4 text-primary" />{data.user.hasPassword ? 'Change password' : 'Set a password'}</h2>
 			{#if !data.user.hasPassword}
 				<p class="mt-1 text-xs text-muted-foreground">Optional — lets you sign in without single sign-on.</p>
 			{/if}

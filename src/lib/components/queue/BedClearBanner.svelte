@@ -34,14 +34,14 @@
 
 {#if q && !printing && (needsBedClear(q) || (q.held && q.waiting > 0))}
 	<div
-		class="{cls} flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/30 bg-warning/5 {compact ? 'px-3 py-2 text-[12px]' : 'px-3.5 py-2.5 text-[13px]'}"
+		class="{cls} flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/30 bg-warning/5 {compact ? 'px-3 py-2 text-xs' : 'px-3.5 py-2.5 text-[0.8125rem]'}"
 		data-testid="bed-clear-{printerId}"
 	>
 		{#if q.held}
 			<CirclePause class="size-4 shrink-0 text-warning" />
 			<div class="min-w-0 flex-1">
 				<p class="font-medium">Queue paused for this printer</p>
-				<p class="truncate text-[11px] text-muted-foreground" title={q.heldReason ?? ''}>{q.heldReason ?? 'Paused by hand'}{q.awaitingClear ? ' · the bed needs clearing too' : ''}</p>
+				<p class="truncate text-[0.6875rem] text-muted-foreground" title={q.heldReason ?? ''}>{q.heldReason ?? 'Paused by hand'}{q.awaitingClear ? ' · the bed needs clearing too' : ''}</p>
 			</div>
 			{#if canControl}
 				{#if q.awaitingClear}<button class="btn btn-secondary btn-sm min-h-9" disabled={busy} onclick={clear}>{#if busy}<LoaderCircle class="animate-spin" />{:else}<BrushCleaning />{/if}Bed is clear</button>{/if}
@@ -51,7 +51,7 @@
 			<BrushCleaning class="size-4 shrink-0 text-warning" />
 			<div class="min-w-0 flex-1">
 				<p class="font-medium">Clear the bed to continue the queue</p>
-				<p class="truncate text-[11px] text-muted-foreground">{q.waiting} job{q.waiting === 1 ? '' : 's'} waiting{next ? ` · next: ${next.name}` : ''}</p>
+				<p class="truncate text-[0.6875rem] text-muted-foreground">{q.waiting} job{q.waiting === 1 ? '' : 's'} waiting{next ? ` · next: ${next.name}` : ''}</p>
 			</div>
 			{#if canControl}
 				<button class="btn btn-primary btn-sm min-h-9" disabled={busy} onclick={clear}>{#if busy}<LoaderCircle class="animate-spin" />{:else}<BrushCleaning />{/if}Bed is clear</button>

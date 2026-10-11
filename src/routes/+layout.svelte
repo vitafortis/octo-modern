@@ -162,7 +162,7 @@
 			powerMenu.x = e.clientX;
 			powerMenu.y = e.clientY;
 		}}
-		class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors touch:h-11 touch:text-[15px] {active
+		class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[0.8125rem] transition-colors touch:h-11 touch:text-[0.9375rem] {active
 			? 'bg-accent text-foreground shadow-surface'
 			: 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}"
 	>
@@ -172,7 +172,7 @@
 			<span class="min-w-0 flex-1 truncate">{p.name}</span>
 			<PowerGlyph printerId={p.id} />
 			{#if pct != null}
-				<span class="font-mono text-[11px] text-primary tabular-nums">{Math.round(pct)}%</span>
+				<span class="font-mono text-[0.6875rem] text-primary tabular-nums">{Math.round(pct)}%</span>
 			{/if}
 		{/if}
 	</a>
@@ -186,7 +186,7 @@
 				<a href="/" class="flex items-center gap-2.5">
 					<Logo size={26} />
 					{#if !rail}
-						<span class="text-[15px] font-semibold tracking-tight">octo<span class="text-primary">·</span>modern</span>
+						<span class="text-[0.9375rem] font-semibold tracking-tight">octo<span class="text-primary">·</span>modern</span>
 					{/if}
 				</a>
 			</div>
@@ -202,7 +202,7 @@
 					<a
 						href={item.href}
 						title={item.label}
-						class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition-colors touch:h-11 touch:text-[15px] {active
+						class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[0.8125rem] font-medium transition-colors touch:h-11 touch:text-[0.9375rem] {active
 							? 'bg-accent text-foreground shadow-surface'
 							: 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}"
 					>
@@ -211,7 +211,7 @@
 						{#if !rail}{item.label}{/if}
 						{#if 'badge' in item && item.badge}
 							<span
-								class="{rail ? 'absolute top-1 right-1 size-2 p-0' : 'ml-auto h-4 min-w-4 px-1'} grid place-items-center rounded-full bg-danger text-[10px] leading-none font-semibold text-white tabular-nums"
+								class="{rail ? 'absolute top-1 right-1 size-2 p-0' : 'ml-auto h-4 min-w-4 px-1'} grid place-items-center rounded-full bg-danger text-[0.625rem] leading-none font-semibold text-white tabular-nums"
 								title="{item.badge} overdue maintenance task{item.badge === 1 ? '' : 's'}"
 								data-testid="maintenance-badge">{rail ? '' : item.badge}</span
 							>
@@ -223,7 +223,7 @@
 			{#if !single}
 				<div class="mt-5 flex items-center justify-between px-4 pb-1.5">
 					{#if !rail}
-						<span class="text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Printers</span>
+						<span class="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">Printers</span>
 					{/if}
 					{#if isAdmin()}
 						<button class="btn btn-ghost btn-icon btn-sm -mr-1.5" title="Add printer" onclick={() => (editor.target = 'new')}><Plus /></button>
@@ -263,12 +263,12 @@
 
 			{#if data.viewer && data.auth === 'authenticated' && !rail}
 				<a href="/account" title="My account" class="flex items-center gap-2.5 border-t border-border px-3 py-2.5 transition-colors hover:bg-accent/60">
-					<span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary uppercase">
+					<span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[0.6875rem] font-semibold text-primary uppercase">
 						{(data.viewer.name ?? data.viewer.email).slice(0, 1)}
 					</span>
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-[12px] font-medium">{data.viewer.name ?? data.viewer.email}</p>
-						<p class="truncate text-[11px] text-muted-foreground capitalize">{data.viewer.role}</p>
+						<p class="truncate text-xs font-medium">{data.viewer.name ?? data.viewer.email}</p>
+						<p class="truncate text-[0.6875rem] text-muted-foreground capitalize">{data.viewer.role}</p>
 					</div>
 				</a>
 			{/if}
@@ -284,7 +284,7 @@
 					{#if theme.value === 'dark'}<Sun />{:else}<Moon />{/if}
 				</button>
 				{#if !rail}
-					<span class="ml-1 truncate font-mono text-[11px] text-muted-foreground/70" title="octo·modern version">v{data.version}</span>
+					<span class="ml-1 truncate font-mono text-[0.6875rem] text-muted-foreground/70" title="octo·modern version">v{data.version}</span>
 				{/if}
 				{#if data.auth === 'authenticated'}
 					<button class="btn btn-ghost btn-icon btn-sm {rail ? '' : 'ml-auto'}" title="Sign out" onclick={logout}><LogOut /></button>
@@ -307,7 +307,7 @@
 				<a href="/" class="shrink-0 p-1" aria-label="octo·modern home"><Logo size={24} /></a>
 				<div class="flex min-w-0 flex-1 items-center gap-2 pl-1.5">
 					{#if current.color}<StateDot state={current.state} />{/if}
-					<span class="truncate text-[15px] font-semibold tracking-tight" data-testid="topbar-title">{current.title}</span>
+					<span class="truncate text-[0.9375rem] font-semibold tracking-tight" data-testid="topbar-title">{current.title}</span>
 					{#if current.pct != null}<span class="shrink-0 font-mono text-xs text-primary tabular-nums">{Math.round(current.pct)}%</span>{/if}
 				</div>
 				{#if data.viewer}

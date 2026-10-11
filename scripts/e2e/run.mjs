@@ -451,6 +451,7 @@ async function main() {
 	// Cancel through the header button: the confirmation dialog must appear first.
 	await dark.click('header button:has-text("Cancel print")');
 	await dark.waitForSelector('dialog[open] >> text=Cancel this print?');
+	await sleep(600); // let the dialog finish animating in
 	await shot(dark, 'confirm-cancel');
 	await dark.click('dialog[open] button:has-text("Cancel print")');
 	await waitFor(async () => (await opState(OP[0])) === 'Operational', 'cancelled from the UI');

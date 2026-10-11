@@ -108,12 +108,12 @@
 				>
 					<SpoolSwatch spool={s} size="size-7" />
 					<div class="min-w-0 flex-1">
-						<p class="flex items-center gap-1.5 truncate text-[13px] font-medium">
+						<p class="flex items-center gap-1.5 truncate text-[0.8125rem] font-medium">
 							<span class="truncate">{s.name}</span>
 							{#if s.material}<span class="badge shrink-0">{s.material}</span>{/if}
 							{#if s.id === current}<CircleCheck class="size-4 shrink-0 text-primary" />{/if}
 						</p>
-						<p class="truncate text-[11px] text-muted-foreground">
+						<p class="truncate text-[0.6875rem] text-muted-foreground">
 							#{s.id}{s.vendor ? ` · ${s.vendor}` : ''}{#if s.location}<span class="ml-1 inline-flex items-center gap-0.5"><MapPin class="inline size-3" />{s.location}</span>{/if}
 							{#if used && !(used.printerId === printerId && used.tool === tool)}<span class="text-warning"> · on {used.printerName}{multiTool ? ` T${used.tool}` : ''}</span>{/if}
 						</p>

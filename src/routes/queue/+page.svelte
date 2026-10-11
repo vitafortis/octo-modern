@@ -44,20 +44,20 @@
 
 	<div class="page-x space-y-6 pb-10">
 		{#if queue.paused}
-			<div class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-2.5 text-[13px]">
+			<div class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-2.5 text-[0.8125rem]">
 				<CirclePause class="size-4 shrink-0 text-warning" />
 				<p class="min-w-0 flex-1"><span class="font-medium">The queue is paused.</span> <span class="text-muted-foreground">Running prints carry on; nothing new starts.</span></p>
 			</div>
 		{/if}
 
 		<section>
-			<h2 class="mb-2 px-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Printers</h2>
+			<h2 class="mb-2 px-1 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">Printers</h2>
 			<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
 				{#each rows as { p, q, s, job } (p.id)}
 					{@const control = !!p.access?.control}
 					<div class="card flex flex-col gap-3 p-4" data-testid="queue-printer-{p.name}">
 						<div class="flex items-start gap-2">
-							<a href="/p/{p.id}?tab=queue" class="min-w-0 flex-1 truncate text-[14px] font-semibold tracking-tight hover:underline">{p.name}</a>
+							<a href="/p/{p.id}?tab=queue" class="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight hover:underline">{p.name}</a>
 							{#if s}<StateBadge state={s.state} text={s.stateText} />{/if}
 						</div>
 						<div class="flex flex-wrap items-center gap-1">
@@ -68,11 +68,11 @@
 									<button class="btn btn-secondary btn-sm h-9">Save</button>
 								</form>
 							{:else}
-								{#each q?.tags ?? [] as t (t)}<span class="badge font-mono text-[10px]">{t}</span>{:else}<span class="text-[11px] text-muted-foreground">No tags</span>{/each}
+								{#each q?.tags ?? [] as t (t)}<span class="badge font-mono text-[0.625rem]">{t}</span>{:else}<span class="text-[0.6875rem] text-muted-foreground">No tags</span>{/each}
 								{#if isAdmin()}<button class="btn btn-ghost btn-icon size-9 sm:size-7" title="Edit tags" aria-label="Edit tags of {p.name}" onclick={() => (editing = { id: p.id, value: (q?.tags ?? []).join(', ') })}><Pencil /></button>{/if}
 							{/if}
 						</div>
-						<div class="mt-auto text-[12px]">
+						<div class="mt-auto text-xs">
 							{#if job}
 								<p class="truncate"><span class="text-muted-foreground">{job.status === 'starting' ? 'Starting' : 'Printing'}:</span> <span class="font-medium">{job.name}</span> <span class="text-muted-foreground">({job.done + 1}/{job.copies})</span></p>
 							{:else if q?.held}
@@ -98,7 +98,7 @@
 		</section>
 
 		<section>
-			<h2 class="mb-2 flex items-center gap-2 px-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
+			<h2 class="mb-2 flex items-center gap-2 px-1 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground/80 uppercase">
 				Jobs{#if pendingCount}<span class="badge badge-primary normal-case">{pendingCount} queued</span>{/if}
 			</h2>
 			{#if !queue.loaded}
@@ -106,8 +106,8 @@
 			{:else if !queue.jobs.length}
 				<div class="card mx-auto max-w-md px-6 py-10 text-center">
 					<span class="mx-auto grid size-12 place-items-center rounded-xl bg-primary-soft text-primary"><ListOrdered class="size-6" /></span>
-					<h3 class="mt-4 text-[15px] font-semibold tracking-tight">Nothing queued</h3>
-					<p class="mt-1 text-[13px] text-muted-foreground">Add G-code from the library, a printer’s files or an upload; or point your slicer at octo·modern.</p>
+					<h3 class="mt-4 text-[0.9375rem] font-semibold tracking-tight">Nothing queued</h3>
+					<p class="mt-1 text-[0.8125rem] text-muted-foreground">Add G-code from the library, a printer’s files or an upload; or point your slicer at octo·modern.</p>
 					{#if canControl}<button class="btn btn-primary mt-5" onclick={() => (adding = true)}><ListPlus />Add job</button>{/if}
 				</div>
 			{:else}
@@ -116,7 +116,7 @@
 		</section>
 
 		{#if isAdmin()}
-			<p class="flex items-start gap-1.5 px-1 text-[11px] text-muted-foreground">
+			<p class="flex items-start gap-1.5 px-1 text-[0.6875rem] text-muted-foreground">
 				<KeyRound class="mt-px size-3.5 shrink-0" />
 				<span>Slicers (PrusaSlicer, OrcaSlicer, Cura) can upload straight into the queue: create a <a class="text-primary hover:underline" href="/integrations#slicer">slicer upload key</a> and add octo·modern as an OctoPrint printer at <code class="font-mono">{typeof location === 'undefined' ? '' : location.origin}/octoprint</code>.</span>
 			</p>

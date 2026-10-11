@@ -58,13 +58,13 @@
 		<div class="mb-6 flex flex-col items-center text-center">
 			<Logo size={44} />
 			<h1 class="mt-4 text-lg font-semibold tracking-tight">{title}</h1>
-			<p class="mt-1 text-[13px] text-muted-foreground">{subtitle}</p>
+			<p class="mt-1 text-[0.8125rem] text-muted-foreground">{subtitle}</p>
 		</div>
 
 		{#if sso}
 			<a class="btn btn-primary h-9 w-full" href={sso.href} data-sveltekit-reload><KeyRound />Continue with {sso.name}</a>
 			{#if showForm}
-				<div class="my-5 flex items-center gap-3 text-[11px] text-muted-foreground">
+				<div class="my-5 flex items-center gap-3 text-[0.6875rem] text-muted-foreground">
 					<span class="h-px flex-1 bg-border"></span>or<span class="h-px flex-1 bg-border"></span>
 				</div>
 			{/if}
@@ -88,7 +88,7 @@
 		{/if}
 		{#if error}<p class="mt-3 text-center text-xs text-danger">{error}</p>{/if}
 		{#if hint && showForm}
-			<p class="mt-4 rounded-lg bg-surface px-3 py-2 text-center text-[11px] text-muted-foreground">{@html hint}</p>
+			<p class="mt-4 rounded-lg bg-surface px-3 py-2 text-center text-[0.6875rem] text-muted-foreground">{@html hint}</p>
 		{/if}
 	</div>
 </div>

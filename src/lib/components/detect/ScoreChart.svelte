@@ -37,12 +37,12 @@
 	<svg {width} {height} role="img" aria-label="Failure score over this print" class="block touch-none select-none" onpointermove={onmove} onpointerleave={() => (hover = null)}>
 		{#each [0, 0.5, 1] as v (v)}
 			<line x1={PAD.left} x2={width - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--border)" stroke-width="1" />
-			<text x={PAD.left - 6} y={y(v) + 3} text-anchor="end" class="fill-muted-foreground font-mono text-[10px]">{Math.round(v * 100)}</text>
+			<text x={PAD.left - 6} y={y(v) + 3} text-anchor="end" class="fill-muted-foreground font-mono text-[0.625rem]">{Math.round(v * 100)}</text>
 		{/each}
 		<line x1={PAD.left} x2={width - PAD.right} y1={y(1 / 3)} y2={y(1 / 3)} stroke="var(--warning)" stroke-width="1" stroke-dasharray="4 4" />
 		<line x1={PAD.left} x2={width - PAD.right} y1={y(2 / 3)} y2={y(2 / 3)} stroke="var(--danger)" stroke-width="1" stroke-dasharray="4 4" />
-		<text x={PAD.left + 4} y={y(1 / 3) - 4} class="fill-muted-foreground text-[10px]">warning</text>
-		<text x={PAD.left + 4} y={y(2 / 3) - 4} class="fill-muted-foreground text-[10px]">failure</text>
+		<text x={PAD.left + 4} y={y(1 / 3) - 4} class="fill-muted-foreground text-[0.625rem]">warning</text>
+		<text x={PAD.left + 4} y={y(2 / 3) - 4} class="fill-muted-foreground text-[0.625rem]">failure</text>
 		{#if area}<path d={area} fill="var(--primary-soft)" />{/if}
 		{#if points.length > 1}
 			<path d={path} fill="none" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
@@ -54,13 +54,13 @@
 			<circle cx={x(hp.at)} cy={y(hp.score)} r="4" fill="var(--primary)" stroke="var(--card)" stroke-width="2" />
 		{/if}
 		{#if points.length}
-			<text x={PAD.left} y={height - 4} class="fill-muted-foreground text-[10px]">{time(t0)}</text>
-			<text x={width - PAD.right} y={height - 4} text-anchor="end" class="fill-muted-foreground text-[10px]">{time(t1)}</text>
+			<text x={PAD.left} y={height - 4} class="fill-muted-foreground text-[0.625rem]">{time(t0)}</text>
+			<text x={width - PAD.right} y={height - 4} text-anchor="end" class="fill-muted-foreground text-[0.625rem]">{time(t1)}</text>
 		{/if}
 	</svg>
 	{#if hp}
 		<div
-			class="pointer-events-none absolute top-1 rounded-lg border border-border bg-card px-2 py-1 text-[11px] shadow"
+			class="pointer-events-none absolute top-1 rounded-lg border border-border bg-card px-2 py-1 text-[0.6875rem] shadow"
 			style="left: {Math.min(Math.max(0, x(hp.at) - 60), width - 130)}px"
 		>
 			<span class="text-muted-foreground">{time(hp.at)}</span>

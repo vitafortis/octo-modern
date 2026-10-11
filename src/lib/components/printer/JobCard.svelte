@@ -32,17 +32,17 @@
 
 <section class="card overflow-hidden">
 	<div class="flex items-center gap-2 border-b border-border px-4 py-3">
-		<h2 class="flex items-center gap-2 text-[14px] font-semibold"><FileBox class="size-4 text-primary" />Job</h2>
+		<h2 class="flex items-center gap-2 text-sm font-semibold"><FileBox class="size-4 text-primary" />Job</h2>
 		{#if s.progress?.printTimeLeftOrigin && active}
 			<span class="badge ml-auto" title="Where OctoPrint's time estimate comes from">estimate: {s.progress.printTimeLeftOrigin.replace(/-/g, ' ')}</span>
 		{/if}
 	</div>
 	<div class="p-4">
 		{#if file}
-			<p class="text-[15px] font-semibold tracking-tight [overflow-wrap:anywhere] sm:truncate" title={file.path}>{file.display}</p>
-			<p class="mt-0.5 text-[11px] text-muted-foreground">{ORIGIN[file.origin] ?? file.origin}{file.size != null ? ` · ${bytes(file.size)}` : ''}{s.job?.user ? ` · started by ${s.job.user}` : ''}</p>
+			<p class="text-[0.9375rem] font-semibold tracking-tight [overflow-wrap:anywhere] sm:truncate" title={file.path}>{file.display}</p>
+			<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">{ORIGIN[file.origin] ?? file.origin}{file.size != null ? ` · ${bytes(file.size)}` : ''}{s.job?.user ? ` · started by ${s.job.user}` : ''}</p>
 		{:else}
-			<p class="text-[13px] text-muted-foreground">No file selected. Choose one in the Files tab{canControl ? '' : ' (operators)'}.</p>
+			<p class="text-[0.8125rem] text-muted-foreground">No file selected. Choose one in the Files tab{canControl ? '' : ' (operators)'}.</p>
 		{/if}
 
 		<div class="mt-4">
@@ -55,21 +55,21 @@
 			</div>
 		</div>
 
-		<dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-4">
+		<dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-[0.8125rem] sm:grid-cols-4">
 			<div>
-				<dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Timer class="size-3" />Elapsed</dt>
+				<dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Timer class="size-3" />Elapsed</dt>
 				<dd class="mt-0.5 font-mono tabular-nums">{active ? formatDuration(s.progress?.printTime) : '—'}</dd>
 			</div>
 			<div>
-				<dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Hourglass class="size-3" />Left</dt>
+				<dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Hourglass class="size-3" />Left</dt>
 				<dd class="mt-0.5 font-mono tabular-nums">{active ? formatDuration(s.progress?.printTimeLeft) : formatDuration(s.job?.estimatedPrintTime)}</dd>
 			</div>
 			<div>
-				<dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock class="size-3" />ETA</dt>
+				<dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Clock class="size-3" />ETA</dt>
 				<dd class="mt-0.5 font-mono tabular-nums">{active ? formatEta(s.progress?.printTimeLeft, now) : '—'}</dd>
 			</div>
 			<div>
-				<dt class="flex items-center gap-1 text-[11px] text-muted-foreground"><Ruler class="size-3" />Filament</dt>
+				<dt class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Ruler class="size-3" />Filament</dt>
 				<dd class="mt-0.5 font-mono tabular-nums">{meters != null ? `${meters.toFixed(2)} m` : '—'}</dd>
 			</div>
 		</dl>
@@ -91,10 +91,10 @@
 				<button class="btn btn-ghost btn-sm" disabled={busy} onclick={() => run('restart')}><RotateCcw />Restart</button>
 			{/if}
 			{#if active && s.state !== 'cancelling'}
-				<button class="btn btn-secondary btn-sm ml-auto border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" disabled={busy} onclick={() => run('cancel')}><CircleStop />Cancel print</button>
+				<button class="btn btn-danger-outline btn-sm ml-auto" disabled={busy} onclick={() => run('cancel')}><CircleStop />Cancel print</button>
 			{/if}
 			{#if !active && !(s.state === 'operational' && file)}
-				<span class="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Layers class="size-3.5" />{s.state === 'operational' ? 'Ready for a job.' : 'Connect the printer to print.'}</span>
+				<span class="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground"><Layers class="size-3.5" />{s.state === 'operational' ? 'Ready for a job.' : 'Connect the printer to print.'}</span>
 			{/if}
 		</div>
 	{/if}

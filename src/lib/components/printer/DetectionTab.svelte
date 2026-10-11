@@ -84,14 +84,14 @@
 
 {#if !st}
 	<div class="grid h-40 place-items-center">
-		{#if error}<p class="text-[13px] text-danger">{error}</p>{:else}<LoaderCircle class="size-5 animate-spin text-muted-foreground" />{/if}
+		{#if error}<p class="text-[0.8125rem] text-danger">{error}</p>{:else}<LoaderCircle class="size-5 animate-spin text-muted-foreground" />{/if}
 	</div>
 {:else}
 	<div class="space-y-4" data-testid="detection-panel" data-phase={st.phase} data-level={st.level}>
 		<section class="card flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
 			<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary max-sm:hidden"><ScanEye class="size-4" /></span>
 			<div class="min-w-0 flex-1">
-				<h2 class="flex flex-wrap items-center gap-2 text-[14px] font-semibold">
+				<h2 class="flex flex-wrap items-center gap-2 text-sm font-semibold">
 					Failure detection
 					<span class="badge {PHASE[st.phase].cls}">{PHASE[st.phase].label}</span>
 				</h2>
@@ -99,14 +99,14 @@
 					Webcam frames go to your self-hosted Obico ML model while this printer prints; a smoothed score warns early and can pause a failing print.
 				</p>
 			</div>
-			<label class="flex items-center touch:min-h-11 gap-2 text-[13px]">
+			<label class="flex items-center touch:min-h-11 gap-2 text-[0.8125rem]">
 				<span class="text-muted-foreground">Enabled</span>
 				<Switch label="Enable failure detection" checked={st.settings.enabled} disabled={!canControl || saving} onchange={(v) => save({ enabled: v })} />
 			</label>
 		</section>
 
 		{#if st.phase === 'unconfigured'}
-			<div class="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/5 p-3 text-[13px]">
+			<div class="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/5 p-3 text-[0.8125rem]">
 				<Settings class="mt-0.5 size-4 shrink-0 text-warning" />
 				<p>
 					The ML API isn’t set up yet.
@@ -116,7 +116,7 @@
 		{/if}
 
 		{#if st.error}
-			<div class="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[13px]" data-testid="detection-error">
+			<div class="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[0.8125rem]" data-testid="detection-error">
 				<CircleAlert class="mt-0.5 size-4 shrink-0 text-danger" />
 				<p class="min-w-0 break-words">{st.error}</p>
 			</div>
@@ -125,13 +125,13 @@
 		<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
 			<section class="card self-start overflow-hidden">
 				<div class="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-					<h3 class="text-[13px] font-semibold">Last analysed frame</h3>
+					<h3 class="text-[0.8125rem] font-semibold">Last analysed frame</h3>
 					{#if st.last}<span class="text-xs text-muted-foreground">{st.last.boxes.length} detection{st.last.boxes.length === 1 ? '' : 's'} · {time(st.last.at)}</span>{/if}
 				</div>
 				{#if frameSrc}
 					<img src={frameSrc} alt="Latest webcam frame with detections outlined" class="block aspect-video w-full bg-muted object-contain" data-testid="detection-frame" />
 				{:else}
-					<div class="grid aspect-video place-items-center bg-muted/50 text-center text-[13px] text-muted-foreground">
+					<div class="grid aspect-video place-items-center bg-muted/50 text-center text-[0.8125rem] text-muted-foreground">
 						<div><ImageOff class="mx-auto mb-2 size-5" />No frame analysed yet{st.phase === 'watching' ? '; the first one is on its way' : ''}.</div>
 					</div>
 				{/if}
@@ -141,7 +141,7 @@
 				<section class="card p-4">
 					<div class="flex items-start justify-between gap-3">
 						<div>
-							<h3 class="text-[13px] font-semibold">Failure score</h3>
+							<h3 class="text-[0.8125rem] font-semibold">Failure score</h3>
 							<p class="text-xs text-muted-foreground">{st.print ? st.print.file : 'No print yet'}{st.frames ? ` · ${st.frames} frames` : ''}</p>
 						</div>
 						<div class="text-right">
@@ -173,7 +173,7 @@
 
 				{#if draft}
 					<section class="card space-y-4 p-4">
-						<h3 class="text-[13px] font-semibold">Settings</h3>
+						<h3 class="text-[0.8125rem] font-semibold">Settings</h3>
 						<label class="block">
 							<span class="label flex justify-between"><span>Sensitivity</span><span class="font-mono">{draft.sensitivity.toFixed(1)}</span></span>
 							<input
@@ -213,8 +213,8 @@
 
 		{#if st.events.length}
 			<section class="card p-4">
-				<h3 class="text-[13px] font-semibold">This print</h3>
-				<ul class="mt-2 divide-y divide-border text-[13px]">
+				<h3 class="text-[0.8125rem] font-semibold">This print</h3>
+				<ul class="mt-2 divide-y divide-border text-[0.8125rem]">
 					{#each st.events as e (e.at + e.kind + e.detail)}
 						<li class="flex items-start gap-2 py-2">
 							{#if e.kind === 'paused'}<CirclePause class="mt-0.5 size-4 shrink-0 text-danger" />

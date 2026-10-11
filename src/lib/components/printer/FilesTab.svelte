@@ -191,7 +191,7 @@
 				<button class="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs {origin === 'sdcard' ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground'}" onclick={() => ((origin = 'sdcard'), (folder = ''))}><MemoryStick class="size-3.5" />SD card</button>
 			</div>
 		{/if}
-		<nav class="flex min-w-0 items-center gap-1 text-[13px]" aria-label="Folder">
+		<nav class="flex min-w-0 items-center gap-1 text-[0.8125rem]" aria-label="Folder">
 			<button class="rounded-md px-1.5 py-0.5 font-medium hover:bg-accent {folder ? 'text-muted-foreground' : ''}" onclick={() => (folder = '')}>{origin === 'sdcard' ? 'SD card' : 'Files'}</button>
 			{#each crumbs as c (c.path)}
 				<ChevronRight class="size-3.5 shrink-0 text-muted-foreground" />
@@ -241,11 +241,11 @@
 		<div class="card divide-y divide-border">
 			{#each uploads as u (u.id)}
 				{@const pct = u.size ? Math.round((u.loaded / u.size) * 100) : 0}
-				<div class="flex items-center gap-3 px-4 py-2.5 text-[13px]">
+				<div class="flex items-center gap-3 px-4 py-2.5 text-[0.8125rem]">
 					{#if u.state === 'done'}<CircleCheck class="size-4 text-success" />{:else if u.state === 'error' || u.state === 'aborted'}<CircleX class="size-4 text-danger" />{:else}<LoaderCircle class="size-4 animate-spin text-primary" />{/if}
 					<span class="min-w-0 flex-1 truncate">{u.name}</span>
 					<div class="h-1.5 w-48 overflow-hidden max-sm:w-16 rounded-full bg-muted"><div class="h-full rounded-full transition-[width] {u.state === 'error' ? 'bg-danger' : 'bg-primary'}" style="width:{pct}%"></div></div>
-					<span class="w-40 text-right font-mono text-[11px] text-muted-foreground max-sm:hidden">
+					<span class="w-40 text-right font-mono text-[0.6875rem] text-muted-foreground max-sm:hidden">
 						{u.state === 'processing' ? 'OctoPrint is saving…' : u.state === 'error' ? 'failed' : u.state === 'aborted' ? 'cancelled' : u.state === 'done' ? 'done' : `${bytes(u.loaded)} / ${bytes(u.size)}`}
 					</span>
 					{#if u.state === 'uploading'}<button class="btn btn-ghost btn-icon btn-sm" title="Cancel upload" aria-label="Cancel upload" onclick={u.abort}><X /></button>{/if}
@@ -276,7 +276,7 @@
 								</span>
 							{/if}
 							<span class="min-w-0 flex-1">
-								<span class="line-clamp-2 text-[14px] leading-snug font-medium [overflow-wrap:anywhere]">{f.display}</span>
+								<span class="line-clamp-2 text-sm leading-snug font-medium [overflow-wrap:anywhere]">{f.display}</span>
 								<span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
 									{#if f.type === 'folder'}
 										{f.children?.length ?? 0} items
@@ -319,11 +319,11 @@
 				{/each}
 			</ul>
 			{#if listing.free != null}
-				<p class="border-t border-border bg-surface px-4 py-2 text-[11px] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on OctoPrint</p>
+				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on OctoPrint</p>
 			{/if}
 		{:else}
-			<table class="w-full text-left text-[13px]">
-				<thead class="border-b border-border bg-surface text-[11px] text-muted-foreground">
+			<table class="w-full text-left text-[0.8125rem]">
+				<thead class="border-b border-border bg-surface text-[0.6875rem] text-muted-foreground">
 					<tr>
 						<th class="px-4 py-2 font-medium">Name</th>
 						<th class="hidden px-3 py-2 text-right font-medium md:table-cell">Size</th>
@@ -350,8 +350,8 @@
 									{/if}
 									<span class="min-w-0">
 										<span class="block truncate font-medium">{f.display}</span>
-										{#if query.trim() && f.path.includes('/')}<span class="block truncate text-[11px] text-muted-foreground">{f.path}</span>{/if}
-										{#if f.type === 'folder'}<span class="block text-[11px] text-muted-foreground">{f.children?.length ?? 0} items</span>{/if}
+										{#if query.trim() && f.path.includes('/')}<span class="block truncate text-[0.6875rem] text-muted-foreground">{f.path}</span>{/if}
+										{#if f.type === 'folder'}<span class="block text-[0.6875rem] text-muted-foreground">{f.children?.length ?? 0} items</span>{/if}
 									</span>
 									{#if current === key}<span class="badge badge-primary ml-1">selected</span>{/if}
 									{#if inUse && current !== key}<span class="badge badge-warning ml-1">in use</span>{/if}
@@ -408,7 +408,7 @@
 				</tbody>
 			</table>
 			{#if listing.free != null}
-				<p class="border-t border-border bg-surface px-4 py-2 text-[11px] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on OctoPrint</p>
+				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on OctoPrint</p>
 			{/if}
 		{/if}
 	</div>
@@ -417,7 +417,7 @@
 		<div class="pointer-events-none absolute -inset-2 z-20 grid place-items-center rounded-2xl border-2 border-dashed border-primary bg-primary-soft/80 backdrop-blur-sm">
 			<div class="text-center">
 				<UploadIcon class="mx-auto size-8 text-primary" />
-				<p class="mt-2 text-[15px] font-semibold">Drop G-code to upload</p>
+				<p class="mt-2 text-[0.9375rem] font-semibold">Drop G-code to upload</p>
 				<p class="text-xs text-muted-foreground">to {folder || 'the top folder'}{printAfterUpload ? ', then print it' : ''}</p>
 			</div>
 		</div>

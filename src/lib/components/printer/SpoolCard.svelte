@@ -39,8 +39,8 @@
 </script>
 
 {#if data && (data.configured || isAdmin())}
-	<section class="card p-4 text-[13px]" data-testid="spool-card">
-		<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Disc3 class="size-4 text-primary" />{title ?? 'Filament'}</h2>
+	<section class="card p-4 text-[0.8125rem]" data-testid="spool-card">
+		<h2 class="flex items-center gap-2 text-sm font-semibold"><Disc3 class="size-4 text-primary" />{title ?? 'Filament'}</h2>
 		{#if !data.configured}
 			<p class="mt-2 text-xs text-muted-foreground">Connect Spoolman to track which spool is loaded and how much is left. <a class="text-primary hover:underline" href="/filament">Set it up →</a></p>
 		{:else}
@@ -55,15 +55,15 @@
 						<SpoolSwatch spool={s ?? null} size="size-8" />
 						<div class="min-w-0 flex-1">
 							{#if a}
-								<p class="truncate font-medium">{#if data.tools > 1}<span class="mr-1 font-mono text-[11px] text-muted-foreground">T{t}</span>{/if}{s?.name ?? `Spool #${a.spoolId}`}</p>
-								<p class="truncate text-[11px] text-muted-foreground" title={s ? [s.material, s.vendor, s.location, `#${s.id}`].filter(Boolean).join(' · ') : undefined}>
+								<p class="truncate font-medium">{#if data.tools > 1}<span class="mr-1 font-mono text-[0.6875rem] text-muted-foreground">T{t}</span>{/if}{s?.name ?? `Spool #${a.spoolId}`}</p>
+								<p class="truncate text-[0.6875rem] text-muted-foreground" title={s ? [s.material, s.vendor, s.location, `#${s.id}`].filter(Boolean).join(' · ') : undefined}>
 									{#if s}{s.material ?? `#${s.id}`} · <span class="tabular-nums {low ? 'font-medium text-danger' : ''}">{remainingLabel(s)}</span>{#if low} left{/if}{:else}not found in Spoolman{/if}
 								</p>
 								{#if frac != null}
 									<div class="mt-1 h-1 overflow-hidden rounded-full bg-border"><div class="h-full rounded-full {low ? 'bg-danger' : 'bg-primary'}" style="width:{frac * 100}%"></div></div>
 								{/if}
 							{:else}
-								<p class="text-muted-foreground">{#if data.tools > 1}<span class="mr-1 font-mono text-[11px]">T{t}</span>{/if}No spool selected</p>
+								<p class="text-muted-foreground">{#if data.tools > 1}<span class="mr-1 font-mono text-[0.6875rem]">T{t}</span>{/if}No spool selected</p>
 							{/if}
 						</div>
 						{#if canControl}

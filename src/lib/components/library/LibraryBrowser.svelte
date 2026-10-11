@@ -201,7 +201,7 @@
 	{/if}
 
 	<div class="flex flex-wrap items-center gap-2">
-		<nav class="flex min-w-0 flex-1 items-center gap-1 text-[13px]" aria-label="Folder">
+		<nav class="flex min-w-0 flex-1 items-center gap-1 text-[0.8125rem]" aria-label="Folder">
 			<button class="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium hover:bg-accent {path ? 'text-muted-foreground' : ''}" onclick={() => go('')}>
 				{#if source}<SourceIcon kind={source.kind} class="size-3.5" />{/if}{source?.name ?? 'Library'}
 			</button>
@@ -243,8 +243,8 @@
 		{:else}
 			<div class="overflow-y-auto {compact ? 'max-h-[min(52vh,32rem)] max-sm:max-h-none' : 'lg:max-h-[calc(100dvh-16rem)]'}">
 				<!-- Below md only the name (wrapping) and the actions remain: fixed layout keeps them inside. -->
-				<table class="w-full text-left text-[13px] max-md:table-fixed">
-					<thead class="sticky top-0 z-10 border-b border-border bg-surface text-[11px] text-muted-foreground">
+				<table class="w-full text-left text-[0.8125rem] max-md:table-fixed">
+					<thead class="sticky top-0 z-10 border-b border-border bg-surface text-[0.6875rem] text-muted-foreground">
 						<tr>
 							<th class="px-4 py-2 font-medium">Name</th>
 							<th class="hidden px-3 py-2 text-right font-medium md:table-cell">Print time</th>
@@ -286,12 +286,12 @@
 										<span class="min-w-0">
 											<span class="block truncate font-medium max-md:line-clamp-2 max-md:whitespace-normal max-md:[overflow-wrap:anywhere] {printable || e.type === 'folder' ? '' : 'text-muted-foreground'}" title={e.name}>{e.name}</span>
 											{#if !compact && e.type === 'file' && printable}
-												<span class="block truncate text-[11px] text-muted-foreground md:hidden">{[e.meta?.estimatedTime != null ? formatDuration(e.meta.estimatedTime) : null, bytes(e.size)].filter(Boolean).join(' · ')}</span>
+												<span class="block truncate text-[0.6875rem] text-muted-foreground md:hidden">{[e.meta?.estimatedTime != null ? formatDuration(e.meta.estimatedTime) : null, bytes(e.size)].filter(Boolean).join(' · ')}</span>
 											{/if}
 											{#if query.trim() && e.path.includes('/')}
-												<span class="block truncate text-[11px] text-muted-foreground">{parentPath(e.path)}</span>
+												<span class="block truncate text-[0.6875rem] text-muted-foreground">{parentPath(e.path)}</span>
 											{:else if e.meta?.slicer && !compact}
-												<span class="block truncate text-[11px] text-muted-foreground">{e.meta.slicer}{e.meta.filamentType ? ` · ${e.meta.filamentType}` : ''}{e.meta.layerHeight ? ` · ${e.meta.layerHeight} mm` : ''}</span>
+												<span class="block truncate text-[0.6875rem] text-muted-foreground">{e.meta.slicer}{e.meta.filamentType ? ` · ${e.meta.filamentType}` : ''}{e.meta.layerHeight ? ` · ${e.meta.layerHeight} mm` : ''}</span>
 											{/if}
 										</span>
 									</div>
@@ -321,9 +321,9 @@
 				</table>
 			</div>
 			{#if results && truncated}
-				<p class="border-t border-border bg-surface px-4 py-2 text-[11px] text-muted-foreground">Showing the first {results.length} matches; the search stopped early. Narrow it down, or search inside a folder.</p>
+				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">Showing the first {results.length} matches; the search stopped early. Narrow it down, or search inside a folder.</p>
 			{:else if !results && hiddenCount && !showAll && rows.length}
-				<p class="border-t border-border bg-surface px-4 py-2 text-[11px] text-muted-foreground">{hiddenCount} other file{hiddenCount === 1 ? '' : 's'} hidden. <button class="text-primary hover:underline" onclick={() => (showAll = true)}>Show all</button></p>
+				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">{hiddenCount} other file{hiddenCount === 1 ? '' : 's'} hidden. <button class="text-primary hover:underline" onclick={() => (showAll = true)}>Show all</button></p>
 			{/if}
 		{/if}
 	</div>

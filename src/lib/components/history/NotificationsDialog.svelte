@@ -156,7 +156,7 @@
 			</div>
 		{:else}
 			{#if !loading}
-				<div class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted-foreground">
+				<div class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-[0.8125rem] text-muted-foreground">
 					<BellRing class="mx-auto mb-2 size-5" />No channels yet. Add one to hear about finished and failed prints.
 				</div>
 			{/if}

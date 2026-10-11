@@ -87,13 +87,13 @@
 		<div class="mb-6 flex flex-col items-center text-center">
 			<Logo size={44} />
 			<h1 class="mt-4 text-lg font-semibold tracking-tight">Welcome to octo·modern</h1>
-			<p class="mt-1 text-[13px] text-muted-foreground">Two minutes and you're watching your printers.</p>
+			<p class="mt-1 text-[0.8125rem] text-muted-foreground">Two minutes and you're watching your printers.</p>
 		</div>
 
 		<ol class="mb-5 flex items-center justify-center gap-2 text-xs">
 			{#each steps as s, i (s.n)}
 				<li class="flex items-center gap-2 {step >= s.n ? 'text-foreground' : 'text-muted-foreground'}">
-					<span class="grid size-5 place-items-center rounded-full text-[10px] font-semibold {step > s.n ? 'bg-primary text-primary-foreground' : step === s.n ? 'bg-primary-soft text-primary ring-1 ring-primary/50' : 'bg-muted'}">
+					<span class="grid size-5 place-items-center rounded-full text-[0.625rem] font-semibold {step > s.n ? 'bg-primary text-primary-foreground' : step === s.n ? 'bg-primary-soft text-primary ring-1 ring-primary/50' : 'bg-muted'}">
 						{#if step > s.n}<Check class="size-3" />{:else}{s.n}{/if}
 					</span>
 					{s.label}
@@ -105,7 +105,7 @@
 		<div class="card p-7 shadow-surface-lg max-sm:p-5">
 			{#if step === 1}
 				<form onsubmit={createAdmin}>
-					<h2 class="flex items-center gap-2 text-[15px] font-semibold"><UserRound class="size-4 text-primary" />Create the admin account</h2>
+					<h2 class="flex items-center gap-2 text-[0.9375rem] font-semibold"><UserRound class="size-4 text-primary" />Create the admin account</h2>
 					<p class="mt-1 text-xs text-muted-foreground">This account manages printers, users and settings. Add operators and viewers later, or turn on single sign-on.</p>
 					<div class="mt-5 grid gap-3">
 						<div>
@@ -134,7 +134,7 @@
 					</button>
 				</form>
 			{:else if step === 2}
-				<h2 class="flex items-center gap-2 text-[15px] font-semibold"><Printer class="size-4 text-primary" />Add your first printer</h2>
+				<h2 class="flex items-center gap-2 text-[0.9375rem] font-semibold"><Printer class="size-4 text-primary" />Add your first printer</h2>
 				<p class="mt-1 mb-4 text-xs text-muted-foreground">Pick one octo·modern found and approve it in OctoPrint, no key to copy.</p>
 				<QuickDiscover
 					onadded={(p) => {
@@ -142,7 +142,7 @@
 						step = 3;
 					}}
 				/>
-				<div class="my-5 flex items-center gap-3 text-[11px] text-muted-foreground"><span class="h-px flex-1 bg-border"></span>or enter it yourself<span class="h-px flex-1 bg-border"></span></div>
+				<div class="my-5 flex items-center gap-3 text-[0.6875rem] text-muted-foreground"><span class="h-px flex-1 bg-border"></span>or enter it yourself<span class="h-px flex-1 bg-border"></span></div>
 				<form onsubmit={addPrinter}>
 					<p class="mt-1 text-xs text-muted-foreground">
 						The OctoPrint URL and an API key: in OctoPrint, open <b class="font-medium text-foreground">Settings → Application Keys</b> and generate one, or copy your user's key from <b class="font-medium text-foreground">User Settings → API key</b>.
@@ -178,7 +178,7 @@
 			{:else}
 				<div class="text-center">
 					<div class="mx-auto grid size-12 place-items-center rounded-full bg-success/10 text-success"><Check class="size-6" /></div>
-					<h2 class="mt-4 text-[15px] font-semibold">You're set up</h2>
+					<h2 class="mt-4 text-[0.9375rem] font-semibold">You're set up</h2>
 					<p class="mt-1.5 text-xs text-muted-foreground">
 						{added ? `${added.name} is ready. Add more printers, users and single sign-on any time.` : 'Add a printer from the sidebar whenever you’re ready.'}
 					</p>

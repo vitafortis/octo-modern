@@ -76,7 +76,7 @@
 				<button
 					role="tab"
 					aria-selected={mode === id}
-					class="h-9 rounded-md px-3 text-[13px] font-medium {mode === id ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+					class="h-9 rounded-md px-3 text-[0.8125rem] font-medium {mode === id ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 					onclick={() => (mode = id as 'library' | 'upload')}
 					disabled={id === 'library' && !sources.length}>{label}</button
 				>
@@ -85,9 +85,9 @@
 		{#if mode === 'library' && sourceId}
 			<LibraryBrowser {sources} bind:sourceId bind:path bind:selected compact onopen={() => add()} />
 		{:else if mode === 'upload'}
-			<label class="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-8 text-center text-[13px] hover:border-primary/50" data-testid="queue-upload">
+			<label class="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-8 text-center text-[0.8125rem] hover:border-primary/50" data-testid="queue-upload">
 				<Upload class="size-6 text-muted-foreground" />
-				{#if file}<span class="font-medium">{file.name}</span><span class="text-[11px] text-muted-foreground">{bytes(file.size)}</span>{:else}<span>Choose a G-code file</span>{/if}
+				{#if file}<span class="font-medium">{file.name}</span><span class="text-[0.6875rem] text-muted-foreground">{bytes(file.size)}</span>{:else}<span>Choose a G-code file</span>{/if}
 				<input type="file" class="sr-only" accept=".gcode,.gco,.g,.gc,.bgcode" onchange={(e) => (file = e.currentTarget.files?.[0] ?? null)} />
 			</label>
 			{#if busy}<div class="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full bg-primary" style="width:{Math.round(progress * 100)}%"></div></div>{/if}

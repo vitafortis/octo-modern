@@ -58,7 +58,7 @@
 	{:else}
 		<button class="btn btn-secondary {big ? 'flex-1' : 'btn-sm'}" disabled={s.state !== 'printing'} onclick={() => jobCommand(printer.id, 'pause')}><CirclePause />Pause</button>
 	{/if}
-	<button class="btn btn-secondary {big ? 'flex-1' : 'btn-sm'} border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />{big ? 'Cancel' : 'Cancel print'}</button>
+	<button class="btn btn-danger-outline {big ? 'flex-1' : 'btn-sm'}" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />{big ? 'Cancel' : 'Cancel print'}</button>
 {/snippet}
 
 <svelte:head><title>{pct != null ? `${Math.round(pct)}% · ` : ''}{printer.name} · octo·modern</title></svelte:head>
@@ -91,7 +91,7 @@
 				{#if canControl}<PowerButtons printerId={printer.id} name={printer.name} compact={phone.current} />{/if}
 				{#if canControl && isConnected(s.state) && !(active && phone.current)}
 					<!-- Phones: outlined rather than a solid red block next to Connect/Disconnect; it asks first either way. -->
-					<button class="btn btn-sm {phone.current ? 'border border-danger/50 text-danger' : 'btn-danger'}" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>
+					<button class="btn btn-sm {phone.current ? 'btn-danger-outline' : 'btn-danger'}" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>
 				{/if}
 				{#if isAdmin()}
 					<button class="btn btn-ghost btn-icon btn-sm" title="Edit server" aria-label="Edit server" onclick={() => (editor.target = printer)}><Settings2 /></button>
@@ -103,7 +103,7 @@
 		<nav bind:this={strip} class="scrollbar-none relative flex snap-x gap-1 overflow-x-auto px-2 sm:px-4 lg:px-6" aria-label="Printer sections">
 			{#each TABS as t (t.id)}
 				<button
-					class="relative flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-t-lg px-3 text-[13px] font-medium transition-colors touch:h-11 touch:text-sm short:h-9 lg:h-9 {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+					class="relative flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-t-lg px-3 text-[0.8125rem] font-medium transition-colors touch:h-11 touch:text-sm short:h-9 lg:h-9 {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 					aria-current={tab.id === t.id ? 'page' : undefined}
 					onclick={() => openTab(t.id)}
 				>
@@ -115,7 +115,7 @@
 	</header>
 
 	{#if s.state === 'offline' && s.problem}
-		<div class="mx-4 mt-4 flex items-start gap-2 sm:mx-6 lg:mx-8 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[13px]">
+		<div class="mx-4 mt-4 flex items-start gap-2 sm:mx-6 lg:mx-8 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[0.8125rem]">
 			<WifiOff class="mt-0.5 size-4 shrink-0 text-danger" />
 			<div>
 				<p class="font-medium">Can’t reach OctoPrint: {s.problem.message}</p>
@@ -142,7 +142,7 @@
 			<div class="page-x flex items-center gap-2 pt-2.5 pb-safe">
 				{@render jobButtons(true)}
 				<!-- Set apart, and it still asks first. -->
-				<button class="btn btn-icon ml-1 border border-danger/50 text-danger hover:bg-danger/10" title="Emergency stop (M112)" aria-label="Emergency stop" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX class="size-5!" /></button>
+				<button class="btn btn-icon btn-danger-outline ml-1" title="Emergency stop (M112)" aria-label="Emergency stop" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX class="size-5!" /></button>
 			</div>
 		</div>
 	{/if}

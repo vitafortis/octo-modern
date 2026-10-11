@@ -185,7 +185,7 @@
 				bind:this={input}
 				bind:value={query}
 				{onkeydown}
-				class="h-12 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground/70 touch:h-14 touch:text-base"
+				class="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70 touch:h-14 touch:text-base"
 				placeholder="Search printers, pages and actions…"
 				role="combobox"
 				aria-expanded="true"
@@ -199,7 +199,7 @@
 		</div>
 		<div bind:this={list} id="palette-list" role="listbox" class="max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain p-1.5 max-sm:max-h-none max-sm:min-h-0 max-sm:flex-1 max-sm:pb-[max(0.375rem,env(safe-area-inset-bottom))]">
 			{#each sections as s, si (si)}
-				{#if s.title}<p class="px-2.5 pt-2 pb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{s.title}</p>{/if}
+				{#if s.title}<p class="px-2.5 pt-2 pb-1 text-[0.625rem] font-semibold tracking-wider text-muted-foreground uppercase">{s.title}</p>{/if}
 				{#each s.rows as r (r.item.key)}
 					{@const Icon = r.item.icon}
 					<button
@@ -212,18 +212,18 @@
 						onclick={() => choose(r)}
 					>
 						<Icon class="size-4 shrink-0 {r.index === active ? 'text-primary' : 'text-muted-foreground'}" />
-						<span class="min-w-0 flex-1 truncate text-[13px]">
+						<span class="min-w-0 flex-1 truncate text-[0.8125rem]">
 							{#each highlight(r.item.title, r.indexes) as part, pi (pi)}{#if part.hit}<mark class="bg-transparent font-semibold text-primary">{part.text}</mark>{:else}{part.text}{/if}{/each}
 						</span>
-						{#if r.item.subtitle}<span class="max-w-[45%] shrink-0 truncate text-[11px] text-muted-foreground">{r.item.subtitle}</span>{/if}
-						{#if query.trim()}<span class="w-20 shrink-0 text-right text-[10px] text-muted-foreground/70">{r.item.group}</span>{/if}
+						{#if r.item.subtitle}<span class="max-w-[45%] shrink-0 truncate text-[0.6875rem] text-muted-foreground">{r.item.subtitle}</span>{/if}
+						{#if query.trim()}<span class="w-20 shrink-0 text-right text-[0.625rem] text-muted-foreground/70">{r.item.group}</span>{/if}
 					</button>
 				{/each}
 			{:else}
 				<p class="px-3 py-8 text-center text-xs text-muted-foreground">Nothing matches “{query}”.</p>
 			{/each}
 		</div>
-		<div class="flex items-center gap-3 border-t border-border bg-surface px-3 py-2 text-[11px] text-muted-foreground touch:hidden">
+		<div class="flex items-center gap-3 border-t border-border bg-surface px-3 py-2 text-[0.6875rem] text-muted-foreground touch:hidden">
 			<span class="flex items-center gap-1"><span class="kbd">↑</span><span class="kbd">↓</span>navigate</span>
 			<span class="flex items-center gap-1"><span class="kbd">↵</span>open</span>
 		</div>

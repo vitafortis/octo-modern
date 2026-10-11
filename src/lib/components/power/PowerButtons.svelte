@@ -25,7 +25,7 @@
 	{/if}
 	{#if on !== false}
 		<button
-			class="btn btn-secondary btn-sm touch:h-11 border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger"
+			class="btn btn-danger-outline btn-sm touch:h-11"
 			disabled={busy || info.busy}
 			onclick={() => run(powerOff)}
 			title="Switch {name}’s smart plug off"

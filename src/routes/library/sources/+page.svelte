@@ -175,7 +175,7 @@
 		<label class="label" for="src-{field}">{label}</label>
 		{#if change[field]}
 			{#if field === 'privateKey'}
-				<textarea id="src-{field}" class="input h-24 resize-y py-2 font-mono text-[11px]" spellcheck="false" {placeholder} bind:value={form[field]}></textarea>
+				<textarea id="src-{field}" class="input h-24 resize-y py-2 font-mono text-[0.6875rem]" spellcheck="false" {placeholder} bind:value={form[field]}></textarea>
 			{:else}
 				<input id="src-{field}" class="input font-mono text-xs" type="password" autocomplete="new-password" {placeholder} bind:value={form[field]} />
 			{/if}
@@ -199,19 +199,19 @@
 		{#if !sources}
 			<div class="grid h-32 place-items-center"><LoaderCircle class="size-5 animate-spin text-muted-foreground" /></div>
 		{:else if !sources.length}
-			<div class="card px-6 py-10 text-center text-[13px] text-muted-foreground">No sources yet. <button class="text-primary hover:underline" onclick={() => edit(null)}>Add the first one</button>.</div>
+			<div class="card px-6 py-10 text-center text-[0.8125rem] text-muted-foreground">No sources yet. <button class="text-primary hover:underline" onclick={() => edit(null)}>Add the first one</button>.</div>
 		{:else}
 			{#each sources as s (s.id)}
 				<div class="card flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 max-sm:px-4" data-source={s.name}>
 					<span class="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"><SourceIcon kind={s.kind} class="size-5" /></span>
 					<div class="min-w-0 flex-1">
-						<p class="flex flex-wrap items-center gap-2 text-[14px] font-semibold">
+						<p class="flex flex-wrap items-center gap-2 text-sm font-semibold">
 							{s.name}
 							<span class="badge">{SOURCE_KIND_LABEL[s.kind]}</span>
 							{#if s.writable}<span class="badge badge-warning">Writable</span>{:else}<span class="badge">Read-only</span>{/if}
 						</p>
 						<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground">{describeSource(s)}</p>
-						<p class="mt-0.5 text-[11px] text-muted-foreground">
+						<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">
 							{s.printers === 'all' ? 'All printers' : s.printers.length ? s.printers.map(printerName).join(', ') : 'No printers'}
 						</p>
 					</div>
@@ -225,7 +225,7 @@
 		{/if}
 
 		<section class="card mt-6 space-y-2 p-5 text-xs text-muted-foreground">
-			<h2 class="text-[13px] font-semibold text-foreground">Which type?</h2>
+			<h2 class="text-[0.8125rem] font-semibold text-foreground">Which type?</h2>
 			<p><strong class="text-foreground">Folder</strong> is the recommended NAS route: let Docker mount the NFS or SMB share as a volume (see <code class="font-mono">compose.yaml</code>) and point the source at it. Nothing to install on the NAS, and the fastest option.</p>
 			<p><strong class="text-foreground">SMB share</strong> talks SMB 2.1/3 directly, without mounting (NTLMv2 user and password; Windows, Synology, TrueNAS, Unraid, Samba).</p>
 			<p><strong class="text-foreground">SFTP</strong> works with any SSH server; pin the host key after a successful test. <strong class="text-foreground">WebDAV</strong> covers Nextcloud, ownCloud and Synology WebDAV Server.</p>
@@ -287,7 +287,7 @@
 				<div class={form.kind === 'smb' ? '' : 'sm:col-span-2'}>
 					<label class="label" for="src-path">{pathLabel}</label>
 					<input id="src-path" class="input font-mono text-xs" required={form.kind === 'folder'} placeholder={pathHint} bind:value={form.path} />
-					{#if form.kind === 'folder'}<p class="mt-1 text-[11px] text-muted-foreground">An absolute path inside octo·modern’s container, typically a NAS share mounted as a volume.</p>{/if}
+					{#if form.kind === 'folder'}<p class="mt-1 text-[0.6875rem] text-muted-foreground">An absolute path inside octo·modern’s container, typically a NAS share mounted as a volume.</p>{/if}
 				</div>
 			{/if}
 			{#if form.kind !== 'folder'}
@@ -300,7 +300,7 @@
 			{#if form.kind === 'sftp'}
 				<div class="sm:col-span-2">
 					<label class="label" for="src-hostkey">Pinned host key (optional)</label>
-					<input id="src-hostkey" class="input font-mono text-[11px]" placeholder="SHA256:… — Test shows the server’s key" bind:value={form.hostKey} />
+					<input id="src-hostkey" class="input font-mono text-[0.6875rem]" placeholder="SHA256:… — Test shows the server’s key" bind:value={form.hostKey} />
 				</div>
 				<details class="sm:col-span-2" open={!!editing?.hasPrivateKey}>
 					<summary class="cursor-pointer text-xs text-muted-foreground select-none hover:text-foreground">Sign in with a private key</summary>
@@ -317,22 +317,22 @@
 				</div>
 			{/if}
 			{#if form.kind === 'webdav'}
-				<label class="flex items-center gap-2 self-end pb-2 text-[13px]"><Switch label="Verify TLS certificate" bind:checked={form.verifyTls} />Verify TLS certificate</label>
+				<label class="flex items-center gap-2 self-end pb-2 text-[0.8125rem]"><Switch label="Verify TLS certificate" bind:checked={form.verifyTls} />Verify TLS certificate</label>
 			{/if}
 		</div>
 
 		<div class="space-y-3 rounded-lg border border-border p-3">
 			<div class="flex items-center gap-3">
 				<div class="flex-1">
-					<p class="text-[13px] font-medium">Allow writing</p>
-					<p class="text-[11px] text-muted-foreground">Lets operators save printer files to this source (<em>Save to library</em>). Off: octo·modern only ever reads.</p>
+					<p class="text-[0.8125rem] font-medium">Allow writing</p>
+					<p class="text-[0.6875rem] text-muted-foreground">Lets operators save printer files to this source (<em>Save to library</em>). Off: octo·modern only ever reads.</p>
 				</div>
 				<Switch label="Allow writing" bind:checked={form.writable} />
 			</div>
 			<div class="flex items-center gap-3 border-t border-border pt-3">
 				<div class="flex-1">
-					<p class="text-[13px] font-medium">Available to every printer</p>
-					<p class="text-[11px] text-muted-foreground">Or pick the printers that may print from it. People see sources usable with a printer they can see.</p>
+					<p class="text-[0.8125rem] font-medium">Available to every printer</p>
+					<p class="text-[0.6875rem] text-muted-foreground">Or pick the printers that may print from it. People see sources usable with a printer they can see.</p>
 				</div>
 				<Switch label="Available to every printer" bind:checked={form.allPrinters} />
 			</div>

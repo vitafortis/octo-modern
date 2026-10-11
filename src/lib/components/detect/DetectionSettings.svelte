@@ -63,7 +63,7 @@
 </script>
 
 <section class="card p-5" id="failure-detection">
-	<h2 class="flex items-center gap-2 text-[14px] font-semibold"><ScanEye class="size-4 text-primary" />Failure detection</h2>
+	<h2 class="flex items-center gap-2 text-sm font-semibold"><ScanEye class="size-4 text-primary" />Failure detection</h2>
 	<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
 		Spaghetti detection with Obico’s ML model, running in your own <code class="font-mono">ml_api</code> container. octo·modern sends it one webcam frame at a time; the container
 		downloads each frame from octo·modern through a one-time link, so it needs an address of octo·modern it can reach. Turn detection on per printer, on its Failure detection tab.
@@ -104,7 +104,7 @@
 			</button>
 		</div>
 		{#if result}
-			<div class="mt-3 space-y-1.5 rounded-xl bg-surface p-3 text-[13px]" data-testid="detect-test-result">
+			<div class="mt-3 space-y-1.5 rounded-xl bg-surface p-3 text-[0.8125rem]" data-testid="detect-test-result">
 				{#if result.message}<p class="text-danger">{result.message}</p>{/if}
 				{#if result.health}
 					<p class="flex items-start gap-1.5">{#if result.health.ok}<CircleCheck class="mt-0.5 size-4 shrink-0 text-success" />{:else}<CircleX class="mt-0.5 size-4 shrink-0 text-danger" />{/if}<span><b class="font-medium">Health check:</b> {result.health.message}</span></p>

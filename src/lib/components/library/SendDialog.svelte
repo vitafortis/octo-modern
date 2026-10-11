@@ -98,21 +98,21 @@
 <Dialog bind:open title="Send to printer" description={entry.name} width="max-w-xl">
 	{#if send}
 		<div class="space-y-3 py-2" data-testid="send-progress">
-			<div class="flex items-center gap-2 text-[13px]">
+			<div class="flex items-center gap-2 text-[0.8125rem]">
 				{#if send.state === 'done'}<CircleCheck class="size-4 text-success" />{:else if send.state === 'error' || send.state === 'aborted'}<CircleX class="size-4 text-danger" />{:else}<LoaderCircle class="size-4 animate-spin text-primary" />{/if}
 				<span class="font-medium">
 					{#if send.state === 'sending'}Sending to {send.printerName}…{:else if send.state === 'processing'}{send.printerName} is saving the file…{:else if send.state === 'done'}Done{:else if send.state === 'aborted'}Cancelled{:else}Failed{/if}
 				</span>
-				<span class="ml-auto font-mono text-[11px] text-muted-foreground tabular-nums">{bytes(send.sent)} / {bytes(send.size)}</span>
+				<span class="ml-auto font-mono text-[0.6875rem] text-muted-foreground tabular-nums">{bytes(send.sent)} / {bytes(send.size)}</span>
 			</div>
 			<div class="h-2 overflow-hidden rounded-full bg-muted">
 				<div class="h-full rounded-full transition-[width] duration-300 {send.state === 'error' ? 'bg-danger' : 'bg-primary'}" style="width:{pct}%"></div>
 			</div>
 			{#if send.error}<p class="text-xs text-danger">{send.error}</p>{/if}
-			<p class="text-[11px] text-muted-foreground">Streams from {source.name} straight into OctoPrint. It keeps going if you close this.</p>
+			<p class="text-[0.6875rem] text-muted-foreground">Streams from {source.name} straight into OctoPrint. It keeps going if you close this.</p>
 		</div>
 	{:else if !targets.length}
-		<p class="py-4 text-[13px] text-muted-foreground">There's no printer you can send {source.name}’s files to.</p>
+		<p class="py-4 text-[0.8125rem] text-muted-foreground">There's no printer you can send {source.name}’s files to.</p>
 	{:else}
 		<div class="space-y-4">
 			<div>
@@ -129,8 +129,8 @@
 						>
 							<StateDot state={st} />
 							<span class="min-w-0 flex-1">
-								<span class="block truncate text-[13px] font-medium">{p.name}</span>
-								<span class="block text-[11px] text-muted-foreground">{st ? STATE_LABEL[st] : '…'}</span>
+								<span class="block truncate text-[0.8125rem] font-medium">{p.name}</span>
+								<span class="block text-[0.6875rem] text-muted-foreground">{st ? STATE_LABEL[st] : '…'}</span>
 							</span>
 						</button>
 					{/each}
@@ -148,7 +148,7 @@
 						</select>
 					</div>
 				</div>
-				<label class="flex h-9 items-center gap-2 text-[13px]">
+				<label class="flex h-9 items-center gap-2 text-[0.8125rem]">
 					<Switch label="Start printing" bind:checked={print} />Start printing
 				</label>
 			</div>

@@ -147,7 +147,7 @@
 	{#if loading}
 		<div class="grid h-40 place-items-center"><LoaderCircle class="size-5 animate-spin text-muted-foreground" /></div>
 	{:else}
-		<div class="space-y-5 text-[13px]">
+		<div class="space-y-5 text-[0.8125rem]">
 			<div>
 				<span class="label">Device</span>
 				<div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4" role="radiogroup" aria-label="Device type">
@@ -203,7 +203,7 @@
 			<div class="grid gap-3 sm:grid-cols-2">
 				{#each SECRETS[kind] as f (f.key)}
 					<label class="block">
-						<span class="label flex items-center justify-between">{f.label}{#if !f.plain && hints[f.key] && !clear.includes(f.key)}<button type="button" class="text-[11px] font-normal text-muted-foreground hover:text-danger" onclick={() => forget(f.key)}>Clear saved</button>{/if}</span>
+						<span class="label flex items-center justify-between">{f.label}{#if !f.plain && hints[f.key] && !clear.includes(f.key)}<button type="button" class="text-[0.6875rem] font-normal text-muted-foreground hover:text-danger" onclick={() => forget(f.key)}>Clear saved</button>{/if}</span>
 						<input
 							class="input h-9 text-xs"
 							type={f.plain ? 'text' : 'password'}
@@ -230,7 +230,7 @@
 			</div>
 
 			<div class="space-y-3 rounded-xl border border-border p-3.5">
-				<p class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Automation</p>
+				<p class="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">Automation</p>
 				<div class="flex items-start justify-between gap-3">
 					<div><p class="font-medium">Connect after power-on</p><p class="text-xs text-muted-foreground">Tell OctoPrint to connect once the printer is up, retrying for about 3 minutes.</p></div>
 					<Switch label="Connect after power-on" bind:checked={settings.autoConnect} />
@@ -256,7 +256,7 @@
 			</div>
 
 			<div class="space-y-2 rounded-xl border border-border p-3.5">
-				<p class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Safety</p>
+				<p class="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">Safety</p>
 				<p class="text-xs text-muted-foreground">Turning off asks first while the printer is this hot, and twice while it prints.</p>
 				<div class="grid grid-cols-2 gap-3">
 					<label class="block"><span class="label">Hotend hot from (°C)</span><input class="input h-9 font-mono text-xs" type="number" min="20" max="300" bind:value={settings.hotHotendC} name="hotHotendC" /></label>

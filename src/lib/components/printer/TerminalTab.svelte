@@ -265,7 +265,7 @@
 	{#each FILTERS as f (f.id)}
 		{@const on = hidden.includes(f.id)}
 		<button
-			class="h-6 rounded-md border px-2 text-[11px] transition-colors touch:h-10 touch:px-3 touch:text-[13px] {on ? 'border-primary/40 bg-primary-soft text-primary' : 'border-border text-muted-foreground hover:text-foreground'}"
+			class="h-6 rounded-md border px-2 text-[0.6875rem] transition-colors touch:h-10 touch:px-3 touch:text-[0.8125rem] {on ? 'border-primary/40 bg-primary-soft text-primary' : 'border-border text-muted-foreground hover:text-foreground'}"
 			aria-pressed={on}
 			title="{on ? 'Hidden' : 'Shown'}: {f.hint}"
 			data-filter={f.id}
@@ -292,7 +292,7 @@
 					<div class="card absolute top-full right-0 z-30 mt-1.5 w-[min(18rem,calc(100vw-2rem))] p-3 shadow-surface-lg" role="dialog" aria-label="Line filters">
 						<p class="mb-2 text-xs font-medium">Hide these lines</p>
 						<div class="flex flex-wrap gap-1.5" role="group" aria-label="Hide lines">{@render filterChips()}</div>
-						<p class="mt-2.5 font-mono text-[11px] text-muted-foreground tabular-nums">{rows.length}{rows.length !== total ? ` / ${total}` : ''} lines shown</p>
+						<p class="mt-2.5 font-mono text-[0.6875rem] text-muted-foreground tabular-nums">{rows.length}{rows.length !== total ? ` / ${total}` : ''} lines shown</p>
 					</div>
 				{/if}
 			</div>
@@ -306,11 +306,11 @@
 			/>
 		{:else}
 		<div class="flex flex-wrap items-center gap-1" role="group" aria-label="Hide lines">
-			<span class="mr-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Filter class="size-3" />Hide</span>
+			<span class="mr-0.5 flex items-center gap-1 text-[0.6875rem] text-muted-foreground"><Filter class="size-3" />Hide</span>
 			{@render filterChips()}
 		</div>
 		<div class="ml-auto flex items-center gap-1">
-			<span class="mr-1 font-mono text-[11px] text-muted-foreground tabular-nums" data-testid="line-count">{rows.length}{rows.length !== total ? ` / ${total}` : ''} lines</span>
+			<span class="mr-1 font-mono text-[0.6875rem] text-muted-foreground tabular-nums" data-testid="line-count">{rows.length}{rows.length !== total ? ` / ${total}` : ''} lines</span>
 			<button class="btn btn-ghost btn-sm" onclick={copy} disabled={!rows.length} title="Copy the lines shown">{#if copied}<Check />Copied{:else}<Copy />Copy{/if}</button>
 			<button class="btn btn-ghost btn-sm" onclick={clearView} disabled={!rows.length} title="Clear the view (OctoPrint keeps its log)"><Eraser />Clear</button>
 			{#if canControl}
@@ -322,12 +322,12 @@
 
 	<!-- Log (virtualized: only the rows in view are rendered) -->
 	<div class="relative min-h-0 flex-1">
-		<div class="absolute inset-0 overflow-auto bg-surface/60 font-mono text-[12px] leading-5" bind:this={viewport} bind:clientHeight={height} {onscroll} data-testid="terminal-log" role="log" aria-live="off">
+		<div class="absolute inset-0 overflow-auto bg-surface/60 font-mono text-xs leading-5" bind:this={viewport} bind:clientHeight={height} {onscroll} data-testid="terminal-log" role="log" aria-live="off">
 			<div class="w-max min-w-full px-3" style="height:{rows.length * ROW}px; padding-top:{first * ROW}px">
 				{#each visible as r (r.id)}
 					{@const parts = split(r.text)}
 					<div class="flex h-5 items-center whitespace-pre {KIND_CLASS[r.kind]}" data-line>
-						{#if parts.prefix}<span class="mr-2 w-9 shrink-0 text-[10px] tracking-wide text-muted-foreground/70 uppercase select-none">{parts.prefix}</span>{:else}<span class="mr-2 w-9 shrink-0"></span>{/if}
+						{#if parts.prefix}<span class="mr-2 w-9 shrink-0 text-[0.625rem] tracking-wide text-muted-foreground/70 uppercase select-none">{parts.prefix}</span>{:else}<span class="mr-2 w-9 shrink-0"></span>{/if}
 						<span>{#each highlight(parts.body, query) as p, pi (pi)}{#if p.hit}<mark class="rounded-sm bg-warning/30 text-foreground">{p.text}</mark>{:else}{p.text}{/if}{/each}</span>
 					</div>
 				{/each}
@@ -360,7 +360,7 @@
 						<li role="option" aria-selected={i === sel}>
 							<button
 								type="button"
-								class="flex w-full items-center gap-3 rounded-md px-2 py-1 text-left text-xs touch:py-2.5 touch:text-[13px] {i === sel ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60'}"
+								class="flex w-full items-center gap-3 rounded-md px-2 py-1 text-left text-xs touch:py-2.5 touch:text-[0.8125rem] {i === sel ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60'}"
 								onmousedown={(e) => e.preventDefault()}
 								onclick={() => accept(g)}
 							>
@@ -370,7 +370,7 @@
 							</button>
 						</li>
 					{/each}
-					<li class="kbd-hint px-2 pt-1 pb-0.5 text-[10px] text-muted-foreground/80"><kbd class="kbd">Tab</kbd> complete · <kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> choose · <kbd class="kbd">Esc</kbd> close</li>
+					<li class="kbd-hint px-2 pt-1 pb-0.5 text-[0.625rem] text-muted-foreground/80"><kbd class="kbd">Tab</kbd> complete · <kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> choose · <kbd class="kbd">Esc</kbd> close</li>
 				</ul>
 			{/if}
 			<div class="flex items-end gap-2">
@@ -399,7 +399,7 @@
 				></textarea>
 				<button class="btn btn-primary btn-sm h-9" disabled={!connected || !lineCount || sending} aria-label="Send"><SendHorizontal /><span class="max-sm:hidden">Send{lineCount > 1 ? ` ${lineCount}` : ''}</span></button>
 			</div>
-			<div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[11px] text-muted-foreground max-sm:pl-0">
+			<div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[0.6875rem] text-muted-foreground max-sm:pl-0">
 				<button
 					type="button"
 					class="flex items-center gap-1 rounded px-1 transition-colors {uppercase ? 'text-primary' : 'hover:text-foreground'}"

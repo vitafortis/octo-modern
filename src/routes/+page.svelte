@@ -44,7 +44,7 @@
 				{#each stats as s (s.label)}
 					<div class="card flex items-center justify-between px-3 py-2.5 sm:p-4">
 						<div class="min-w-0">
-							<p class="truncate text-[11px] text-muted-foreground sm:text-xs">{s.label}</p>
+							<p class="truncate text-[0.6875rem] text-muted-foreground sm:text-xs">{s.label}</p>
 							<p class="mt-0.5 text-xl font-semibold tracking-tight tabular-nums sm:mt-1 sm:text-2xl">{s.value}</p>
 						</div>
 						<div class="hidden size-9 place-items-center rounded-lg bg-primary-soft text-primary sm:grid"><s.icon class="size-4" /></div>

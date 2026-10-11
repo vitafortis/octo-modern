@@ -49,22 +49,22 @@
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 				<div class="card flex items-center gap-3 px-4 py-3.5">
 					<div class="grid size-9 place-items-center rounded-lg {overdue ? 'bg-danger/10 text-danger' : 'bg-muted text-muted-foreground'}"><CircleAlert class="size-4" /></div>
-					<div><p class="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Overdue</p><p class="text-xl font-semibold tabular-nums" data-testid="overdue-count">{overdue}</p></div>
+					<div><p class="text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">Overdue</p><p class="text-xl font-semibold tabular-nums" data-testid="overdue-count">{overdue}</p></div>
 				</div>
 				<div class="card flex items-center gap-3 px-4 py-3.5">
 					<div class="grid size-9 place-items-center rounded-lg {due ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}"><Clock class="size-4" /></div>
-					<div><p class="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Due soon</p><p class="text-xl font-semibold tabular-nums">{due}</p></div>
+					<div><p class="text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">Due soon</p><p class="text-xl font-semibold tabular-nums">{due}</p></div>
 				</div>
 				<div class="card flex items-center gap-3 px-4 py-3.5">
 					<div class="grid size-9 place-items-center rounded-lg bg-success/10 text-success"><CircleCheck class="size-4" /></div>
-					<div><p class="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">On track</p><p class="text-xl font-semibold tabular-nums">{tasks.length - overdue - due}</p></div>
+					<div><p class="text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">On track</p><p class="text-xl font-semibold tabular-nums">{tasks.length - overdue - due}</p></div>
 				</div>
 			</div>
 
 			{#each ordered as p (p.id)}
 				{@const mine = tasks.filter((t) => t.printerId === p.id)}
 				<section class="space-y-2">
-					<h2 class="flex items-center gap-2 text-[14px] font-semibold">
+					<h2 class="flex items-center gap-2 text-sm font-semibold">
 						<span class="size-2 rounded-full" style="background:{COLORS[p.color] ?? COLORS.violet}"></span>
 						<a class="hover:underline" href="/p/{p.id}?tab=maintenance">{p.name}</a>
 						{#if mine.some((t) => t.status === 'overdue')}<span class="badge badge-danger">overdue</span>{/if}
@@ -72,7 +72,7 @@
 					<MaintenancePanel printerId={p.id} printerName={p.name} tasks={mine} canControl={!!p.access?.control} compact onchange={load} />
 				</section>
 			{:else}
-				<div class="card px-6 py-10 text-center text-[13px] text-muted-foreground"><Wrench class="mx-auto mb-2 size-5" />No printers yet.</div>
+				<div class="card px-6 py-10 text-center text-[0.8125rem] text-muted-foreground"><Wrench class="mx-auto mb-2 size-5" />No printers yet.</div>
 			{/each}
 
 			<MaintenanceLog {log} showPrinter />

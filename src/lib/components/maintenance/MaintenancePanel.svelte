@@ -93,8 +93,8 @@
 			<div class="dot-grid mask-fade pointer-events-none absolute inset-0"></div>
 			<div class="relative mx-auto max-w-md">
 				<div class="mx-auto grid size-11 place-items-center rounded-xl bg-primary-soft text-primary"><Wrench class="size-5" /></div>
-				<h3 class="mt-4 text-[15px] font-semibold tracking-tight">No maintenance reminders yet</h3>
-				<p class="mt-1.5 text-[13px] text-muted-foreground">Track nozzle changes, belts, lubrication and more by print hours, filament used or days.</p>
+				<h3 class="mt-4 text-[0.9375rem] font-semibold tracking-tight">No maintenance reminders yet</h3>
+				<p class="mt-1.5 text-[0.8125rem] text-muted-foreground">Track nozzle changes, belts, lubrication and more by print hours, filament used or days.</p>
 				{#if canControl}
 					<div class="mt-4 flex flex-wrap justify-center gap-2">
 						<button class="btn btn-primary btn-sm" onclick={() => ((picked = DEFAULT_TASKS.map((d) => d.key)), (defaultsOpen = true))}><ListPlus />Add recommended tasks</button>
@@ -109,17 +109,17 @@
 				{@const st = STATUS[t.status]}
 				<li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3" data-task={t.name} data-status={t.status}>
 					<div class="min-w-0 flex-1 basis-56">
-						<p class="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+						<p class="flex flex-wrap items-center gap-2 text-[0.8125rem] font-medium">
 							{t.name}
 							<span class="badge {st.badge}">{#if t.status !== 'ok'}<span class="size-1.5 rounded-full bg-current"></span>{/if}{st.label}</span>
 						</p>
-						<p class="mt-0.5 text-[11px] text-muted-foreground">
+						<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">
 							Every {t.interval} {METRIC_UNIT[t.metric]} · {t.lastDoneAt ? `done ${ago(t.lastDoneAt)}${t.lastDoneBy ? ` by ${t.lastDoneBy}` : ''}` : `tracking since ${new Date(t.createdAt).toLocaleDateString()}`}
 						</p>
-						{#if t.notes && !compact}<p class="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground/80">{t.notes}</p>{/if}
+						{#if t.notes && !compact}<p class="mt-0.5 line-clamp-2 text-[0.6875rem] text-muted-foreground/80">{t.notes}</p>{/if}
 					</div>
 					<div class="w-full sm:w-44">
-						<div class="flex justify-between font-mono text-[11px] text-muted-foreground tabular-nums"><span>{usageLabel(t)}</span><span>{Math.round(t.progress * 100)}%</span></div>
+						<div class="flex justify-between font-mono text-[0.6875rem] text-muted-foreground tabular-nums"><span>{usageLabel(t)}</span><span>{Math.round(t.progress * 100)}%</span></div>
 						<div class="mt-1 h-1.5 overflow-hidden rounded-full bg-border" role="progressbar" aria-label="{t.name}: {Math.round(t.progress * 100)}% of the interval" aria-valuenow={Math.round(Math.min(1, t.progress) * 100)} aria-valuemin={0} aria-valuemax={100}>
 							<div class="h-full rounded-full {st.bar}" style="width:{Math.min(1, t.progress) * 100}%"></div>
 						</div>
@@ -147,9 +147,9 @@
 
 <Dialog bind:open={() => !!doneTask, (v) => !v && (doneTask = null)} title="Mark “{doneTask?.name ?? ''}” done" description="{printerName} · the count starts again from now">
 	{#if doneTask}
-		<p class="text-[13px] text-muted-foreground">At {usageLabel(doneTask)} {doneTask.metric === 'days' ? '' : `(${METRIC_UNIT[doneTask.metric]})`}. It’s logged with your name and the time.</p>
+		<p class="text-[0.8125rem] text-muted-foreground">At {usageLabel(doneTask)} {doneTask.metric === 'days' ? '' : `(${METRIC_UNIT[doneTask.metric]})`}. It’s logged with your name and the time.</p>
 		<label class="mt-3 block"><span class="label">Notes</span>
-			<textarea id="maintenance-notes" class="input h-24 resize-y py-2 text-[13px]" placeholder="Parts used, what you found…" maxlength="2000" bind:value={doneNotes}></textarea>
+			<textarea id="maintenance-notes" class="input h-24 resize-y py-2 text-[0.8125rem]" placeholder="Parts used, what you found…" maxlength="2000" bind:value={doneNotes}></textarea>
 		</label>
 	{/if}
 	{#snippet footer()}
@@ -170,10 +170,10 @@
 		{#if !editing}
 			<label class="sm:col-span-2"><span class="label">Last done (optional)</span>
 				<input class="input" type="date" max={today()} bind:value={form.lastDone} />
-				<span class="mt-1 block text-[11px] text-muted-foreground">Counts the print history since then; empty starts counting today.</span>
+				<span class="mt-1 block text-[0.6875rem] text-muted-foreground">Counts the print history since then; empty starts counting today.</span>
 			</label>
 		{/if}
-		<label class="sm:col-span-2"><span class="label">Notes</span><textarea class="input h-20 resize-y py-2 text-[13px]" maxlength="1000" bind:value={form.notes}></textarea></label>
+		<label class="sm:col-span-2"><span class="label">Notes</span><textarea class="input h-20 resize-y py-2 text-[0.8125rem]" maxlength="1000" bind:value={form.notes}></textarea></label>
 	</form>
 	{#snippet footer()}
 		<button class="btn btn-ghost btn-sm" onclick={() => (formOpen = false)}>Cancel</button>
@@ -188,8 +188,8 @@
 				<label class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg px-2 py-2 hover:bg-accent/50">
 					<input type="checkbox" class="mt-0.5 size-4 accent-[var(--primary)]" value={d.key} bind:group={picked} />
 					<span>
-						<span class="block text-[13px] font-medium">{d.name} <span class="font-normal text-muted-foreground">· every {d.interval} {METRIC_UNIT[d.metric]}</span></span>
-						<span class="block text-[11px] text-muted-foreground">{d.notes}</span>
+						<span class="block text-[0.8125rem] font-medium">{d.name} <span class="font-normal text-muted-foreground">· every {d.interval} {METRIC_UNIT[d.metric]}</span></span>
+						<span class="block text-[0.6875rem] text-muted-foreground">{d.notes}</span>
 					</span>
 				</label>
 			</li>
@@ -197,7 +197,7 @@
 	</ul>
 	<label class="mt-3 block"><span class="label">Last done (optional)</span>
 		<input class="input" type="date" max={today()} bind:value={defaultsSince} />
-		<span class="mt-1 block text-[11px] text-muted-foreground">Counts the print history since then; empty starts counting today.</span>
+		<span class="mt-1 block text-[0.6875rem] text-muted-foreground">Counts the print history since then; empty starts counting today.</span>
 	</label>
 	{#snippet footer()}
 		<button class="btn btn-ghost btn-sm" onclick={() => (defaultsOpen = false)}>Cancel</button>

@@ -74,7 +74,7 @@
 			</button>
 			{#if open}
 				<form class="card absolute top-full right-0 z-30 mt-1.5 w-72 space-y-3 p-3 shadow-surface-lg" onsubmit={connect}>
-					<p class="flex items-center gap-2 text-[13px] font-medium"><Cable class="size-4 text-primary" />Connect printer</p>
+					<p class="flex items-center gap-2 text-[0.8125rem] font-medium"><Cable class="size-4 text-primary" />Connect printer</p>
 					{#if error}
 						<p class="text-xs text-danger">{error}</p>
 					{:else if !info}

@@ -160,12 +160,12 @@
 			</div>
 			<div>
 				<label class="label" for="d-url">OctoPrint URL</label>
-				<input id="d-url" class="input font-mono text-[13px]" bind:value={baseUrl} disabled={!!request} oninput={() => (browserBase = guessBrowserBase(baseUrl))} />
+				<input id="d-url" class="input font-mono text-[0.8125rem]" bind:value={baseUrl} disabled={!!request} oninput={() => (browserBase = guessBrowserBase(baseUrl))} />
 			</div>
 		</div>
 		{#if https}
 			<div class="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
-				<p class="flex-1 text-[12px]">Verify TLS certificate <span class="text-muted-foreground">· turn off for a self-signed certificate</span></p>
+				<p class="flex-1 text-xs">Verify TLS certificate <span class="text-muted-foreground">· turn off for a self-signed certificate</span></p>
 				<Switch label="Verify TLS certificate" bind:checked={verifyTls} disabled={!!request} />
 			</div>
 		{/if}
@@ -175,7 +175,7 @@
 				<button type="button"
 					role="tab"
 					aria-selected={method === m.id}
-					class="flex h-7 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium transition {method === m.id ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+					class="flex h-7 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition {method === m.id ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 					disabled={!!request && request.state === 'pending'}
 					onclick={() => (method = m.id as typeof method)}><m.icon class="size-3.5" />{m.label}</button
 				>
@@ -184,40 +184,40 @@
 
 		{#if method === 'appkey'}
 			{#if !request || request.state === 'error' || request.state === 'denied' || request.state === 'expired'}
-				<p class="text-[12px] text-muted-foreground">
+				<p class="text-xs text-muted-foreground">
 					octo·modern asks OctoPrint for an Application Key named <span class="font-medium text-foreground">octo·modern</span>. You approve it in OctoPrint, signed in as
 					the user whose permissions the key should have (an admin for full control).
 				</p>
 				<div>
 					<label class="label" for="d-user">OctoPrint user <span class="font-normal">· optional</span></label>
-					<input id="d-user" class="input h-8 text-[13px]" placeholder="Only this user may approve" bind:value={user} />
+					<input id="d-user" class="input h-8 text-[0.8125rem]" placeholder="Only this user may approve" bind:value={user} />
 				</div>
 				{#if request}
 					<p class="flex items-start gap-1.5 text-xs {request.state === 'error' ? 'text-danger' : 'text-warning'}"><CircleAlert class="mt-px size-3.5 shrink-0" />{request.message}</p>
 				{/if}
 			{:else if request.state === 'pending'}
 				<div class="rounded-xl border border-primary/30 bg-primary-soft/40 p-4">
-					<div class="flex items-center gap-2 text-[13px] font-medium"><LoaderCircle class="size-4 animate-spin text-primary" />Waiting for approval in OctoPrint…</div>
-					<p class="mt-1.5 text-[12px] text-muted-foreground">
+					<div class="flex items-center gap-2 text-[0.8125rem] font-medium"><LoaderCircle class="size-4 animate-spin text-primary" />Waiting for approval in OctoPrint…</div>
+					<p class="mt-1.5 text-xs text-muted-foreground">
 						Open OctoPrint and allow access for <span class="font-medium text-foreground">octo·modern</span>. Admins already signed in to OctoPrint also get a prompt there.
 					</p>
 					<a class="btn btn-primary btn-sm mt-3" href={approveLink} target="_blank" rel="noopener noreferrer"><ExternalLink />Approve in OctoPrint</a>
-					<details class="mt-3 text-[11px] text-muted-foreground">
+					<details class="mt-3 text-[0.6875rem] text-muted-foreground">
 						<summary class="cursor-pointer select-none hover:text-foreground">Link doesn’t open?</summary>
 						<p class="mt-1.5">octo·modern reaches OctoPrint at <span class="font-mono">{baseUrl}</span>, which your browser may not. Enter the address you use for OctoPrint:</p>
 						<input class="input mt-1.5 h-8 font-mono text-xs" bind:value={browserBase} aria-label="OctoPrint address in your browser" />
 					</details>
-					<p class="mt-2 text-[11px] text-muted-foreground">Gives up in {Math.floor(request.expiresIn / 60)}:{String(request.expiresIn % 60).padStart(2, '0')}.</p>
+					<p class="mt-2 text-[0.6875rem] text-muted-foreground">Gives up in {Math.floor(request.expiresIn / 60)}:{String(request.expiresIn % 60).padStart(2, '0')}.</p>
 				</div>
 			{:else if request.state === 'approved'}
-				<p class="flex items-center gap-1.5 text-[13px] text-success"><CircleCheck class="size-4" />Approved. {busy ? 'Testing and saving…' : ''}</p>
+				<p class="flex items-center gap-1.5 text-[0.8125rem] text-success"><CircleCheck class="size-4" />Approved. {busy ? 'Testing and saving…' : ''}</p>
 			{/if}
 		{:else}
 			<div>
 				<label class="label" for="d-key">API key</label>
 				<!-- svelte-ignore a11y_autofocus -->
-				<input id="d-key" class="input font-mono text-[13px]" type="password" autocomplete="off" autofocus placeholder="Application Key or user API key" bind:value={apiKey} />
-				<p class="mt-1 text-[11px] text-muted-foreground">In OctoPrint: <b class="font-medium text-foreground">Settings → Application Keys</b>, or <b class="font-medium text-foreground">User Settings → API key</b>.</p>
+				<input id="d-key" class="input font-mono text-[0.8125rem]" type="password" autocomplete="off" autofocus placeholder="Application Key or user API key" bind:value={apiKey} />
+				<p class="mt-1 text-[0.6875rem] text-muted-foreground">In OctoPrint: <b class="font-medium text-foreground">Settings → Application Keys</b>, or <b class="font-medium text-foreground">User Settings → API key</b>.</p>
 			</div>
 		{/if}
 
