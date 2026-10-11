@@ -278,7 +278,7 @@
 	<div class="flex h-(--app-h,100dvh) flex-col overflow-hidden lg:flex-row">
 		<!-- Phones and tablets: a slim bar with the menu, where you are, and search. -->
 		<header class="z-30 shrink-0 border-b border-border bg-surface/95 pt-safe backdrop-blur-md lg:hidden" style="padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)" data-testid="topbar">
-			<div class="flex h-13 items-center gap-1 px-1.5">
+			<div class="flex h-13 items-center gap-1 px-1.5 short:h-11">
 				<button class="btn btn-ghost btn-icon" aria-label="Open menu" aria-expanded={drawerOpen} onclick={() => (drawerOpen = true)}><Menu class="size-5!" /></button>
 				<a href="/" class="shrink-0 p-1" aria-label="octo·modern home"><Logo size={24} /></a>
 				<div class="flex min-w-0 flex-1 items-center gap-2 pl-1.5">

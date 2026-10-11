@@ -61,7 +61,7 @@
 <div class="flex h-full flex-col overflow-hidden">
 	<header class="relative shrink-0 border-b border-border">
 		<div class="glow-top pointer-events-none absolute inset-x-0 -top-10 h-48 opacity-70"></div>
-		<div class="page-x relative flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 pb-2 lg:gap-y-3 lg:pt-6 lg:pb-4">
+		<div class="page-x relative flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 pb-2 short:py-1 lg:gap-y-3 lg:pt-6 lg:pb-4">
 			<span class="hidden size-2.5 rounded-full lg:block" style="background:{color}; box-shadow:0 0 10px {color}"></span>
 			<div class="min-w-0 flex-1 lg:flex-none">
 				<div class="flex items-center gap-2.5">
@@ -69,7 +69,7 @@
 					<h1 class="hidden truncate text-2xl font-semibold tracking-tight lg:block">{printer.name}</h1>
 					<StateBadge state={s.state} text={s.stateText} />
 				</div>
-				<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+				<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground short:hidden">
 					{printer.baseUrl.replace(/^https?:\/\//, '')}{#if s.version}{' · '}OctoPrint {s.version}{/if}
 				</p>
 			</div>
@@ -97,7 +97,7 @@
 		<nav bind:this={strip} class="scrollbar-none relative flex snap-x gap-1 overflow-x-auto px-2 sm:px-4 lg:px-6" aria-label="Printer sections">
 			{#each TABS as t (t.id)}
 				<button
-					class="relative flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-t-lg px-3 text-[13px] font-medium transition-colors touch:h-11 touch:text-sm lg:h-9 {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+					class="relative flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-t-lg px-3 text-[13px] font-medium transition-colors touch:h-11 touch:text-sm short:h-9 lg:h-9 {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 					aria-current={tab.id === t.id ? 'page' : undefined}
 					onclick={() => openTab(t.id)}
 				>

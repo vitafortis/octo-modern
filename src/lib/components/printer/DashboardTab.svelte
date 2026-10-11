@@ -19,7 +19,7 @@
 			</div>
 		{/if}
 		<!-- Below xl one column: webcam, job, temperatures, server. -->
-		<WebcamView printerId={printer.id} compact class="order-1 w-full" height="min(24rem, 40vh)" />
+		<WebcamView printerId={printer.id} compact class="order-1 w-full short:mx-auto short:max-w-[calc(75dvh*16/9)]" height="min(24rem, 40vh)" />
 		<div class="order-3 min-w-0"><TemperatureCard {live} {canControl} /></div>
 	</div>
 	<div class="contents space-y-4 xl:block">

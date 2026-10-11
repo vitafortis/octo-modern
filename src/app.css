@@ -6,6 +6,8 @@
 /* Touch screens (phones, tablets): bigger targets, no keyboard hints. `touch:hidden`, `touch:h-11`… */
 @custom-variant touch (@media (pointer: coarse));
 @custom-variant mouse (@media (pointer: fine));
+/* Phones held sideways: little height, so chrome gets tighter. */
+@custom-variant short (@media (max-height: 30rem));
 
 /* Palette follows Arcane: a violet primary (hue 292) over faintly violet-tinted neutrals. */
 :root {

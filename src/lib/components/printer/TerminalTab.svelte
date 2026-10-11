@@ -275,7 +275,7 @@
 {/snippet}
 
 <!-- Fills the space under the tabs; on phones down to the keyboard when it's up. -->
-<div class="card flex min-h-[16rem] flex-1 flex-col overflow-hidden lg:min-h-[28rem]" data-testid="terminal-tab">
+<div class="card flex min-h-[16rem] flex-1 flex-col overflow-hidden short:min-h-[11rem] lg:min-h-[28rem]" data-testid="terminal-tab">
 	<!-- Toolbar -->
 	<div class="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 max-sm:px-2">
 		<div class="relative max-sm:min-w-0 max-sm:flex-1">
