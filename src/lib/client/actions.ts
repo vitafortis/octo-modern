@@ -67,19 +67,26 @@ export function disconnectPrinter(id: string, printing: boolean) {
 	);
 }
 
+/** Klipper: FIRMWARE_RESTART (or RESTART, which only reloads the host); the server asks first mid-print. */
+export function restartKlipper(id: string, command: 'firmware_restart' | 'restart' = 'firmware_restart') {
+	return act(`${base(id)}/connection`, { command }, { done: command === 'restart' ? 'Restarting Klipper…' : 'Firmware restart sent', failed: 'Could not restart Klipper' });
+}
+
 /** Sends G-code; the server asks for confirmation while printing. */
 export function sendGcode(id: string, commands: string[]) {
 	return act(`${base(id)}/command`, { commands }, { failed: 'Could not send G-code' });
 }
 
-export function emergencyStop(id: string, name: string) {
+export function emergencyStop(id: string, name: string, klipper = false) {
 	return act(
 		`${base(id)}/command`,
 		{ commands: ['M112'] },
 		{
 			ask: {
 				title: `Emergency stop ${name}?`,
-				body: 'Sends M112: the firmware halts heaters and motors immediately. The printer has to be reset (power-cycled or reconnected) afterwards, and a running print is lost.',
+				body: klipper
+					? 'Klipper’s emergency stop: heaters and motors halt immediately and Klipper shuts down. Bring it back with a firmware restart; a running print is lost.'
+					: 'Sends M112: the firmware halts heaters and motors immediately. The printer has to be reset (power-cycled or reconnected) afterwards, and a running print is lost.',
 				detail: 'M112',
 				confirmLabel: 'Emergency stop',
 				danger: true

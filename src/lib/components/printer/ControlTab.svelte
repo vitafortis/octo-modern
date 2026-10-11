@@ -32,7 +32,7 @@
 	import { isConnected } from '#lib/printer.ts';
 	import type { TabProps } from './tabs.ts';
 
-	let { live, canControl }: TabProps = $props();
+	let { printer, live, canControl }: TabProps = $props();
 
 	let info = $state<ControlInfo | null>(null);
 	let loadError = $state('');
@@ -401,8 +401,12 @@
 	<!-- OctoPrint's custom controls -->
 	{#if info && (info.controls.length || info.controlsError)}
 		<section class="card p-4" data-testid="custom-controls">
-			<h2 class="flex items-center gap-2 text-sm font-semibold"><SlidersHorizontal class="size-4 text-primary" />Custom controls</h2>
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><SlidersHorizontal class="size-4 text-primary" />{printer.kind === 'moonraker' ? 'Macros' : 'Custom controls'}</h2>
+			{#if printer.kind === 'moonraker'}
+				<p class="mt-0.5 text-xs text-muted-foreground">Klipper’s <span class="font-mono">gcode_macro</span>s (names starting with <span class="font-mono">_</span> are hidden). While printing, you’ll be asked first.</p>
+			{:else}
 			<p class="mt-0.5 text-xs text-muted-foreground">From OctoPrint’s <span class="font-mono">config.yaml</span> (<span class="font-mono">controls</span>). Commands are sent as G-code; while printing, you’ll be asked first.</p>
+			{/if}
 			<div class="mt-3">
 				{#if info.controlsError}
 					<p class="text-xs text-danger">Couldn’t load them: {info.controlsError}</p>

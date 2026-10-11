@@ -30,7 +30,7 @@
 		<div class="flex items-start gap-3">
 			<div class="min-w-0 flex-1">
 				<h3 class="truncate text-[0.9375rem] font-semibold tracking-tight">{printer.name}</h3>
-				<p class="mt-0.5 truncate font-mono text-[0.6875rem] text-muted-foreground">{printer.baseUrl.replace(/^https?:\/\//, '')}</p>
+				<p class="mt-0.5 truncate font-mono text-[0.6875rem] text-muted-foreground">{#if printer.kind === 'moonraker'}<span class="mr-1 font-sans font-medium text-primary">Klipper</span>{/if}{printer.baseUrl.replace(/^https?:\/\//, '')}</p>
 			</div>
 			{#if s}<StateBadge state={s.state} text={s.stateText} />{:else}<span class="badge animate-pulse">Loading</span>{/if}
 		</div>
@@ -41,7 +41,7 @@
 				<div class="min-w-0"><p class="font-medium text-foreground">{s.problem?.message ?? 'Unreachable'}</p>{#if s.problem?.hint}<p class="mt-0.5 line-clamp-2 text-muted-foreground">{s.problem.hint}</p>{/if}</div>
 			</div>
 		{:else if s?.state === 'disconnected'}
-			<p class="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><Unplug class="size-3.5" />OctoPrint is up; no printer connected.</p>
+			<p class="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><Unplug class="size-3.5" />{printer.kind === 'moonraker' ? 'Moonraker is up; Klipper isn’t connected.' : 'OctoPrint is up; no printer connected.'}</p>
 		{/if}
 
 		{#if active && s}

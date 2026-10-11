@@ -146,6 +146,8 @@ export class MoonrakerFeed {
 			this.lastTargets = targets;
 		}
 		if (this.version) next.version = this.version;
+		// The file being printed can't be deleted (Moonraker refuses too).
+		this.model.busyFiles = filename && (next.state === 'printing' || next.state === 'paused') ? [{ origin: 'local', path: filename }] : [];
 		this.model.applyLive({ ...next, source }, { samples, history }, now);
 		for (const e of this.transitions.next(this.status, klippy)) this.model.emitEvent(e.name, e.payload);
 	}

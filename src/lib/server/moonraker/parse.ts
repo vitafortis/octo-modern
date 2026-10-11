@@ -253,7 +253,7 @@ export function progressFromStatus(status: Status, meta: FileMeta | null): Progr
 		left = 0;
 	} else if (meta?.estimatedTime && printDuration != null) {
 		left = Math.max(0, meta.estimatedTime - printDuration);
-		origin = 'estimate';
+		origin = 'slicer';
 	} else if (fraction && fraction > 0.01 && printDuration) {
 		left = Math.max(0, printDuration / fraction - printDuration);
 		origin = 'linear';
@@ -503,7 +503,7 @@ export function macroControls(objects: string[]): CustomControl[] {
 		.sort((a, b) => a.localeCompare(b))
 		.slice(0, 80);
 	if (!names.length) return [];
-	return [{ kind: 'section', name: 'Macros', layout: 'horizontal_grid', collapsed: false, children: names.map((n) => ({ kind: 'command', name: n, commands: [n], confirm: null, inputs: [] })) }];
+	return [{ kind: 'section', name: null, layout: 'horizontal_grid', collapsed: false, children: names.map((n) => ({ kind: 'command', name: n, commands: [n], confirm: null, inputs: [] })) }];
 }
 
 /** A printer profile (build volume, extruders, bed) from Klipper's `configfile.settings`. */

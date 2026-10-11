@@ -107,7 +107,7 @@ test('snapshot: job, progress through the G-code body, slicer estimate, temps an
 	assert.equal(s.progress?.completion, 50, '(5040 - 40) / (10040 - 40)');
 	assert.equal(s.progress?.printTime, 1300, 'elapsed including pauses');
 	assert.equal(s.progress?.printTimeLeft, 2400, 'slicer estimate minus time printed');
-	assert.equal(s.progress?.printTimeLeftOrigin, 'estimate');
+	assert.equal(s.progress?.printTimeLeftOrigin, 'slicer');
 	assert.deepEqual(s.temps, { tool0: { actual: 214.57, target: 215 }, bed: { actual: 59.9, target: 60 } });
 	assert.equal(s.currentZ, 4.2);
 	// No metadata: virtual_sdcard progress and a linear estimate.
@@ -469,4 +469,23 @@ test('stored Klipper printer: backend, manager polling, OctoPrint-only features 
 		{ job_id: 'b', filename: 'z.gcode', status: 'in_progress', start_time: 300 }
 	]);
 	assert.deepEqual(jobs.map((j) => [j.key, j.file, j.result, j.reason, j.startedAt, j.endedAt]), [['moonraker:a', 'y.gcode', 'failed', 'klippy_shutdown', 100_000, 200_000]]);
+});
+
+test('discovery: Moonraker fingerprint (it beats the /api/version emulation) and _moonraker._tcp candidates', async () => {
+	const { analyzeFingerprint } = await import('../src/lib/server/discovery/fingerprint.ts');
+	const { moonrakerCandidates, MDNS_TYPES } = await import('../src/lib/server/discovery/lan.ts');
+	const fp = analyzeFingerprint({
+		serverInfo: { status: 200, body: JSON.stringify({ result: { klippy_state: 'ready', moonraker_version: 'v0.9.3-1-gabc', api_version_string: '1.5.0' } }) },
+		version: { status: 200, body: JSON.stringify({ server: '1.5.0', api: '0.1', text: 'OctoPrint (Moonraker v0.9.3)' }) }
+	});
+	assert.deepEqual([fp.kind, fp.confidence, fp.version, fp.loginRequired], ['moonraker', 'confirmed', 'v0.9.3', false]);
+	const locked = analyzeFingerprint({ serverInfo: { status: 401, body: JSON.stringify({ error: { code: 401, message: 'Unauthorized' } }) } });
+	assert.deepEqual([locked.kind, locked.loginRequired], ['moonraker', true]);
+	assert.equal(analyzeFingerprint({ serverInfo: { status: 404, body: 'nope' }, version: { status: 200, body: JSON.stringify({ server: '1.11.8', api: '0.1', text: 'OctoPrint 1.11.8' }) } }).kind, undefined, 'OctoPrint stays OctoPrint');
+	assert.equal(MDNS_TYPES.moonraker, '_moonraker._tcp.local');
+	const [c] = await moonrakerCandidates(
+		[{ instance: 'Moonraker Instance on voron', host: 'voron.local', port: 7125, addresses: ['192.0.2.10'], txt: {}, from: ['192.0.2.10'] }],
+		{ probe: async (_h, p) => p === 7125, fingerprint: async () => fp }
+	);
+	assert.deepEqual([c.name, c.baseUrl, c.fingerprint.kind, c.source.ref], ['voron', 'http://192.0.2.10:7125', 'moonraker', 'moonraker:Moonraker Instance on voron']);
 });

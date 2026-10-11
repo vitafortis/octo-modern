@@ -49,7 +49,9 @@
 		</div>
 		<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 			<SourceBadge source={candidate.source} />
-			{#if fp.confidence === 'confirmed'}
+			{#if fp.kind === 'moonraker'}
+				<span class="badge badge-primary" title={fp.signals.join('\n')}>Klipper · Moonraker{fp.version ? ` ${fp.version}` : ''}</span>
+			{:else if fp.confidence === 'confirmed'}
 				<span class="badge badge-primary" title={fp.signals.join('\n')}>OctoPrint{fp.version ? ` ${fp.version}` : ''}</span>
 			{:else if fp.confidence === 'possible'}
 				<span class="badge badge-warning" title={fp.signals.join('\n')}>maybe OctoPrint</span>

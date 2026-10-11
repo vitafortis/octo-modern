@@ -148,9 +148,9 @@ export async function startMockArcane({ port, apiKey, voronPort }) {
 	return { server, close: () => new Promise((r) => server.close(r)) };
 }
 
-/** Answers `_octoprint._tcp.local` queries over unicast, like an OctoPi would over multicast. */
-export async function startMdnsResponder({ port, instance, target, ip, servicePort, version }) {
-	const SERVICE = '_octoprint._tcp.local';
+/** Answers `_octoprint._tcp.local` (or `service`, e.g. Moonraker's `_moonraker._tcp.local`) queries over unicast, like an OctoPi would over multicast. */
+export async function startMdnsResponder({ port, instance, target, ip, servicePort, version, service = '_octoprint._tcp.local', txt = null }) {
+	const SERVICE = service;
 	const fqdn = `${instance}.${SERVICE}`;
 	const socket = createSocket('udp4');
 	let queries = 0;
@@ -169,7 +169,7 @@ export async function startMdnsResponder({ port, instance, target, ip, servicePo
 				answers: [{ name: SERVICE, type: TYPE.PTR, class: 1, ttl: 4500, data: fqdn }],
 				additionals: [
 					{ name: fqdn, type: TYPE.SRV, class: 0x8001, ttl: 120, data: { priority: 0, weight: 0, port: servicePort, target } },
-					{ name: fqdn, type: TYPE.TXT, class: 0x8001, ttl: 4500, data: { path: '/', version, api: '0.1', model: 'Raspberry Pi 4 Model B Rev 1.4' } },
+					{ name: fqdn, type: TYPE.TXT, class: 0x8001, ttl: 4500, data: txt ?? { path: '/', version, api: '0.1', model: 'Raspberry Pi 4 Model B Rev 1.4' } },
 					{ name: target, type: TYPE.A, class: 0x8001, ttl: 120, data: ip }
 				]
 			}),

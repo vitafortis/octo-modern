@@ -30,6 +30,8 @@
 	let timer: ReturnType<typeof setInterval> | undefined;
 
 	const open = $derived(target !== null);
+	// Klipper (Moonraker): no Application Keys; a key only if Moonraker asks for one.
+	const klipper = $derived(target?.candidate.fingerprint.kind === 'moonraker');
 	const https = $derived(/^https:/i.test(baseUrl));
 
 	/** Where the browser (not octo·modern's server) can open OctoPrint. */
@@ -56,7 +58,7 @@
 		name = t.candidate.saved?.name ?? t.candidate.name;
 		baseUrl = t.url;
 		verifyTls = !t.candidate.insecureTls;
-		method = t.candidate.fingerprint.appkeys || t.candidate.fingerprint.confidence !== 'none' ? 'appkey' : 'paste';
+		method = t.candidate.fingerprint.kind !== 'moonraker' && (t.candidate.fingerprint.appkeys || t.candidate.fingerprint.confidence !== 'none') ? 'appkey' : 'paste';
 		browserBase = guessBrowserBase(t.url);
 	});
 
@@ -127,6 +129,7 @@
 				name,
 				baseUrl,
 				verifyTls,
+				kind: klipper ? 'moonraker' : 'octoprint',
 				...(method === 'appkey' && request ? { appKeyRequest: request.id } : { apiKey }),
 				force
 			});
@@ -149,7 +152,7 @@
 <Dialog
 	bind:open={() => open, (v) => !v && close()}
 	title={target ? `Add ${target.candidate.name}` : 'Add printer'}
-	description="octo·modern needs an API key. Approve it in OctoPrint, or paste one."
+	description={klipper ? 'A Klipper printer (Moonraker). It needs an API key only if Moonraker isn’t set to trust octo·modern’s address.' : 'octo·modern needs an API key. Approve it in OctoPrint, or paste one.'}
 	width="max-w-xl"
 >
 	<div class="space-y-4">
@@ -159,7 +162,7 @@
 				<input id="d-name" class="input" bind:value={name} disabled={!!request} />
 			</div>
 			<div>
-				<label class="label" for="d-url">OctoPrint URL</label>
+				<label class="label" for="d-url">{klipper ? 'Moonraker URL' : 'OctoPrint URL'}</label>
 				<input id="d-url" class="input font-mono text-[0.8125rem]" bind:value={baseUrl} disabled={!!request} oninput={() => (browserBase = guessBrowserBase(baseUrl))} />
 			</div>
 		</div>
@@ -170,6 +173,7 @@
 			</div>
 		{/if}
 
+		{#if !klipper}
 		<div class="inline-flex rounded-lg border border-border bg-surface p-0.5" role="tablist">
 			{#each [{ id: 'appkey', label: 'Approve in OctoPrint', icon: ShieldCheck }, { id: 'paste', label: 'Paste a key', icon: KeyRound }] as m (m.id)}
 				<button type="button"
@@ -181,8 +185,9 @@
 				>
 			{/each}
 		</div>
+		{/if}
 
-		{#if method === 'appkey'}
+		{#if method === 'appkey' && !klipper}
 			{#if !request || request.state === 'error' || request.state === 'denied' || request.state === 'expired'}
 				<p class="text-xs text-muted-foreground">
 					octo·modern asks OctoPrint for an Application Key named <span class="font-medium text-foreground">octo·modern</span>. You approve it in OctoPrint, signed in as
@@ -214,10 +219,14 @@
 			{/if}
 		{:else}
 			<div>
-				<label class="label" for="d-key">API key</label>
+				<label class="label" for="d-key">API key{#if klipper}<span class="font-normal"> · optional</span>{/if}</label>
 				<!-- svelte-ignore a11y_autofocus -->
-				<input id="d-key" class="input font-mono text-[0.8125rem]" type="password" autocomplete="off" autofocus placeholder="Application Key or user API key" bind:value={apiKey} />
+				<input id="d-key" class="input font-mono text-[0.8125rem]" type="password" autocomplete="off" autofocus placeholder={klipper ? 'Leave empty on a trusted network' : 'Application Key or user API key'} bind:value={apiKey} />
+				{#if klipper}
+					<p class="mt-1 text-[0.6875rem] text-muted-foreground">Only if Moonraker asks for one (Mainsail: <b class="font-medium text-foreground">Settings → Authorization</b>). Otherwise add octo·modern’s address to <code class="font-mono">trusted_clients</code> in moonraker.conf.</p>
+				{:else}
 				<p class="mt-1 text-[0.6875rem] text-muted-foreground">In OctoPrint: <b class="font-medium text-foreground">Settings → Application Keys</b>, or <b class="font-medium text-foreground">User Settings → API key</b>.</p>
+				{/if}
 			</div>
 		{/if}
 
@@ -238,12 +247,12 @@
 			<button type="button" class="btn btn-ghost mr-auto" onclick={cancelRequest}><X />Stop waiting</button>
 		{/if}
 		<button type="button" class="btn btn-secondary" onclick={close}>Cancel</button>
-		{#if method === 'appkey' && request?.state !== 'pending'}
+		{#if method === 'appkey' && !klipper && request?.state !== 'pending'}
 			<button type="button" class="btn btn-primary" disabled={busy || !baseUrl || request?.state === 'approved'} onclick={requestKey}>
 				{#if busy}<LoaderCircle class="animate-spin" />{:else}<ShieldCheck />{/if}{request ? 'Request again' : 'Request a key'}
 			</button>
-		{:else if method === 'paste'}
-			<button type="button" class="btn btn-primary" disabled={busy || !baseUrl || apiKey.trim().length < 8} onclick={() => save()}>
+		{:else if method === 'paste' || klipper}
+			<button type="button" class="btn btn-primary" disabled={busy || !baseUrl || (!klipper && apiKey.trim().length < 8)} onclick={() => save()}>
 				{#if busy}<LoaderCircle class="animate-spin" />{/if}Test and add
 			</button>
 		{/if}

@@ -250,7 +250,7 @@
 								class="w-full rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground"
 								onclick={() => (editor.target = 'new')}
 							>
-								No printers yet.<br /><span class="text-primary">Add an OctoPrint server →</span>
+								No printers yet.<br /><span class="text-primary">Add a printer →</span>
 							</button>
 						{:else if !rail}
 							<p class="px-3 py-4 text-center text-xs text-muted-foreground">No printers shared with you yet.</p>

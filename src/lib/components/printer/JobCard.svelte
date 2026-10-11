@@ -5,7 +5,7 @@
 	import type { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { filamentMeters, formatDuration, formatEta, jobActive, progressPercent } from '#lib/printer.ts';
 
-	let { live, canControl }: { live: LivePrinter; canControl: boolean } = $props();
+	let { live, canControl, kind = 'octoprint' }: { live: LivePrinter; canControl: boolean; kind?: 'octoprint' | 'moonraker' } = $props();
 
 	const s = $derived(live.snapshot);
 	const file = $derived(s.job?.file ?? null);
@@ -43,7 +43,7 @@
 				<p class="min-w-0 flex-1 text-[0.9375rem] font-semibold tracking-tight [overflow-wrap:anywhere] sm:truncate" title={file.path}>{file.display}</p>
 				{#if file.origin === 'local'}<a class="btn btn-ghost btn-sm -mt-1 -mr-2 shrink-0" href="?tab=preview" title="Toolpath preview{active ? ', following the print' : ''}"><Box />Preview</a>{/if}
 			</div>
-			<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">{ORIGIN[file.origin] ?? file.origin}{file.size != null ? ` · ${bytes(file.size)}` : ''}{s.job?.user ? ` · started by ${s.job.user}` : ''}</p>
+			<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">{kind === 'moonraker' && file.origin === 'local' ? 'Klipper' : (ORIGIN[file.origin] ?? file.origin)}{file.size != null ? ` · ${bytes(file.size)}` : ''}{s.job?.user ? ` · started by ${s.job.user}` : ''}</p>
 		{:else}
 			<p class="text-[0.8125rem] text-muted-foreground">No file selected. Choose one in the Files tab{canControl ? '' : ' (operators)'}.</p>
 		{/if}

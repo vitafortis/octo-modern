@@ -28,6 +28,7 @@
 	import { errorMessage } from '#lib/client/api.ts';
 	import { toast } from '#lib/client/state.svelte.ts';
 	import { formatDuration, jobActive } from '#lib/printer.ts';
+	import { features } from '#lib/printer-kind.ts';
 	import type { FileEntry, FileListing } from '#lib/types.ts';
 	import type { TabProps } from './tabs.ts';
 	import LibraryPickerDialog from '../library/LibraryPickerDialog.svelte';
@@ -40,6 +41,9 @@
 	import { listLayout } from '#lib/client/viewport.svelte.ts';
 
 	let { printer, live, canControl }: TabProps = $props();
+	// Klipper starts a file when it loads it: no "load without printing".
+	const canLoad = $derived(features(printer).selectWithoutPrint);
+	const serverName = $derived(printer.kind === 'moonraker' ? 'Klipper' : 'OctoPrint');
 
 	/** The printer page's Preview tab for a file (the date busts the parsed-file cache after a re-upload). */
 	const canPreview = (f: FileEntry) => f.type === 'machinecode' && f.origin === 'local' && !/\.bgcode$/i.test(f.name);
@@ -252,7 +256,7 @@
 					<span class="min-w-0 flex-1 truncate">{u.name}</span>
 					<div class="h-1.5 w-48 overflow-hidden max-sm:w-16 rounded-full bg-muted"><div class="h-full rounded-full transition-[width] {u.state === 'error' ? 'bg-danger' : 'bg-primary'}" style="width:{pct}%"></div></div>
 					<span class="w-40 text-right font-mono text-[0.6875rem] text-muted-foreground max-sm:hidden">
-						{u.state === 'processing' ? 'OctoPrint is saving…' : u.state === 'error' ? 'failed' : u.state === 'aborted' ? 'cancelled' : u.state === 'done' ? 'done' : `${bytes(u.loaded)} / ${bytes(u.size)}`}
+						{u.state === 'processing' ? `${serverName} is saving…` : u.state === 'error' ? 'failed' : u.state === 'aborted' ? 'cancelled' : u.state === 'done' ? 'done' : `${bytes(u.loaded)} / ${bytes(u.size)}`}
 					</span>
 					{#if u.state === 'uploading'}<button class="btn btn-ghost btn-icon btn-sm" title="Cancel upload" aria-label="Cancel upload" onclick={u.abort}><X /></button>{/if}
 				</div>
@@ -310,10 +314,10 @@
 							actions={[
 								{ label: 'Preview toolpath', icon: Box, hidden: !canPreview(f), onclick: () => goto(previewHref(f)) },
 								{ label: 'Print', icon: Play, hidden: !canControl || f.type !== 'machinecode', disabled: !ready, hint: ready ? undefined : jobActive(s.state) ? 'A print is already running' : 'Connect the printer first', onclick: () => printFile(printer.id, f, true) },
-								{ label: 'Load without printing', icon: FileCode2, hidden: !canControl || f.type !== 'machinecode', disabled: !ready || current === key, onclick: () => printFile(printer.id, f, false) },
+								{ label: 'Load without printing', icon: FileCode2, hidden: !canControl || !canLoad || f.type !== 'machinecode', disabled: !ready || current === key, onclick: () => printFile(printer.id, f, false) },
 								{ label: 'Add to queue', icon: ListPlus, hidden: !(canControl && f.type === 'machinecode' && f.origin === 'local'), hint: 'Prints here once the bed is confirmed clear', onclick: () => addPrinterFileJob(printer.id, f.path) },
 								{ label: 'Save to library', icon: Save, hidden: !(canControl && f.type === 'machinecode' && f.origin === 'local' && writableSources.length), onclick: () => (saving = f) },
-								{ label: `Delete ${f.type === 'folder' ? 'folder' : 'file'}`, icon: Trash2, danger: true, hidden: !canControl, disabled: inUse, hint: inUse ? 'In use by OctoPrint' : undefined, onclick: async () => (await deleteFile(printer.id, f)) && load() }
+								{ label: `Delete ${f.type === 'folder' ? 'folder' : 'file'}`, icon: Trash2, danger: true, hidden: !canControl, disabled: inUse, hint: inUse ? `In use by ${serverName}` : undefined, onclick: async () => (await deleteFile(printer.id, f)) && load() }
 							]}
 						/>
 					</li>
@@ -324,7 +328,7 @@
 				{/each}
 			</ul>
 			{#if listing.free != null}
-				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on OctoPrint</p>
+				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on {serverName}</p>
 			{/if}
 		{:else}
 			<table class="w-full text-left text-[0.8125rem]">
@@ -387,7 +391,7 @@
 												title={ready ? `Print ${f.display}` : jobActive(s.state) ? 'A print is already running' : 'Connect the printer first'}
 												onclick={() => printFile(printer.id, f, true)}><Play />Print</button
 											>
-											<button class="btn btn-ghost btn-sm" disabled={!ready || current === key} title="Load without starting" onclick={() => printFile(printer.id, f, false)}>Load</button>
+											{#if canLoad}<button class="btn btn-ghost btn-sm" disabled={!ready || current === key} title="Load without starting" onclick={() => printFile(printer.id, f, false)}>Load</button>{/if}
 										{/if}
 										{#if f.type === 'machinecode' && f.origin === 'local'}
 											<button class="btn btn-ghost btn-icon btn-sm" title="Add to the queue (prints here once the bed is confirmed clear)" aria-label="Queue {f.display}" onclick={() => addPrinterFileJob(printer.id, f.path)}><ListPlus /></button>
@@ -397,7 +401,7 @@
 										{/if}
 										<button
 											class="btn btn-ghost btn-icon btn-sm hover:text-danger"
-											title={inUse ? 'In use by OctoPrint' : `Delete ${f.display}`}
+											title={inUse ? `In use by ${serverName}` : `Delete ${f.display}`}
 											aria-label="Delete {f.display}"
 											disabled={inUse}
 											onclick={async () => (await deleteFile(printer.id, f)) && load()}><Trash2 /></button
@@ -416,7 +420,7 @@
 				</tbody>
 			</table>
 			{#if listing.free != null}
-				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on OctoPrint</p>
+				<p class="border-t border-border bg-surface px-4 py-2 text-[0.6875rem] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on {serverName}</p>
 			{/if}
 		{/if}
 	</div>
