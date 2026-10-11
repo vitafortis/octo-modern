@@ -42,7 +42,7 @@
 
 <div class="h-full overflow-y-auto">
 	<PageHeader title="Maintenance" description="Reminders per printer, counted in print hours, filament or days from the print history." />
-	<div class="space-y-6 px-4 pb-10 sm:px-8">
+	<div class="page-x space-y-6 pb-10">
 		{#if error}
 			<div class="card px-4 py-6 text-center text-xs text-danger">{error}</div>
 		{:else if loaded}

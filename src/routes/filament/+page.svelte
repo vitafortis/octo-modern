@@ -88,7 +88,7 @@
 
 <div class="h-full overflow-y-auto">
 	<PageHeader title="Filament" description="Which spool is on which printer, what's left on it, and what each print costs." />
-	<div class="space-y-6 px-4 pb-10 sm:px-8">
+	<div class="page-x space-y-6 pb-10">
 		<section>
 			<h2 class="mb-2 flex items-center gap-2 text-[14px] font-semibold"><Disc3 class="size-4 text-primary" />Active spools</h2>
 			{#key cardsKey}

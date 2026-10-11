@@ -132,7 +132,7 @@
 <div class="h-full overflow-y-auto">
 	<PageHeader title="Integrations" description="Sign-in providers, and API tokens for dashboards." />
 
-	<div class="max-w-5xl space-y-5 px-8 pb-12">
+	<div class="max-w-5xl space-y-5 page-x pb-12">
 		<!-- SSO -->
 		<section id="sso" class="card scroll-mt-6 p-5">
 			<div class="flex flex-wrap items-start justify-between gap-3">
