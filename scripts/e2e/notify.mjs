@@ -359,8 +359,11 @@ async function main() {
 	await dark.goto(`${APP}/notifications`);
 	await dark.waitForSelector('[data-channel="Telegram family"]');
 	await dark.waitForSelector('[data-testid=delivery-table]');
+	// The page scrolls inside the shell: a tall window shows all of it.
+	await dark.setViewportSize({ width: 1440, height: 2700 });
 	await sleep(500);
-	await shot(dark, 'notifications', { fullPage: true });
+	await shot(dark, 'notifications');
+	await dark.setViewportSize({ width: 1440, height: 1000 });
 
 	// Add a Telegram channel whose test fails: the exact error shows in the dialog.
 	await dark.click('main button:has-text("Add channel") >> nth=0');
@@ -388,6 +391,7 @@ async function main() {
 	const light = await newPage('light');
 	await light.goto(`${APP}/notifications`);
 	await light.waitForSelector('[data-testid=delivery-table]');
+	await light.evaluate(() => document.getElementById('rules-h')?.scrollIntoView({ block: 'start' }));
 	await sleep(400);
 	await shot(light, 'notifications-light');
 

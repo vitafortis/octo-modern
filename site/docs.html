@@ -96,6 +96,7 @@
 								<li><a href="#slicers">Slicer uploads</a></li>
 								<li><a href="#status-api">Status API</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
+								<li><a href="#notifications">Notifications</a></li>
 								<li><a href="#detection">Failure detection</a></li>
 								<li><a href="#images">Images</a></li>
 								<li><a href="#security">Security model</a></li>
@@ -226,7 +227,7 @@
 						<ul>
 							<li><strong>Which printer</strong>: one printer, or <em>any compatible printer</em>, meaning one whose tags include all the job's tags. Admins tag printers on the Queue page (<code>0.4mm</code>, <code>petg</code>, <code>bed:300</code>, …).</li>
 							<li><strong>Order and copies</strong>: drag jobs, or use the up/down arrows (the ⋯ menu on phones). Copies print one after another.</li>
-							<li><strong>Bed is clear</strong>: after every print the printer waits until someone confirms its bed is clear, on the overview card, the printer page or the Queue page, or with <code>POST /api/status/&lt;id&gt;/bed-clear</code> and a token allowed to. Channels subscribed to <em>Queue: clear the bed</em> get a <code>queue.bed_clear_needed</code> notification.</li>
+							<li><strong>Bed is clear</strong>: after every print the printer waits until someone confirms its bed is clear, on the overview card, the printer page or the Queue page, or with <code>POST /api/status/&lt;id&gt;/bed-clear</code> and a token allowed to. Notification rules with <em>Bed clear needed</em> send a <code>queue.bed_clear_needed</code> notification.</li>
 							<li><strong>Failures</strong>: a failed or cancelled queued print marks the job failed (requeue it with one click) and pauses that printer's queue. <strong>Pause queue</strong> stops all new starts.</li>
 						</ul>
 						<p>Files are transferred when the printer doesn't already have them, then printed; each run links to its print history entry. Everything is stored, so restarts pick up where they left off.</p>
@@ -339,6 +340,18 @@
 						<p>Uploads go to OctoPrint's local storage and are streamed as they arrive, so memory use doesn't grow with the file; the image allows up to 4 GB (<code>BODY_SIZE_LIMIT</code>). A reverse proxy in front may have its own limit (nginx: <code>client_max_body_size</code>).</p>
 					</section>
 
+					<section id="notifications">
+						<h2>Notifications</h2>
+						<p>Admins set them up under <strong>Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
+						<ul>
+							<li><strong>Channels</strong>: ntfy, Discord, Slack (incoming webhook, Block Kit), Telegram (bot token and chat ID, the snapshot as a photo), Pushover, Gotify, Matrix (homeserver, room ID, access token), email over SMTP (STARTTLS or TLS, snapshot inline), Home Assistant (webhook trigger and/or a <code>notify.*</code> service) and generic JSON webhooks.</li>
+							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code> and <code>power.off</code> from other features.</li>
+							<li><strong>Messages</strong>: printer, file, elapsed and estimated time, filament, who started it, a link back (set the public URL, or <code>ORIGIN</code>) and the webcam snapshot. Slack, Gotify and Home Assistant show pictures only by link: turn on <strong>Share snapshots by link</strong> (unguessable links, 48 hours).</li>
+							<li><strong>Rules, quiet hours, limits</strong>: rules pick printers × events → channels; quiet hours per channel can still let errors through; the same event goes to a channel once per 10 minutes and at most 20 messages per 10 minutes, so flapping printers stay quiet. <strong>Recent deliveries</strong> shows the last 100 with their status.</li>
+						</ul>
+						<p>Other server code sends its own with <code>notify({ kind, printerId, title, message, fields })</code>; webhooks get a JSON document (version 2) with <code>event</code>, <code>severity</code>, <code>title</code>, <code>message</code>, <code>printer</code>, <code>print</code>, <code>fields</code>, <code>data</code>, <code>url</code> and optionally the image.</p>
+					</section>
+
 					<section id="detection">
 						<h2>Failure detection</h2>
 						<p>octo·modern watches printing printers with Obico's failure-detection model (the "Spaghetti Detective"), in your own <code>ml_api</code> container from <a href="https://github.com/TheSpaghettiDetective/obico-server">obico-server</a>; no Obico account or cloud. Add it with <code>compose.detect.yaml</code> from the repository:</p>
@@ -348,7 +361,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 						<ul>
 							<li><strong>Frames</strong>: after the first minutes of a print (default 5), a webcam snapshot every 10 s goes to <code>GET /p/?img=&lt;url&gt;</code>; the container downloads it and answers boxes and confidences. That's the ML API's only interface: it takes no image bytes, so octo·modern serves each frame through a single-use, 30-second link.</li>
 							<li><strong>Score</strong>: Obico's own algorithm: the frame's confidences summed, smoothed over 12 frames, minus a long-term baseline per printer, times the sensitivity. Warning from 33 %, failure from 67 % on Obico's 0–100 % scale.</li>
-							<li><strong>Actions</strong>: a warning sends a <code>failure.suspected</code> notification with the annotated frame (tick <strong>Failure suspected</strong> on a channel). A failure does nothing, notifies, or pauses the print, audited as <code>octo·modern detector</code>. <strong>This is a false alarm</strong> turns it off until the print ends.</li>
+							<li><strong>Actions</strong>: a warning sends a <code>failure.suspected</code> notification with the annotated frame (to the channels of every notification rule with <strong>Failure suspected</strong>). A failure does nothing, notifies, or pauses the print, audited as <code>octo·modern detector</code>. <strong>This is a false alarm</strong> turns it off until the print ends.</li>
 						</ul>
 					</section>
 
@@ -384,7 +397,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 
 					<section id="backup">
 						<h2>Backup &amp; restore</h2>
-						<p>Under <strong>Settings → Backup &amp; restore</strong>, admins download an encrypted file with printers (and their API keys), users and settings. It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; nothing is deleted. The audit log and API tokens aren't included.</p>
+						<p>Under <strong>Settings → Backup &amp; restore</strong>, admins download an encrypted file with printers (and their API keys), users, settings (including failure detection), notification channels and rules, the print queue (not files uploaded to it) and, when ticked, the print history with or without its pictures. It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; history entries and queued jobs already present are kept, nothing is deleted. The audit log and API tokens aren't included.</p>
 						<p>Something missing? The <a href="https://github.com/vitafortis/octo-modern#readme">README</a> has every detail, and <a href="https://github.com/vitafortis/octo-modern/issues">issues</a> are welcome.</p>
 					</section>
 				</div>

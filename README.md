@@ -31,7 +31,7 @@
 - **Discover**: find OctoPrint in Docker (through a read-only socket proxy), in [Arcane](https://getarcane.app), over mDNS and with a subnet scan, see which serial port each container owns, and add one by approving octo·modern in OctoPrint (Application Keys), no key to copy. See [Discover](#discover).
 - **Print history**: every print on every printer, recorded whether or not anyone has a browser open: file, start and end, duration, result (success, failed, cancelled), filament used, who started it, a webcam picture of how it ended, and notes. A History tab per printer and a History page across all of them, with filters, success rate, print time and filament per printer and per week, CSV export, and "print again". Earlier prints are imported from OctoPrint. See [Print history](#print-history).
 - **Timelapses**: watch OctoPrint's timelapses in the browser (with seeking), download and delete them, render unrendered ones, and change the timelapse settings.
-- **Notifications** when a print finishes, fails or is cancelled: ntfy, Discord or any webhook.
+- **Notifications** to ntfy, Discord, Slack, Telegram, Pushover, Gotify, Matrix, email (SMTP), Home Assistant or any webhook, with the webcam snapshot: prints started, at milestones, paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom); printers offline, in error, back, or still hot after a print; plus the queue, failure detection and other features. Rules per printer and event, quiet hours per channel, de-duplication and a delivery log. See [Notifications](#notifications).
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
@@ -39,7 +39,7 @@
 - **Audit log**: every print started, paused or cancelled, every temperature change, upload, deletion, G-code command and connection change, with who did it and from where.
 - **Single sign-on**: any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …), with accounts created automatically for matching emails.
 - **Status API for dashboards**: read-only tokens for Homepage, Glance, Uptime Kuma and Home Assistant. See [Dashboards and monitoring](#dashboards-and-monitoring).
-- **Backup & restore**: an encrypted, passphrase-protected file with your printers (and their API keys), users and settings that restores on a fresh install.
+- **Backup & restore**: an encrypted, passphrase-protected file with your printers (and their API keys), users, settings, notification channels and the print queue, optionally the print history (with or without its pictures), that restores on a fresh install.
 - **Command palette**: `⌘K` (`Ctrl+K` on Linux/Windows) jumps to printers, tabs and pages.
 - **Phones and tablets**: below laptop width the sidebar becomes a drawer behind a slim top bar (with the printer's state and a search button), tables become lists with each row's actions in a menu, and dialogs slide up as sheets. On a phone, Pause, Cancel and the emergency stop (which still asks first) sit in a bar under your thumb; the jog pad is thumb-sized, the webcam goes fullscreen with a tap, the temperature chart reads out where you touch, and the terminal prompt stays just above the keyboard. Buttons and fields are at least 44 px on touch screens, with 16 px text so iOS doesn't zoom.
 - **Add to Home Screen**: a web app manifest, home-screen icons and a status bar that follows the theme, so octo·modern opens full screen like an app (`display: standalone`, notch-aware).
@@ -161,7 +161,8 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
 | Watch failure detection (score, last frame) | ✓ | ✓ | ✓ |
 | Turn failure detection on/off per printer, its sensitivity and action; mark a false alarm | ✓ | ✓ | |
-| Timelapse settings, delete history entries, import history, notifications | ✓ | | |
+| Timelapse settings, delete history entries, import history | ✓ | | |
+| Notifications: channels, rules, quiet hours, delivery log | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
 | Users, Integrations, Audit log, Settings (including the ML API), backups, library sources | ✓ | | |
 
@@ -255,20 +256,41 @@ A print shorter than one poll interval, started and finished while nobody watche
 
 **Importing**: the first time a printer is reachable, octo·modern imports its earlier prints once: every print the [PrintJobHistory](https://plugins.octoprint.org/plugins/PrintJobHistory/) plugin recorded, if it's installed, otherwise the last print of each file from OctoPrint's file statistics (OctoPrint counts a cancel as a failure there, so those come in as failed). Admins can import again from the History page; prints already recorded aren't duplicated.
 
-**Notifications**: admins add channels under **History → Notifications**: [ntfy](https://ntfy.sh) (topic, optional token), a Discord webhook, or a generic webhook, each for finished, failed and/or cancelled prints (and the print queue's **clear the bed** prompt, event `queue.bed_clear_needed`), with a test button. Webhook URLs and tokens are stored encrypted. A generic webhook receives a JSON `POST`:
+Notifications about prints are set up on the [Notifications](#notifications) page.
+
+`GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`).
+
+## Notifications
+
+Admins set them up under **Notifications** in the sidebar.
+
+**Channels**: [ntfy](https://ntfy.sh) (server, topic, optional token), Discord (webhook), Slack (incoming webhook; Block Kit with the facts and a button back), Telegram (bot token and chat ID; the snapshot as a photo with the caption), Pushover (application token, user key; high priority for errors), Gotify (server, application token; markdown), Matrix (homeserver, room ID, access token of a bot account; the snapshot uploaded as an image), email over SMTP (STARTTLS, TLS or plain; HTML with the snapshot inline), Home Assistant (a webhook trigger, a `notify.*` service with a long-lived token, or both) and generic webhooks (JSON). Tokens, webhook URLs and passwords are stored encrypted and never sent back to the browser. **Send test** in the editor tries the settings on screen, with a test picture, and shows the service's answer word for word when it fails (`HTTP 400: Bad Request: chat not found`, `535 Authentication credentials invalid`…).
+
+**Events**: print started, progress milestones (percentages and/or minutes left, e.g. `25, 50, 75` and `10`), paused (with why: filament runout, M600, a pause in the G-code such as `M0`, the printer, or who pressed pause), finished, failed, cancelled (and who cancelled), printer offline (OctoPrint unreachable or the printer disconnected, after a grace period), printer error, printer back, and still hot after a print (bed or hotend above a threshold N minutes after it ended). Other features raise their own: **Bed clear needed** (queue), **Failure suspected** (failure detection), and **Spool low**, **Maintenance due** and **Power off** for features that plug in later.
+
+**Messages** carry the printer, file, progress, elapsed and estimated time, filament, who started (or cancelled) it, a link back to the printer page, and a fresh webcam snapshot where the channel can take one (the history's picture when there's no camera). Links need octo·modern's **public URL** (Options; `ORIGIN` when empty). Slack, Gotify and Home Assistant's notify service only show pictures by URL: with **Share snapshots by link** on, each snapshot gets an unguessable link under `/api/notify/media/`, readable without signing in for 48 hours.
+
+**Rules** send some events from some printers (or all) to some channels. **Quiet hours** per channel hold messages back in a time window (server time, optionally on certain days), letting errors and failures through if you want. The same event goes to a channel at most once per de-dupe window (10 min), and at most 20 messages per channel per 10 minutes, so a flapping printer can't flood you; "back" only follows an offline or error message. **Recent deliveries** lists the last 100 with their status (sent, failed with the error, quiet hours, duplicate, rate limited).
+
+A generic webhook receives a JSON `POST` (version 2; channels set up before this version keep version 1, the print-end-only shape, until you switch them):
 
 ```json
 {
-  "source": "octo-modern", "version": 1, "event": "failed",
+  "source": "octo-modern", "version": 2, "event": "print.failed", "severity": "error",
   "title": "Print failed: benchy.gcode",
   "message": "Prusa MK4: benchy.gcode failed after 1h 02m, at 42%, 1.50 m filament, reason: error.",
   "printer": { "id": "…", "name": "Prusa MK4" },
-  "print": { "id": 12, "file": "benchy.gcode", "path": "parts/benchy.gcode", "startedAt": "…", "endedAt": "…", "durationS": 3720, "filamentMm": 1500, "completion": 42, "startedBy": "Otto", "reason": "error" },
-  "at": "…", "url": "http://octo-modern.lan:3040/p/…?tab=history"
+  "print": { "id": 12, "file": "benchy.gcode", "path": "parts/benchy.gcode", "startedAt": "…", "endedAt": "…", "elapsedS": 3720, "estimatedS": 3600, "completion": 42, "filamentMm": 1500, "startedBy": "Otto", "cancelledBy": null, "reason": "error" },
+  "fields": [{ "label": "Printer", "value": "Prusa MK4" }, …],
+  "data": null,
+  "at": "…", "url": "https://octo.example/p/…?tab=history", "imageUrl": null,
+  "image": { "contentType": "image/jpeg", "base64": "…" }
 }
 ```
 
-`GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`).
+`event` is one of `print.started`, `print.progress`, `print.paused`, `print.finished`, `print.failed`, `print.cancelled`, `printer.offline`, `printer.error`, `printer.online`, `printer.hot`, `queue.bed_clear_needed`, `failure.suspected`, `spool.low`, `maintenance.due`, `power.off` or `test`; `image` only when **Include the snapshot** is on. Home Assistant webhook triggers get the same document.
+
+**For developers**: other server code calls `notify({ kind, printerId, title?, message?, fields?, data?, snapshot? })` from `src/lib/server/notify/` with one of the kinds in `src/lib/notify.ts`; rules, quiet hours, de-dupe, snapshots and the log come with it.
 
 ## Timelapses
 
@@ -293,7 +315,7 @@ Then, as an admin, check **Settings → Failure detection** (the ML API URL, its
 4. **Warning**: a `failure.suspected` notification with the frame, boxes drawn in (once; again only after 10 minutes back to normal). **Failure**, once per print, the printer's setting: *do nothing*, *notify*, or *pause the print* (OctoPrint's pause, in the audit log as `octo·modern detector`, plus a notification).
 5. **This is a false alarm** (operators) turns detection off until the print ends. Paused prints get no frames; nothing is resumed automatically.
 
-The tab shows the score over the print, the last analysed frame with its boxes, what happened (warnings, pauses, errors such as an unreachable ML API) and the settings. Channels get these notifications when **Failure suspected** is ticked under **History → Notifications**: ntfy gets the JPEG as an attachment, Discord in the embed, and a generic webhook gets the usual JSON with `"event": "failure.suspected"` plus `"detection": { "level": "warning" | "failure", "score": 0.71, "action": "notify" | "none" | "paused" | "pause-failed" }` and `"image": { "contentType": "image/jpeg", "filename": "failure.jpg", "base64": "…" }`.
+The tab shows the score over the print, the last analysed frame with its boxes, what happened (warnings, pauses, errors such as an unreachable ML API) and the settings. These go to the channels of every [notification rule](#notifications) with **Failure suspected**, with the annotated frame as the picture (attached, or by link). A generic webhook gets `"event": "failure.suspected"` with `"data": { "detection": { "level": "warning" | "failure", "score": 0.71, "action": "notify" | "none" | "paused" | "pause-failed" } }`, and the JPEG in `"image"` when **Include the snapshot** is on.
 
 **The ML API, as verified in obico-server's source** (`release` branch, commit `6f93896`: `ml_api/server.py`, `ml_api/auth.py`, `ml_api/lib/onnx.py`, `backend/lib/prediction.py`, `backend/lib/failure_detection.py`):
 
@@ -312,7 +334,7 @@ There is **no endpoint that takes image bytes** (no POST, no upload), so the fra
 - **Adding jobs**: **Add job** on the Queue page (from the library, or upload a file, which octo·modern keeps in its data folder until the job is removed), **Add to queue** on a library file, or the queue button on a file in a printer's **Files** tab (that file prints on that printer only). Slicers can add jobs too ([Slicer uploads](#slicer-uploads)).
 - **Which printer**: a job targets one printer, or **any compatible printer**: one whose tags include every tag the job requires. Admins set each printer's tags on the Queue page (free-form, e.g. `0.4mm`, `petg`, `bed:300`). Jobs added by an operator who only sees some printers only go to those.
 - **Order and copies**: drag a job (or use the up/down arrows; on phones, the ⋯ menu) to reorder; set how many copies to print. Copies print one after another, each needing a clear bed.
-- **Bed is clear**: every print, queued or not, leaves the printer **awaiting bed clear**; nothing more is sent to it until someone confirms with **Bed is clear** (on the overview card, the printer page or the Queue page). Printers start out unconfirmed. When jobs are waiting, a `queue.bed_clear_needed` notification goes to channels subscribed to **Queue: clear the bed** (History → Notifications). A button or automation next to the printer can confirm too: `POST /api/status/<printer id>/bed-clear` with a status token created with **May confirm bed clear**.
+- **Bed is clear**: every print, queued or not, leaves the printer **awaiting bed clear**; nothing more is sent to it until someone confirms with **Bed is clear** (on the overview card, the printer page or the Queue page). Printers start out unconfirmed. When jobs are waiting, a `queue.bed_clear_needed` notification goes to the channels of every [notification rule](#notifications) with **Bed clear needed**. A button or automation next to the printer can confirm too: `POST /api/status/<printer id>/bed-clear` with a status token created with **May confirm bed clear**.
 - **Dispatch**: every few seconds (and right after a change), each printer that's connected, idle, not paused and confirmed clear takes the first matching job. Library and uploaded files are transferred first unless the printer already has a file of that name and size; then octo·modern selects and prints it, crediting the person who queued it in the history.
 - **Failures**: if a queued print fails or is cancelled, or can't be started, the job is marked failed (with **Requeue**, which puts it at the end) and that printer's queue is paused until someone resumes it. **Pause queue** stops all new starts; running prints carry on.
 - **History**: each run of a job is linked to its print history entry. The queue and every printer's state are kept in the database, so a restart picks up where it left off.
@@ -471,6 +493,8 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **Queue tab**: confirm the bed is clear | **Slicer upload keys** for PrusaSlicer, OrcaSlicer, Cura |
 | ![Queue on a phone](docs/screenshots/mobile-queue.png) | ![Bed is clear on a phone](docs/screenshots/mobile-queue-bed-clear.png) |
 | **Queue** on a phone | **Bed is clear** on a phone |
+| ![Notifications](docs/screenshots/notifications-light.png) | ![Channel editor](docs/screenshots/notifications-channel.png) |
+| **Notifications**: rules, options, delivery log | **Send test** shows the service's own answer |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
@@ -501,6 +525,8 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | `OCM_ML_API_URL` | — | Obico's ML API for failure detection, e.g. `http://ml_api:3333` (or set it under Settings → Failure detection, which overrides this) |
 | `OCM_ML_API_TOKEN` | — | The ml_api container's `ML_API_TOKEN`, sent as `Authorization: Bearer …` |
 | `OCM_DETECT_PUBLIC_URL` | — | octo·modern's address as the ML container reaches it, e.g. `http://octo-modern:3000` |
+| `ORIGIN` | — | octo·modern's public address (adapter-node); also the default for links in notifications |
+| `OCM_PUSHOVER_API` | Pushover's API | Where Pushover messages go (tests point it at a mock) |
 | `OCM_POLL_INTERVAL_MS` | `10000` | Status poll for printers nobody is watching live |
 | `OCM_REQUEST_TIMEOUT_MS` | `10000` | Timeout for each request to OctoPrint |
 | `OCM_PUSH_THROTTLE` | `2` | Live updates arrive every 500 ms × this |
@@ -511,7 +537,7 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 
 ## Backup & restore
 
-Under **Settings → Backup & restore**, admins download an encrypted file with printers (and their API keys), users (roles, password hashes, SSO links, printer access) and settings (single sign-on). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, nothing is deleted, and your own account is never changed. The audit log, print history and API tokens aren't included.
+Under **Settings → Backup & restore**, admins download an encrypted file with printers (and their API keys), users (roles, password hashes, SSO links, printer access), settings (single sign-on, failure detection with its ML API token), notifications (channels with their tokens, rules, options), the print queue (jobs and printer tags; files uploaded to the queue aren't included, so such jobs come back asking for the file) and, when ticked, the print history (optionally with its pictures, up to 100 KB each; can make the file large). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, notifications are replaced as a whole, history entries and queued jobs already present are kept (no duplicates), nothing else is deleted, and your own account is never changed. The audit log, the delivery log and API tokens aren't included. A large backup needs a `BODY_SIZE_LIMIT` above adapter-node's 512 KB default outside the image (the image allows 4 GB).
 
 ## Security model
 
@@ -542,10 +568,11 @@ pnpm e2e:library                      # the Library against OctoPrint, SFTP, Sam
 
 `scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:library` does the same for the Library: a folder source plus SFTP (`atmoz/sftp`), Samba (`crazymax/samba`) and WebDAV (`rclone serve webdav`) servers, browsing, metadata, search, send & print, 150 MB transfers from each with a memory check, and Save to library.
 pnpm e2e:history                      # print history, notifications and timelapses end to end
+pnpm e2e:notify                       # notifications: every channel type against local mocks, a real virtual printer
 pnpm e2e:mobile                       # phones: no sideways scrolling at 360/390/430 px, thumb-sized controls
 ```
 
-`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.
+`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:notify` (app `:3200`, OctoPrint `:3201`, camera `:3202`, mock services `:3204` HTTP and `:3205` SMTP) sets up one channel of every type against `scripts/e2e/mock-notify.mjs` (nothing real is contacted), sends tests including failing ones, prints on a virtual printer and checks the started, 50 %, finished (with snapshots: attachments, the shared link), still-hot, paused-by-M0, paused-by-the-operator and cancelled-by messages, offline and back by stopping the container, quiet hours, the delivery log and a backup round trip, then writes the `notifications*.png` screenshots. `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.
 
 `pnpm e2e:discover` starts three OctoPrint servers on `:5151`–`:5153` and has octo·modern discover them through a mock Docker API (fictional containers, devices and networks pointing at the real ports, on `:5251`), a mock Arcane (`:5252`), a unicast mDNS responder (`OCM_MDNS_TARGET=127.0.0.1:5253`), the real local Docker socket (read-only) and a subnet scan of `127.0.0.1`. It runs the setup wizard in Chromium, adds printers through the Application Keys flow (approving and denying in OctoPrint by logging in to its API as its admin), pastes a key, moves a published port and relinks the saved printer, then writes the Discover screenshots and cleans up.
 
