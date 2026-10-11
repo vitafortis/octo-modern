@@ -33,7 +33,7 @@
 				<h3 class="truncate text-[0.9375rem] font-semibold tracking-tight">{printer.name}</h3>
 				<p class="mt-0.5 truncate font-mono text-[0.6875rem] text-muted-foreground">{#if printer.kind === 'moonraker'}<span class="mr-1 font-sans font-medium text-primary">Klipper</span>{/if}{printer.baseUrl.replace(/^https?:\/\//, '')}</p>
 			</div>
-			{#if s}<StateBadge state={s.state} text={s.stateText} />{:else}<span class="badge animate-pulse">Loading</span>{/if}
+			{#if s}<StateBadge state={s.state} text={s.stateText} preparing={!!s.preparing} />{:else}<span class="badge animate-pulse">Loading</span>{/if}
 		</div>
 
 		{#if s?.state === 'offline'}

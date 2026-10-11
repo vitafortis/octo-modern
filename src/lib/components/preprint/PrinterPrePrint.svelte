@@ -63,7 +63,7 @@
 				{:else if form.leveling.mode === 'custom'}
 					<label class="block">
 						<span class="label">Command</span>
-						<textarea class="input min-h-14 py-2 font-mono text-[0.8125rem]" rows="2" placeholder={kindCommand} bind:value={form.leveling.command} data-testid="printer-level-command"></textarea>
+						<textarea class="input min-h-20 py-2 font-mono text-[0.8125rem]" rows="3" placeholder={kindCommand} bind:value={form.leveling.command} data-testid="printer-level-command"></textarea>
 					</label>
 					<label class="block">
 						<span class="label">Also skip when the file contains <span class="font-normal text-muted-foreground">· optional</span></span>

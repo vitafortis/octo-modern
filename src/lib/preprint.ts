@@ -210,16 +210,15 @@ export function compilePattern(p: string): ((line: string) => boolean) | null {
  * lines may come between). `missing`: the first command not found.
  */
 export function snippetInFile(snippet: string, head: string[], match: MatchMode = 'exact'): { present: boolean; missing: string | null } {
-	const want = commandLines(snippet)
-		.map((l) => normalizeLine(l, match))
-		.filter((l): l is string => !!l);
+	const raw = commandLines(snippet);
+	const want = raw.map((l) => normalizeLine(l, match));
 	if (!want.length) return { present: true, missing: null };
 	let i = 0;
 	for (const line of head) {
 		if (i >= want.length) break;
 		if (normalizeLine(line, match) === want[i]) i++;
 	}
-	return { present: i >= want.length, missing: i >= want.length ? null : want[i] };
+	return { present: i >= want.length, missing: i >= want.length ? null : match === 'commands' ? raw[i].split(/\s+/)[0] : raw[i] };
 }
 
 /** Commands that probe the bed. `M420 S1` and `BED_MESH_PROFILE LOAD` only load a saved mesh: not leveling. */

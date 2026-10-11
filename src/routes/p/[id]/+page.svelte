@@ -77,7 +77,7 @@
 				<div class="flex items-center gap-2.5">
 					<!-- Below lg the top bar already names the printer. -->
 					<h1 class="hidden truncate text-2xl font-semibold tracking-tight lg:block">{printer.name}</h1>
-					<StateBadge state={s.state} text={s.stateText} />
+					<StateBadge state={s.state} text={s.stateText} preparing={!!s.preparing} />
 				</div>
 				<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground short:hidden">
 					{printer.baseUrl.replace(/^https?:\/\//, '')}{#if s.version}{' · '}{klipper ? s.version : `OctoPrint ${s.version}`}{/if}
