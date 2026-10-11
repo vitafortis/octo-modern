@@ -220,13 +220,13 @@
 			</div>
 
 			{#if stats.perWeek.length}
-				<div class="grid gap-3 {printerId ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]'}">
+				<div class="grid gap-3 {printerId ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]'}">
 					<div class="card px-4 pt-3.5 pb-3">
 						<p class="mb-2 text-[13px] font-medium">Prints per week</p>
 						<WeeklyChart weeks={stats.perWeek} />
 					</div>
 					{#if !printerId}
-						<div class="card overflow-hidden">
+						<div class="card overflow-x-auto">
 							<p class="px-4 pt-3.5 pb-2 text-[13px] font-medium">By printer</p>
 							<table class="w-full text-left text-xs">
 								<thead class="text-[11px] text-muted-foreground">

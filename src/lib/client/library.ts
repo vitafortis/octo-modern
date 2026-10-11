@@ -39,7 +39,7 @@ export async function sendToPrinter(
 		} catch (err) {
 			const d = err instanceof ApiError ? (err.detail as { exists?: boolean; target?: string; confirmRequired?: boolean; filament?: boolean } | undefined) : undefined;
 			if (err instanceof ApiError && err.status === 409 && d?.filament) {
-				const ok = await confirmAction({ title: 'Not enough filament?', body: err.message, confirmLabel: 'Print anyway', danger: true });
+				const ok = await confirmAction({ title: 'Not enough filament', body: err.message, confirmLabel: 'Print anyway', danger: true });
 				if (!ok) return null;
 				req.confirmFilament = true;
 				continue;

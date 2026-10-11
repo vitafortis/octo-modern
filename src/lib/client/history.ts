@@ -72,7 +72,7 @@ export async function reprint(r: PrintRecord, printerName: string): Promise<bool
 		} catch (err) {
 			// The server may ask first (e.g. the active spool won't last).
 			if (!(err instanceof ApiError && err.status === 409 && err.detail?.confirmRequired)) throw err;
-			if (!(await confirmAction({ title: 'Are you sure?', body: err.message, confirmLabel: 'Print anyway', danger: true }))) return false;
+			if (!(await confirmAction({ title: err.detail.title ?? 'Are you sure?', body: err.message, confirmLabel: err.detail.confirmLabel ?? 'Print anyway', danger: true }))) return false;
 			await api.post(url, { ...body, confirm: true });
 		}
 		toast('success', 'Print started', r.file);

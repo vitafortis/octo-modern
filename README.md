@@ -29,7 +29,10 @@
 - **Discover**: find OctoPrint in Docker (through a read-only socket proxy), in [Arcane](https://getarcane.app), over mDNS and with a subnet scan, see which serial port each container owns, and add one by approving octo·modern in OctoPrint (Application Keys), no key to copy. See [Discover](#discover).
 - **Print history**: every print on every printer, recorded whether or not anyone has a browser open: file, start and end, duration, result (success, failed, cancelled), filament used, who started it, a webcam picture of how it ended, and notes. A History tab per printer and a History page across all of them, with filters, success rate, print time and filament per printer and per week, CSV export, and "print again". Earlier prints are imported from OctoPrint. See [Print history](#print-history).
 - **Timelapses**: watch OctoPrint's timelapses in the browser (with seeking), download and delete them, render unrendered ones, and change the timelapse settings.
-- **Notifications** when a print finishes, fails or is cancelled: ntfy, Discord or any webhook.
+- **Notifications** when a print finishes, fails or is cancelled, a spool runs low or maintenance falls due: ntfy, Discord or any webhook.
+- **Spoolman**: pick the active [Spoolman](https://github.com/Donkie/Spoolman) spool per printer and extruder (search, colour, material, what's left), see it on the dashboard, and have each print's filament reported to Spoolman as it prints and when it ends. Before a print starts, octo·modern warns when the spool won't last. See [Spools, costs and maintenance](#spools-costs-and-maintenance).
+- **Cost per print**: filament (by the spool's price from Spoolman, or a price per kg per material) plus electricity (print time × each printer's power draw), on every history entry, in the History stats per printer and in the CSV export; earlier prints are costed too.
+- **Maintenance reminders**: per-printer tasks counted in print hours, filament used or days (nozzle, belts, rails, bed, e-steps offered), with due/overdue badges, "Done" with notes and a log of who did what when.
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
@@ -153,6 +156,9 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Send library files to printers, save printer files to the library | ✓ | ✓ | |
 | Watch the print history and timelapses, export CSV | ✓ | ✓ | ✓ |
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
+| See spools, print costs and maintenance tasks | ✓ | ✓ | ✓ |
+| Choose a printer's active spool; add, edit and complete maintenance tasks | ✓ | ✓ | |
+| Spoolman connection, cost settings | ✓ | | |
 | Timelapse settings, delete history entries, import history, notifications | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
 | Users, Integrations, Audit log, Settings, backups, library sources | ✓ | | |
@@ -260,7 +266,27 @@ A print shorter than one poll interval, started and finished while nobody watche
 }
 ```
 
-`GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`).
+Channels can also subscribe to **Spool low** (`event: "spool.low"`) and **Maintenance due** (`event: "maintenance.due"`); those payloads have the same shape with `print: null` and a `url` to the printer.
+
+`GET /api/history/export.csv` (signed in) returns the history as CSV, with the same filters as the page (`printer`, `result`, `from`, `to`, `q`), including `filament_g`, `material`, `cost_filament`, `cost_energy` and `cost_total`.
+
+## Spools, costs and maintenance
+
+The **Filament** page shows which spool is on which printer, and holds the admin settings for Spoolman and costs. Each printer's dashboard has a **Filament** card with the active spool per extruder.
+
+**Connecting Spoolman** (admins, **Filament → Spoolman**): enter Spoolman's address, e.g. `http://spoolman.lan:7912` (the `/api/v1` address works too). Spoolman has no login of its own; if a reverse proxy in front of it wants one, add an auth header (name and value, e.g. `Authorization: Bearer …`): the value is stored encrypted and never sent back to the browser. **Test** shows Spoolman's version and how many spools it has. octo·modern talks to Spoolman's REST API only from the server, so the browser doesn't need to reach it.
+
+**Choosing the spool**: operators click **Choose** / **Change** on a printer's Filament card and pick from Spoolman's spools (not archived), searchable by name, vendor, material, location and lot, with the colour, material and what's left. A printer with several extruders (from its live temperatures: `tool0`, `tool1`, …) gets one spool per tool. A spool sits on one tool at a time; moving it elsewhere takes it off the first.
+
+**Reporting use**: while a print runs, octo·modern estimates the filament used per tool from OctoPrint's analysis × progress and reports it in steps of about a metre (`PUT /api/v1/spool/<id>/use` with `use_length` in mm; Spoolman converts to weight with the filament's density and diameter). When the print ends, the rest is reported, so the total matches the history entry (a cancelled print counts only what it got through). Reports that fail (Spoolman down) are retried for a week, and never sent twice. Turn off **Report use while printing** to report only at the end.
+
+**Before printing**: starting a print (a file's **Print**, the job **Print** button, **Print again** in the history, or **Send & print** from the library) compares the file's filament with what's left on each tool's spool. When it won't last, you're asked first (the API answers 409 with `confirmRequired`, then accepts `confirm: true`, or `confirmFilament: true` for library sends). If Spoolman can't be reached, printing isn't held up.
+
+**Low spools**: below the threshold (100 g by default) a spool turns red on the dashboard, and the `spool.low` notification is sent once per spool, again only after it was refilled or replaced.
+
+**Costs** (admins, **Filament → Print costs**): currency, electricity price per kWh, an average power draw while printing (a default and per printer), and a price per kg and density per material, with a default material and filament diameter for prints whose spool isn't known. Each print's cost is filament (grams from the spool's density, priced with the spool's price from Spoolman when it has one, else the material's) plus electricity (print time × draw × price). It's stored on the history entry when the print ends; entries without a cost (earlier and imported prints) are costed when the settings are saved and every few hours. **Recalculate history** re-costs every finished print with today's prices (prints priced from a Spoolman spool keep that price).
+
+**Maintenance** (the **Maintenance** page, and a tab per printer): tasks with an interval in print hours, kg of filament or days, counted from the print history since the task was last done (or since a "last done" date you give when adding it). New printers are offered nozzle change (500 h), belt tension (200 h), lubricating rods and rails (150 h), cleaning the bed (7 days) and checking e-steps (5 kg). A task is **due soon** at 90 % of its interval and **overdue** past it; the sidebar shows how many are overdue, and `maintenance.due` is sent once when a task becomes overdue. **Done** (operators) logs who did it, when, at what usage and your notes, and starts the count again.
 
 ## Timelapses
 
@@ -391,6 +417,14 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **Timelapse**: play with seeking, download | **Timelapse settings**, light |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
+| ![Filament card on the dashboard](docs/screenshots/spools-dashboard.png) | ![Choosing a spool](docs/screenshots/spool-picker.png) |
+| **Filament** card: the active spool per extruder | **Choose a spool** from Spoolman |
+| ![Not enough filament](docs/screenshots/filament-warning.png) | ![Filament page](docs/screenshots/filament-light.png) |
+| **Not enough filament**: asked before printing | **Filament**: spools, Spoolman and costs |
+| ![Maintenance](docs/screenshots/maintenance.png) | ![Mark done](docs/screenshots/maintenance-done.png) |
+| **Maintenance**: due and overdue per printer | **Done**, with notes, logged |
+| ![History with costs](docs/screenshots/history-costs.png) | ![Maintenance, light](docs/screenshots/maintenance-light.png) |
+| **Cost per print** in the history | **Maintenance**, light |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
 | **Discover**, light | **Setup** offers what it found |
 | ![Approve in OctoPrint](docs/screenshots/discover-approve.png) | ![Discover: Arcane](docs/screenshots/discover-arcane.png) |

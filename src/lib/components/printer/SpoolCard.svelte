@@ -56,8 +56,8 @@
 						<div class="min-w-0 flex-1">
 							{#if a}
 								<p class="truncate font-medium">{#if data.tools > 1}<span class="mr-1 font-mono text-[11px] text-muted-foreground">T{t}</span>{/if}{s?.name ?? `Spool #${a.spoolId}`}</p>
-								<p class="truncate text-[11px] text-muted-foreground">
-									{#if s}{[s.material, s.vendor].filter(Boolean).join(' · ') || `#${s.id}`} · <span class="font-mono {low ? 'text-danger' : ''}">{remainingLabel(s)}</span>{#if low} left{/if}{:else}not found in Spoolman{/if}
+								<p class="truncate text-[11px] text-muted-foreground" title={s ? [s.material, s.vendor, s.location, `#${s.id}`].filter(Boolean).join(' · ') : undefined}>
+									{#if s}{s.material ?? `#${s.id}`} · <span class="tabular-nums {low ? 'font-medium text-danger' : ''}">{remainingLabel(s)}</span>{#if low} left{/if}{:else}not found in Spoolman{/if}
 								</p>
 								{#if frac != null}
 									<div class="mt-1 h-1 overflow-hidden rounded-full bg-border"><div class="h-full rounded-full {low ? 'bg-danger' : 'bg-primary'}" style="width:{frac * 100}%"></div></div>

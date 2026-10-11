@@ -107,7 +107,7 @@ test('shortfalls: by length per tool, by the slicer’s weight when there is one
 		short.map((s) => s.tool),
 		[0]
 	);
-	assert.match(lib.shortfallMessage(short, true), /^Not enough filament\. Tool 0: S1 \(PLA\) has 30 g \/ 10\.1 m left; this print needs about 36 g \/ 12\.0 m\. Start anyway\?$/);
+	assert.match(lib.shortfallMessage(short, true), /^Tool 0: S1 \(PLA\) has 30 g \/ 10\.1 m left; this print needs about 36 g \/ 12\.0 m\. Start anyway\?$/);
 	// One tool with the slicer's weight: 31 g needed, 30 left.
 	assert.equal(lib.findShortfalls({ perTool: { 0: 9000 }, totalG: 31 }, spools).length, 1);
 	// A tool without a spool, or an unknown amount, never blocks.
@@ -222,7 +222,7 @@ test('pre-print check: warns only when a spool won’t last, and never because S
 	// Spool 1: 687.6 g ≈ 230 m.
 	assert.equal(await check.filamentWarning(mk4.id, { perTool: { 0: 20_000 } }), null);
 	const w = await check.filamentWarning(mk4.id, { perTool: { 0: 300_000 } });
-	assert.match(w!, /^Not enough filament\. Galaxy Black \(PLA\) has 688 g/);
+	assert.match(w!, /^Galaxy Black \(PLA\) has 688 g/);
 	assert.match((await check.filamentWarning(mk4.id, check.needFromMeta({ filamentMm: 1000, filamentG: 700 })))!, /needs about 700 g/);
 	assert.deepEqual(check.perToolMm({ tool0: { length: 100, volume: 1 }, tool1: { length: null }, bogus: {} }), { 0: 100 });
 	sm.saveSpoolmanSettings({ url: 'http://127.0.0.1:9', authHeader: null, lowThresholdG: 50 });

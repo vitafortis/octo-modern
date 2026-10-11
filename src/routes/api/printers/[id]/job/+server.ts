@@ -4,6 +4,7 @@ import { confirmRequired, controlTarget, refreshSoon } from '#lib/server/control
 import { audit } from '#lib/server/permissions.ts';
 import { printers } from '#lib/server/octoprint/manager.ts';
 import { parseJobResponse } from '#lib/server/octoprint/parse.ts';
+import { FILAMENT_ASK } from '#lib/spools.ts';
 import { filamentWarning, perToolMm, wantsFilamentCheck } from '#lib/server/spools/check.ts';
 import type { RequestHandler } from './$types';
 
@@ -25,7 +26,7 @@ export const POST: RequestHandler = handler(async ({ params, locals, request }) 
 		const job = parseJobResponse(await client.job().catch(() => null)).job;
 		const perTool = perToolMm(job?.filament);
 		const warning = Object.keys(perTool).length ? await filamentWarning(printer.id, { perTool }) : null;
-		if (warning) return confirmRequired(warning);
+		if (warning) return confirmRequired(warning, FILAMENT_ASK);
 	}
 	const snap = printers.snapshot(printer.id);
 	const file = snap?.job?.file?.display ?? null;

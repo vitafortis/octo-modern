@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { BadRequest, body, Forbidden, handler } from '#lib/server/http.ts';
 import { confirmRequired, controlTarget, currentState } from '#lib/server/control.ts';
 import { fileMeta, requireSource, sourceAllowsPrinter } from '#lib/server/library/service.ts';
+import { FILAMENT_ASK } from '#lib/spools.ts';
 import { filamentWarning, needFromMeta, wantsFilamentCheck } from '#lib/server/spools/check.ts';
 import { cleanFolder, octoprintHas, startSend } from '#lib/server/library/send.ts';
 import { baseName, cleanRelPath, joinPath } from '#lib/library.ts';
@@ -49,7 +50,7 @@ export const POST: RequestHandler = handler(async ({ locals, params, request }) 
 	if (print && b.confirmFilament !== true && wantsFilamentCheck(printer.id)) {
 		const meta = await fileMeta(src, path).catch(() => null);
 		const warning = meta ? await filamentWarning(printer.id, needFromMeta(meta.meta)) : null;
-		if (warning) return json({ message: warning, confirmRequired: true, filament: true }, { status: 409 });
+		if (warning) return json({ message: warning, confirmRequired: true, filament: true, ...FILAMENT_ASK }, { status: 409 });
 	}
 	const send = await startSend(locals, { src, path, printer, client, folder, print });
 	return json(send, { status: 202 });

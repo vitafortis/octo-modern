@@ -178,7 +178,8 @@ export function findShortfalls(need: FilamentNeed, spools: Map<number, SpoolSumm
 	return out;
 }
 
-/** The 409 message for shortfalls. */
+/** The 409 message for shortfalls (its title: FILAMENT_ASK). */
+export const FILAMENT_ASK = { title: 'Not enough filament', confirmLabel: 'Print anyway' };
 export function shortfallMessage(list: Shortfall[], multiTool: boolean): string {
 	const m = (mm: number) => `${(mm / 1000).toFixed(1)} m`;
 	const lines = list.map((s) => {
@@ -186,7 +187,7 @@ export function shortfallMessage(list: Shortfall[], multiTool: boolean): string 
 		const have = s.haveG != null ? `${Math.round(s.haveG)} g / ${m(s.haveMm)}` : m(s.haveMm);
 		return `${which} has ${have} left; this print needs about ${Math.round(s.needG)} g / ${m(s.needMm)}.`;
 	});
-	return `Not enough filament. ${lines.join(' ')} Start anyway?`;
+	return `${lines.join(' ')} Start anyway?`;
 }
 
 // --- costs ----------------------------------------------------------------------------
@@ -383,7 +384,7 @@ export function maintenanceStatus(used: number, interval: number): MaintenanceSt
 
 /** `12.5 / 200 h`. */
 export function usageLabel(t: Pick<MaintenanceTask, 'metric' | 'used' | 'interval'>): string {
-	const d = t.metric === 'filament' ? 2 : t.metric === 'hours' ? 1 : 0;
-	const u = t.used.toFixed(t.used < 10 ? d : 0);
+	const d = t.interval < 1 ? 3 : t.metric === 'filament' ? 2 : t.metric === 'hours' ? 1 : 0;
+	const u = t.used.toFixed(t.used < 10 || t.interval < 1 ? d : 0);
 	return `${u} / ${t.interval} ${METRIC_SHORT[t.metric]}`;
 }
