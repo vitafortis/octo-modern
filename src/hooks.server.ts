@@ -7,7 +7,7 @@ import { publicUrl } from '#lib/server/origin.ts';
 import { ADMIN_PAGES, adminOnlyApi, controlApi, printerIdFromPath, roleAllows } from '#lib/server/access.ts';
 import { canSee } from '#lib/server/permissions.ts';
 import { getPrinter } from '#lib/server/store.ts';
-import { authorizeStatusRequest, isStatusRoute } from '#lib/server/api-tokens.ts';
+import { authorizeBedClearRequest, authorizeStatusRequest, authorizeUploadRequest, BED_CLEAR_ROUTE, isStatusRoute } from '#lib/server/api-tokens.ts';
 import { FRAME_PATH } from '#lib/server/detect/frames.ts';
 
 export const init: ServerInit = () => {
@@ -53,6 +53,36 @@ export const handle: Handle = async ({ event, resolve }) => {
 		response.headers.set('X-Content-Type-Options', 'nosniff');
 		response.headers.set('Referrer-Policy', 'no-referrer');
 		return response;
+	}
+
+	// Slicers upload through the OctoPrint-compatible API (/octoprint/api/…) with an upload
+	// key in X-Api-Key, like an OctoPrint API key. No session, no cookies; nothing else there.
+	if (pathname === '/octoprint' || pathname.startsWith('/octoprint/')) {
+		try {
+			event.locals.ip = event.getClientAddress();
+		} catch {}
+		event.locals.auth = 'anonymous';
+		event.locals.user = null;
+		if (!pathname.startsWith('/octoprint/api/')) return json({ error: 'Not found' }, { status: 404 });
+		const auth = authorizeUploadRequest({ headers: event.request.headers, url: event.url, ip: event.locals.ip });
+		if (!auth.ok) return json({ error: auth.message }, { status: auth.status });
+		event.locals.apiToken = auth.principal;
+		const response = await resolve(event);
+		response.headers.set('X-Content-Type-Options', 'nosniff');
+		return response;
+	}
+
+	// "Bed is clear" from a button or automation: a status token that allows it, POST only.
+	if (BED_CLEAR_ROUTE.test(pathname) && (event.request.headers.has('authorization') || event.url.searchParams.has('token'))) {
+		try {
+			event.locals.ip = event.getClientAddress();
+		} catch {}
+		event.locals.auth = 'anonymous';
+		event.locals.user = null;
+		const auth = authorizeBedClearRequest({ method, headers: event.request.headers, url: event.url, ip: event.locals.ip });
+		if (!auth.ok) return json({ message: auth.message }, { status: auth.status, headers: auth.status === 401 ? { 'www-authenticate': 'Bearer' } : {} });
+		event.locals.apiToken = auth.principal;
+		return resolve(event);
 	}
 
 	// Dashboard status routes take an API token (Bearer or ?token=) and nothing else:
