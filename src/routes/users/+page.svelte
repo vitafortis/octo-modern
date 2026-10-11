@@ -3,6 +3,8 @@
 	import { Ban, Eye, KeyRound, LoaderCircle, Plus, Printer as PrinterIcon, ShieldCheck, Trash2, UserPlus, Wrench } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
+	import ActionMenu from '#lib/components/ActionMenu.svelte';
+	import { listLayout } from '#lib/client/viewport.svelte.ts';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { ago } from '#lib/client/format.ts';
 	import { printers, session, toast } from '#lib/client/state.svelte.ts';
@@ -107,7 +109,7 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="max-w-5xl space-y-5 px-8 pb-10">
+	<div class="max-w-5xl space-y-5 page-x pb-10">
 		<div class="grid gap-3 md:grid-cols-3">
 			<div class="card p-4 text-[13px]">
 				<p class="flex items-center gap-2 font-medium"><ShieldCheck class="size-4 text-primary" />Admin</p>
@@ -137,6 +139,49 @@
 		<div class="card overflow-hidden">
 			{#if loading}
 				<div class="grid h-32 place-items-center"><LoaderCircle class="size-5 animate-spin text-muted-foreground" /></div>
+			{:else if listLayout.current}
+				<!-- Phones: one card per user; role and printers at hand, the rest in a menu. -->
+				<ul class="divide-y divide-border" data-testid="user-list">
+					{#each users as u (u.id)}
+						<li class="space-y-2.5 px-3 py-3 {u.disabled ? 'opacity-60' : ''}">
+							<div class="flex items-center gap-3">
+								<span class="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-[13px] font-semibold text-primary uppercase">{(u.name ?? u.email).slice(0, 1)}</span>
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-[14px] font-medium">{u.name ?? u.email}{#if isSelf(u)}<span class="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span>{/if}</p>
+									<p class="truncate text-xs text-muted-foreground">{#if u.name}{u.email} · {/if}seen {ago(u.lastLoginAt)}</p>
+								</div>
+								{#if !isSelf(u)}
+									<ActionMenu
+										title={u.name ?? u.email}
+										description={u.email}
+										actions={[
+											{ label: u.disabled ? 'Enable' : 'Disable', icon: Ban, hint: u.disabled ? undefined : 'Signs them out; they can’t sign in until enabled', onclick: () => patch(u, { disabled: !u.disabled }, u.disabled ? 'User enabled' : 'User disabled') },
+											{ label: 'Delete user', icon: Trash2, danger: true, onclick: () => (confirmDelete = u) }
+										]}
+									/>
+								{/if}
+							</div>
+							<div class="flex flex-wrap items-center gap-2 pl-12">
+								<select class="input h-7 w-auto min-w-0 flex-1 text-xs" aria-label="Role of {u.name ?? u.email}" value={u.role} disabled={isSelf(u)} onchange={(e) => patch(u, { role: (e.currentTarget as HTMLSelectElement).value }, 'Role updated')}>
+									<option value="admin">Admin</option>
+									<option value="operator">Operator</option>
+									<option value="viewer">Viewer</option>
+								</select>
+								{#if u.role === 'admin'}
+									<span class="px-2 text-xs text-muted-foreground">All printers</span>
+								{:else}
+									<button class="btn btn-secondary btn-sm" onclick={() => editAccess(u)}><PrinterIcon />{u.printerAccess === 'all' ? 'All printers' : 'Selected'}</button>
+								{/if}
+							</div>
+							<div class="flex flex-wrap gap-1 pl-12">
+								{#if u.sso}<span class="badge badge-primary">SSO</span>{/if}
+								{#if u.hasPassword}<span class="badge">password</span>{/if}
+								{#if !u.sso && !u.hasPassword}<span class="badge">awaiting SSO</span>{/if}
+								{#if u.disabled}<span class="badge badge-danger">disabled</span>{/if}
+							</div>
+						</li>
+					{/each}
+				</ul>
 			{:else}
 				<table class="w-full text-left text-[13px]">
 					<thead class="border-b border-border bg-surface text-[11px] text-muted-foreground">

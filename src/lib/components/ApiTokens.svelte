@@ -119,9 +119,9 @@
 			<thead class="bg-surface text-left text-[11px] text-muted-foreground">
 				<tr>
 					<th class="px-3 py-2 font-medium">Name</th>
-					<th class="px-3 py-2 font-medium">Token</th>
-					<th class="px-3 py-2 font-medium">Last used</th>
-					<th class="px-3 py-2 font-medium">Expires</th>
+					<th class="px-3 py-2 font-medium max-sm:hidden">Token</th>
+					<th class="px-3 py-2 font-medium max-sm:hidden">Last used</th>
+					<th class="px-3 py-2 font-medium max-sm:hidden">Expires</th>
 					<th class="w-24 px-3 py-2"></th>
 				</tr>
 			</thead>
@@ -133,11 +133,11 @@
 							<span class="font-medium {dead ? 'line-through' : ''}">{t.name}</span>
 							{#if t.includeAddresses}<span class="badge badge-warning ml-1.5">addresses</span>{/if}
 							{#if t.revokedAt}<span class="badge ml-1.5">revoked</span>{:else if expired(t)}<span class="badge ml-1.5">expired</span>{/if}
-							<p class="text-[11px] text-muted-foreground">created {ago(t.createdAt)}{t.createdBy ? ` by ${t.createdBy}` : ''}</p>
+							<p class="text-[11px] text-muted-foreground">created {ago(t.createdAt)}{t.createdBy ? ` by ${t.createdBy}` : ''}<span class="sm:hidden"> · {t.prefix}… · used {t.lastUsedAt ? ago(t.lastUsedAt) : 'never'}</span></p>
 						</td>
-						<td class="px-3 py-2 font-mono text-muted-foreground">{t.prefix}…</td>
-						<td class="px-3 py-2 text-muted-foreground">{t.lastUsedAt ? ago(t.lastUsedAt) : 'never'}</td>
-						<td class="px-3 py-2 text-muted-foreground">{t.expiresAt ? new Date(t.expiresAt).toLocaleDateString() : 'never'}</td>
+						<td class="px-3 py-2 font-mono text-muted-foreground max-sm:hidden">{t.prefix}…</td>
+						<td class="px-3 py-2 text-muted-foreground max-sm:hidden">{t.lastUsedAt ? ago(t.lastUsedAt) : 'never'}</td>
+						<td class="px-3 py-2 text-muted-foreground max-sm:hidden">{t.expiresAt ? new Date(t.expiresAt).toLocaleDateString() : 'never'}</td>
 						<td class="px-3 py-2 text-right">
 							{#if !t.revokedAt}
 								<button class="btn btn-ghost btn-sm hover:text-danger" onclick={() => revoke(t)}><Ban />Revoke</button>
