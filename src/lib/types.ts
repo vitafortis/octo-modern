@@ -15,12 +15,27 @@ export function isRole(v: unknown): v is Role {
 	return v === 'admin' || v === 'operator' || v === 'viewer';
 }
 
+/**
+ * What runs the printer: an OctoPrint server, or Klipper behind Moonraker (the API
+ * Mainsail and Fluidd use). Everything else in the app works through the printer
+ * backend (src/lib/server/backend), so most features don't care which.
+ */
+export type PrinterKind = 'octoprint' | 'moonraker';
+
+export const PRINTER_KINDS: PrinterKind[] = ['octoprint', 'moonraker'];
+
+export function isPrinterKind(v: unknown): v is PrinterKind {
+	return v === 'octoprint' || v === 'moonraker';
+}
+
 /** What an admin enters for an OctoPrint server. */
 export interface PrinterInput {
 	name: string;
+	/** OctoPrint or Moonraker (Klipper). Defaults to OctoPrint on create; omit on update to keep it. */
+	kind?: PrinterKind;
 	/** OctoPrint's base URL, including any path prefix (e.g. https://host/octoprint). */
 	baseUrl: string;
-	/** Application Key or user API key. Omit on update to keep the stored one. */
+	/** Application Key or user API key (optional for Moonraker). Omit on update to keep the stored one. */
 	apiKey?: string;
 	/** Verify the server's TLS certificate (turn off for self-signed certificates). */
 	verifyTls: boolean;
@@ -33,6 +48,7 @@ export interface PrinterInput {
 export interface Printer {
 	id: string;
 	name: string;
+	kind: PrinterKind;
 	baseUrl: string;
 	hasApiKey: boolean;
 	verifyTls: boolean;
@@ -42,7 +58,7 @@ export interface Printer {
 	updatedAt: string;
 	/** Last time octo·modern reached the server. */
 	lastSeenAt: string | null;
-	/** OctoPrint version from the last successful contact. */
+	/** OctoPrint (or Klipper/Moonraker) version from the last successful contact. */
 	octoprintVersion: string | null;
 	/** What the signed-in user may do (set on responses to the browser). */
 	access?: PrinterAccess;
@@ -103,6 +119,8 @@ export interface ProblemInfo {
 export type TestResult =
 	| {
 			ok: true;
+			/** What answered (Moonraker also emulates parts of OctoPrint's API, so it's probed first). */
+			kind?: PrinterKind;
 			version: string;
 			apiVersion: string | null;
 			/** The user the API key belongs to. */
