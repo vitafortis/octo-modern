@@ -19,6 +19,8 @@ export interface Fingerprint {
 	loginRequired: boolean;
 	/** Human-readable reasons, e.g. "GET /plugin/appkeys/probe → 204". */
 	signals: string[];
+	/** What answered: OctoPrint, or Klipper's Moonraker (absent: OctoPrint, for older callers). */
+	kind?: 'octoprint' | 'moonraker';
 }
 
 /** pg·modern-style network explanation: how octo·modern reaches a container. */

@@ -143,8 +143,11 @@ export async function scanSubnet(targetsInput: string, portsInput: string, opts:
 	};
 }
 
+export const MDNS_TYPES = { octoprint: '_octoprint._tcp.local', moonraker: '_moonraker._tcp.local' } as const;
+
 /** Candidates from mDNS services: their A records (or whoever answered), plus the .local name. */
-export async function mdnsCandidates(services: MdnsService[], deps: SettleDeps = {}): Promise<Candidate[]> {
+export async function mdnsCandidates(services: MdnsService[], deps: SettleDeps = {}, kind: 'octoprint' | 'moonraker' = 'octoprint'): Promise<Candidate[]> {
+	if (kind === 'moonraker') return moonrakerCandidates(services, deps);
 	return mapLimit(services, 8, async (s) => {
 		const port = s.port ?? 80;
 		const path = s.txt.path && s.txt.path !== '/' ? s.txt.path : undefined;
@@ -187,19 +190,62 @@ export async function mdnsCandidates(services: MdnsService[], deps: SettleDeps =
 	});
 }
 
+/**
+ * Klipper printers: Moonraker's zeroconf component advertises `_moonraker._tcp` (instance
+ * "Moonraker Instance on <host>", port 7125). Mainsail/Fluidd usually proxy the same API
+ * on port 80, tried second.
+ */
+export async function moonrakerCandidates(services: MdnsService[], deps: SettleDeps = {}): Promise<Candidate[]> {
+	return mapLimit(services, 8, async (s) => {
+		const port = s.port ?? 7125;
+		const ips = (s.addresses.length ? s.addresses : s.from).filter(isIPv4);
+		const addresses: Address[] = [
+			...ips.map((ip) => ({ host: ip, port, label: 'mDNS address' })),
+			...(s.host ? [{ host: s.host, port, label: 'mDNS name' }] : []),
+			...ips.map((ip) => ({ host: ip, port: 80, label: 'port 80 (Mainsail/Fluidd)' }))
+		];
+		const settled = addresses.length ? await settle(addresses, deps) : null;
+		const fp = settled?.fingerprint;
+		return {
+			key: `mdns-moonraker:${s.instance}`,
+			name: s.instance.replace(/^Moonraker (Instance|API) on /i, '') || s.instance,
+			baseUrl: settled?.baseUrl ?? urlFor(s.host ?? 'unknown', port),
+			alternates: settled?.alternates ?? [],
+			reachable: settled?.reachable ?? false,
+			fingerprint: {
+				confidence: 'confirmed',
+				kind: 'moonraker',
+				version: fp?.version ?? null,
+				apiVersion: fp?.apiVersion ?? null,
+				appkeys: false,
+				loginRequired: fp?.kind === 'moonraker' ? fp.loginRequired : false,
+				signals: [`mDNS: _moonraker._tcp “${s.instance}”`, ...(fp?.signals ?? [])]
+			},
+			source: { kind: 'mdns', ref: `moonraker:${s.instance}`, label: 'mDNS' },
+			serial: [],
+			notes: ['Klipper (Moonraker): no API key needed when octo·modern’s address is in trusted_clients.']
+		} satisfies Candidate;
+	});
+}
+
+/** Browses for OctoPrint (`_octoprint._tcp`) and Klipper's Moonraker (`_moonraker._tcp`) at once. */
 export async function scanMdns(opts: BrowseOptions & { settle?: SettleDeps } = {}): Promise<NetworkScan> {
 	const started = Date.now();
+	const scope = `${MDNS_TYPES.octoprint}, ${MDNS_TYPES.moonraker}`;
 	try {
-		const { services, responders, interfaces } = await browse('_octoprint._tcp.local', { target: discoveryEnv.mdnsTarget, ...opts });
-		const candidates = await mdnsCandidates(services, opts.settle);
+		const [octo, moon] = await Promise.all([
+			browse(MDNS_TYPES.octoprint, { target: discoveryEnv.mdnsTarget, ...opts }),
+			browse(MDNS_TYPES.moonraker, { target: discoveryEnv.mdnsTarget, ...opts })
+		]);
+		const [a, b] = await Promise.all([mdnsCandidates(octo.services, opts.settle), mdnsCandidates(moon.services, opts.settle, 'moonraker')]);
 		return {
 			kind: 'mdns',
 			durationMs: Date.now() - started,
-			scope: `_octoprint._tcp.local${interfaces.length ? ` on ${interfaces.join(', ')}` : ''}`,
-			probed: responders,
-			candidates
+			scope: `${scope}${octo.interfaces.length ? ` on ${octo.interfaces.join(', ')}` : ''}`,
+			probed: Math.max(octo.responders, moon.responders),
+			candidates: [...a, ...b]
 		};
 	} catch (err) {
-		return { kind: 'mdns', durationMs: Date.now() - started, scope: '_octoprint._tcp.local', probed: 0, error: (err as Error).message, candidates: [] };
+		return { kind: 'mdns', durationMs: Date.now() - started, scope, probed: 0, error: (err as Error).message, candidates: [] };
 	}
 }

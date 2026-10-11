@@ -1,6 +1,6 @@
 import { BadRequest, handler } from '#lib/server/http.ts';
 import { viewTarget } from '#lib/server/control.ts';
-import { octoprintDownload } from '#lib/server/gcode-download.ts';
+import { printerDownload } from '#lib/server/gcode-download.ts';
 import { isGcodeName } from '#lib/server/octoprint/files.ts';
 import { cleanRelPath } from '#lib/library.ts';
 import type { RequestHandler } from './$types';
@@ -11,7 +11,7 @@ import type { RequestHandler } from './$types';
  * who can see the printer may preview its files. (SD card files can't be downloaded.)
  */
 export const GET: RequestHandler = handler(async ({ params, locals, url, request }) => {
-	const { client } = viewTarget(locals.user, params.id);
+	const { backend } = viewTarget(locals.user, params.id);
 	let path: string;
 	try {
 		path = cleanRelPath(url.searchParams.get('path') ?? '');
@@ -19,5 +19,5 @@ export const GET: RequestHandler = handler(async ({ params, locals, url, request
 		throw new BadRequest((err as Error).message);
 	}
 	if (!path || !isGcodeName(path)) throw new BadRequest('"path" must be a G-code file');
-	return octoprintDownload(client, path, request.headers.get('range'), request.signal);
+	return printerDownload(backend, path, request.headers.get('range'), request.signal);
 });

@@ -19,6 +19,8 @@ export interface RawResponse {
 }
 
 export interface FingerprintInput {
+	/** Moonraker's `GET /server/info` (Klipper). */
+	serverInfo?: RawResponse | null;
 	version?: RawResponse | null;
 	appkeys?: RawResponse | null;
 	root?: RawResponse | null;
@@ -45,8 +47,26 @@ function htmlMarkers(body: string | undefined): { octoprint: boolean; version: s
 	return { octoprint, version: version && VERSION_RE.test(version) ? version : null };
 }
 
+/** Moonraker (Klipper) from `GET /server/info`: 200 with Klippy's state, or 401 with Moonraker's JSON error. */
+function moonrakerFingerprint(r: RawResponse | null | undefined): Fingerprint | null {
+	if (!r) return null;
+	const j = json(r.body);
+	const result = j && typeof j.result === 'object' && j.result ? (j.result as Record<string, unknown>) : null;
+	if (r.status === 200 && result && ('klippy_state' in result || 'moonraker_version' in result)) {
+		const v = typeof result.moonraker_version === 'string' ? result.moonraker_version.replace(/-.*$/, '') : null;
+		return { confidence: 'confirmed', kind: 'moonraker', version: v, apiVersion: typeof result.api_version_string === 'string' ? result.api_version_string : null, appkeys: false, loginRequired: false, signals: [`GET /server/info → Moonraker${v ? ` ${v}` : ''} (Klipper ${String(result.klippy_state ?? '?')})`] };
+	}
+	if ((r.status === 401 || r.status === 403) && j && typeof j.error === 'object' && j.error && typeof (j.error as { code?: unknown }).code === 'number') {
+		return { confidence: 'confirmed', kind: 'moonraker', version: null, apiVersion: null, appkeys: false, loginRequired: true, signals: [`GET /server/info → ${r.status} (Moonraker wants an API key)`] };
+	}
+	return null;
+}
+
 /** Pure analysis of the probe responses (what the tests exercise). */
 export function analyzeFingerprint(r: FingerprintInput): Fingerprint {
+	// Moonraker also emulates OctoPrint's /api/version, so it's recognized first.
+	const moonraker = moonrakerFingerprint(r.serverInfo);
+	if (moonraker) return moonraker;
 	const signals: string[] = [];
 	let strong = false;
 	let weak = false;
@@ -128,16 +148,17 @@ async function get(url: string, timeoutMs: number, verifyTls: boolean, maxBody =
 /** Looks at `baseUrl` without a key. Unreachable servers come back with confidence `none`. */
 export async function fingerprintUrl(baseUrl: string, { timeoutMs = 3000, verifyTls = false } = {}): Promise<Fingerprint & { answered: boolean }> {
 	const base = baseUrl.replace(/\/+$/, '');
-	const [version, appkeys, root] = await Promise.all([
+	const [version, appkeys, root, serverInfo] = await Promise.all([
 		get(`${base}/api/version`, timeoutMs, verifyTls),
 		get(`${base}/plugin/appkeys/probe`, timeoutMs, verifyTls),
-		get(`${base}/`, timeoutMs, verifyTls)
+		get(`${base}/`, timeoutMs, verifyTls),
+		get(`${base}/server/info`, timeoutMs, verifyTls)
 	]);
 	let login: RawResponse | null = null;
-	const first = analyzeFingerprint({ version, appkeys, root });
+	const first = analyzeFingerprint({ version, appkeys, root, serverInfo });
 	if (first.confidence !== 'confirmed' && root && root.status >= 300 && root.status < 400 && /\/login\/?/.test(root.headers?.location ?? '')) {
 		login = await get(`${base}/login/`, timeoutMs, verifyTls);
 	}
-	const fp = login ? analyzeFingerprint({ version, appkeys, root, login }) : first;
+	const fp = login ? analyzeFingerprint({ version, appkeys, root, login, serverInfo }) : first;
 	return { ...fp, answered: !!(version || appkeys || root) };
 }

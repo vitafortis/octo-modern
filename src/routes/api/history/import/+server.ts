@@ -7,7 +7,7 @@ import type { RequestHandler } from './$types';
 
 /**
  * Imports earlier prints from OctoPrint (the PrintJobHistory plugin, or each file's
- * last-print statistics), for one printer (`{ printer }`) or all. Admins only.
+ * last-print statistics) or Klipper (Moonraker's job history), for one printer (`{ printer }`) or all. Admins only.
  */
 export const POST: RequestHandler = handler(async ({ locals, request }) => {
 	if (locals.user?.role !== 'admin') throw new Forbidden('Only admins can import history');

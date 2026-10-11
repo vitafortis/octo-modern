@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { BadRequest, body, handler } from '#lib/server/http.ts';
 import { audit, requireControl, requirePrinter } from '#lib/server/permissions.ts';
 import { confirmRequired, currentState } from '#lib/server/control.ts';
-import { clientFor } from '#lib/server/octoprint/manager.ts';
+import { backendFor, octoprintClient } from '#lib/server/backend/index.ts';
 import { cachedPlugin, detectPlugin, driftSettings, latestMesh, listMeshes, referenceMesh, saveDriftSettings, startUpdate, updateRunning, updateState } from '#lib/server/bedmesh.ts';
 import { parseDriftSettings } from '#lib/bedmesh.ts';
 import { isConnected, jobActive } from '#lib/printer.ts';
@@ -16,6 +16,7 @@ const noStore = { 'cache-control': 'no-store' };
  */
 export const GET: RequestHandler = handler(async ({ locals, params, url }) => {
 	const printer = requirePrinter(locals.user, params.id);
+	octoprintClient(printer, 'Bed mesh'); // the Bed Visualizer is an OctoPrint plugin: 400 for Klipper
 	const cached = cachedPlugin(printer.id);
 	const plugin = url.searchParams.has('refresh') || !cached ? await detectPlugin(printer.id) : { ...cached, stored: null };
 	const { stored: _stored, ...pluginInfo } = plugin;
@@ -39,6 +40,7 @@ export const GET: RequestHandler = handler(async ({ locals, params, url }) => {
  */
 export const POST: RequestHandler = handler(async ({ locals, params, request }) => {
 	const printer = requireControl(locals.user, params.id);
+	octoprintClient(printer, 'Bed mesh');
 	const b = await body(request);
 	if (b.action !== 'update') throw new BadRequest('Unknown action; use { "action": "update" }');
 	if (updateRunning(printer.id)) return json({ message: 'A mesh update is already running on this printer' }, { status: 409 });
@@ -48,7 +50,7 @@ export const POST: RequestHandler = handler(async ({ locals, params, request }) 
 	if (!info.commands.length) {
 		return json({ message: 'The Bed Visualizer plugin has no probe G-code', hint: 'Set it in OctoPrint → Settings → Bed Visualizer → Collection (e.g. G28 and G29 T, or @BEDLEVELVISUALIZER with your firmware’s mesh report).' }, { status: 400 });
 	}
-	const state = await currentState(printer.id, clientFor(printer));
+	const state = await currentState(printer.id, backendFor(printer));
 	if (jobActive(state)) return json({ message: 'A print is running: probing the bed would ruin it. Try again when the printer is idle.' }, { status: 409 });
 	if (!isConnected(state)) return json({ message: 'The printer isn’t connected', hint: 'Connect it first; probing runs G-code on the printer.' }, { status: 409 });
 	if (b.confirm !== true) {
@@ -66,6 +68,7 @@ export const POST: RequestHandler = handler(async ({ locals, params, request }) 
 /** Drift alerts: `{ enabled?, maxFlatness?, maxChange?, referenceId? }` (mm; null clears). Operators. */
 export const PUT: RequestHandler = handler(async ({ locals, params, request }) => {
 	const printer = requireControl(locals.user, params.id);
+	octoprintClient(printer, 'Bed mesh');
 	const b = await body(request);
 	let next;
 	try {

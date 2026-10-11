@@ -397,6 +397,14 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 			);
 			CREATE INDEX IF NOT EXISTS push_subscriptions_user ON push_subscriptions(user_id);
 		`)
+	],
+	[
+		'printers-002-kind',
+		(h) =>
+			h.exec(`
+			-- What runs the printer: 'octoprint' or 'moonraker' (Klipper). Existing rows are OctoPrint.
+			ALTER TABLE printers ADD COLUMN kind TEXT NOT NULL DEFAULT 'octoprint';
+		`)
 	]
 ];
 
@@ -433,6 +441,7 @@ function toPrinter(r: Row): Printer {
 	return {
 		id: r.id as string,
 		name: r.name as string,
+		kind: r.kind === 'moonraker' ? 'moonraker' : 'octoprint',
 		baseUrl: r.base_url as string,
 		hasApiKey: r.secret != null,
 		verifyTls: r.verify_tls !== 0,
@@ -471,18 +480,19 @@ export function createPrinter(input: PrinterInput): Printer {
 	const sort = (db().prepare('SELECT coalesce(max(sort), 0) + 1 AS n FROM printers').get() as { n: number }).n;
 	db()
 		.prepare(
-			`INSERT INTO printers (id, name, base_url, secret, verify_tls, webcam_url, color, sort, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			`INSERT INTO printers (id, name, kind, base_url, secret, verify_tls, webcam_url, color, sort, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
-		.run(id, input.name, input.baseUrl, sealApiKey(id, input.apiKey), input.verifyTls ? 1 : 0, input.webcamUrl, input.color, sort, now, now);
+		.run(id, input.name, input.kind ?? 'octoprint', input.baseUrl, sealApiKey(id, input.apiKey), input.verifyTls ? 1 : 0, input.webcamUrl, input.color, sort, now, now);
 	return getPrinter(id)!;
 }
 
 export function updatePrinter(id: string, input: PrinterInput): Printer | undefined {
 	if (!getPrinter(id)) return undefined;
 	db()
-		.prepare('UPDATE printers SET name = ?, base_url = ?, verify_tls = ?, webcam_url = ?, color = ?, updated_at = ? WHERE id = ?')
-		.run(input.name, input.baseUrl, input.verifyTls ? 1 : 0, input.webcamUrl, input.color, new Date().toISOString(), id);
+		.prepare('UPDATE printers SET name = ?, kind = coalesce(?, kind), base_url = ?, verify_tls = ?, webcam_url = ?, color = ?, updated_at = ? WHERE id = ?')
+		.run(input.name, input.kind ?? null, input.baseUrl, input.verifyTls ? 1 : 0, input.webcamUrl, input.color, new Date().toISOString(), id);
+	// An empty key clears it (Moonraker on a trusted network needs none).
 	if (input.apiKey !== undefined) db().prepare('UPDATE printers SET secret = ? WHERE id = ?').run(sealApiKey(id, input.apiKey), id);
 	return getPrinter(id);
 }

@@ -14,19 +14,19 @@ import type { RequestHandler } from './$types';
  * Answers 409 `confirmRequired` when an active Spoolman spool won't last the print.
  */
 export const POST: RequestHandler = handler(async ({ params, locals, request }) => {
-	const { printer, client } = controlTarget(locals.user, params.id);
+	const { printer, backend } = controlTarget(locals.user, params.id);
 	const b = await body(request);
 	const origin = b.origin === 'sdcard' ? 'sdcard' : 'local';
 	const path = typeof b.path === 'string' ? b.path.replace(/^\/+/, '') : '';
 	if (!path || path.split('/').includes('..')) throw new BadRequest('"path" is required');
 	const print = b.print === true;
 	if (print && b.confirm !== true && wantsFilamentCheck(printer.id)) {
-		const warning = await filamentWarning(printer.id, await needForFile(client, origin, path));
+		const warning = await filamentWarning(printer.id, await needForFile(backend, origin, path));
 		if (warning) return confirmRequired(warning, FILAMENT_ASK);
 	}
 	// Smart plug with auto power-on: switch the printer on (and connect it) first.
 	if (print && !isConnected(printers.snapshot(printer.id)?.state ?? 'unknown')) await ensurePrinterOn(printer.id, { locals, reason: `to print ${path}` });
-	await client.selectFile(origin, path, print);
+	await backend.selectFile(origin, path, print);
 	audit(locals, print ? 'job.start' : 'file.select', { printer, detail: `${origin === 'sdcard' ? 'SD: ' : ''}${path}` });
 	refreshSoon(printer.id);
 	return json({ ok: true });

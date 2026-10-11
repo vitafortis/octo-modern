@@ -16,9 +16,9 @@
  * socket makes the result exact while a print runs, without keeping a socket open to
  * idle printers.
  */
-import { printers, clientFor } from '../octoprint/manager.ts';
-import { encodePath } from '../octoprint/client.ts';
-import { safeThumbnail } from '../octoprint/files.ts';
+import { printers } from '../octoprint/manager.ts';
+import { parseFileDetails } from '../octoprint/files.ts';
+import { backendFor } from '../backend/index.ts';
 import { getPrinter } from '../store.ts';
 import { PrintDetector, type ActiveJob, type HistoryAction } from './detector.ts';
 import { auditedStarter, getPrint, insertPrint, lastEnded, openPrints, setThumbnail, updatePrint } from './store.ts';
@@ -28,9 +28,6 @@ import type { PrintRecord } from '#lib/history.ts';
 import type { JobInfo } from '#lib/printer.ts';
 import type { Printer } from '#lib/types.ts';
 
-type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v);
-const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const iso = (ms: number) => new Date(ms).toISOString();
 
 /** Filament of a job's analysis, mm summed over tools. */
@@ -45,36 +42,19 @@ export interface FileInfo {
 	filamentMm: number | null;
 	estimatedS: number | null;
 	thumbnail: string | null;
-	/** OctoPrint's record of the file's last print (epoch ms). */
+	/** The server's record of the file's last print (epoch ms); OctoPrint keeps one. */
 	last: { date: number; success: boolean; printTime: number | null } | null;
 }
 
 /** The parts of an OctoPrint file entry the history uses. */
 export function parseFileInfo(raw: unknown): FileInfo {
-	const r = isObj(raw) ? raw : {};
-	const analysis = isObj(r.gcodeAnalysis) ? r.gcodeAnalysis : null;
-	let filamentMm: number | null = null;
-	if (analysis && isObj(analysis.filament)) {
-		for (const f of Object.values(analysis.filament)) {
-			const len = isObj(f) ? num(f.length) : null;
-			if (len != null) filamentMm = (filamentMm ?? 0) + len;
-		}
-	}
-	const prints = isObj(r.prints) ? r.prints : null;
-	const l = prints && isObj(prints.last) ? prints.last : null;
-	const date = l ? num(l.date) : null;
-	return {
-		filamentMm,
-		estimatedS: analysis ? num(analysis.estimatedPrintTime) : null,
-		thumbnail: safeThumbnail(r.thumbnail),
-		last: l && date != null && typeof l.success === 'boolean' ? { date: date * 1000, success: l.success, printTime: num(l.printTime) } : null
-	};
+	const { filamentMm, estimatedS, thumbnail, last } = parseFileDetails(raw);
+	return { filamentMm, estimatedS, thumbnail, last };
 }
 
 async function fileInfo(printer: Printer, origin: string, path: string): Promise<FileInfo | null> {
 	try {
-		const raw = await clientFor(printer).get<unknown>(`/api/files/${origin === 'sdcard' ? 'sdcard' : 'local'}/${encodePath(path)}`, { timeoutMs: 6_000 });
-		return parseFileInfo(raw);
+		return await backendFor(printer).fileDetails(origin === 'sdcard' ? 'sdcard' : 'local', path);
 	} catch {
 		return null;
 	}

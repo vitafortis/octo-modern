@@ -26,7 +26,8 @@
 		"e2e:viewer": "node scripts/e2e/viewer.mjs",
 		"e2e:stats": "node scripts/e2e/stats.mjs",
 		"e2e:bedmesh": "node scripts/e2e/bedmesh.mjs",
-		"e2e:push": "node scripts/e2e/push.mjs"
+		"e2e:push": "node scripts/e2e/push.mjs",
+		"e2e:klipper": "node scripts/e2e/klipper.mjs"
 	},
 	"devDependencies": {
 		"@fontsource-variable/geist": "^5.3.0",

@@ -3,7 +3,7 @@
  * the file? Used by the job "start" action, "print this file", and the library's
  * send-and-print. Never blocks a print because Spoolman is unreachable.
  */
-import { encodePath, type OctoPrintClient } from '../octoprint/client.ts';
+import type { PrinterBackend } from '../backend/types.ts';
 import { listAssignments, toolCount } from './assignments.ts';
 import { spoolmanConfigured, spoolsById } from './spoolman.ts';
 import { findShortfalls, mmFromGrams, shortfallMessage, type FilamentNeed, type SpoolSummary } from '#lib/spools.ts';
@@ -28,12 +28,11 @@ export function wantsFilamentCheck(printerId: string): boolean {
 	return spoolmanConfigured() && listAssignments(printerId).length > 0;
 }
 
-/** Filament per tool from OctoPrint's analysis of a file on the printer; null if unknown. */
-export async function needForFile(client: OctoPrintClient, origin: string, path: string): Promise<FilamentNeed | null> {
+/** Filament per tool from the printer's analysis (or slicer metadata) of a file; null if unknown. */
+export async function needForFile(backend: PrinterBackend, origin: string, path: string): Promise<FilamentNeed | null> {
 	try {
-		const raw = await client.get<Obj>(`/api/files/${origin === 'sdcard' ? 'sdcard' : 'local'}/${encodePath(path)}`, { timeoutMs: 6_000 });
-		const perTool = perToolMm(isObj(raw?.gcodeAnalysis) ? raw.gcodeAnalysis.filament : null);
-		return Object.keys(perTool).length ? { perTool } : null;
+		const d = await backend.fileDetails(origin === 'sdcard' ? 'sdcard' : 'local', path);
+		return d && Object.keys(d.perTool).length ? { perTool: d.perTool } : null;
 	} catch {
 		return null;
 	}

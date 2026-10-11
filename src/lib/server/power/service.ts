@@ -7,7 +7,8 @@
  * (`printers.observe`) and a 5 s background job (jobs/power.ts). A running auto
  * power-off countdown is kept in the store (pending.ts) and resumed after a restart.
  */
-import { clientFor, printers } from '../octoprint/manager.ts';
+import { printers } from '../octoprint/manager.ts';
+import { backendFor } from '../backend/index.ts';
 import { currentState } from '../control.ts';
 import { audit } from '../permissions.ts';
 import { getPrinter, listPrinters } from '../store.ts';
@@ -274,7 +275,7 @@ export class PowerService {
 		if (!printer || !rt) return { confirm: null, overridden: null };
 		let state: PrinterState = printers.snapshot(printerId)?.state ?? 'unknown';
 		try {
-			state = await currentState(printerId, clientFor(printer));
+			state = await currentState(printerId, backendFor(printer));
 		} catch {
 			// No API key: what we last saw.
 		}
@@ -328,7 +329,7 @@ export class PowerService {
 		const state = printers.snapshot(printerId)?.state;
 		if (state && state !== 'offline' && state !== 'disconnected' && state !== 'unknown') {
 			try {
-				await clientFor(printer).disconnect();
+				await backendFor(printer).disconnect();
 			} catch {
 				// OctoPrint may be unreachable; the plug still switches.
 			}
@@ -377,7 +378,7 @@ export class PowerService {
 					continue;
 				}
 				try {
-					await clientFor(printer).connect({});
+					await backendFor(printer).connect({});
 					rt.connect = { phase: 'connecting', attempt, message: 'Asked OctoPrint to connect', at: Date.now() };
 				} catch (err) {
 					rt.connect = { phase: 'waiting', attempt, message: errMsg(err), at: Date.now() };
@@ -476,9 +477,9 @@ export class PowerService {
 
 	private async autoPowerOff(printer: Printer, resumed = false) {
 		try {
-			// Ask OctoPrint itself: a print may have just started.
+			// Ask the printer itself: a print may have just started.
 			try {
-				if (jobActive(await currentState(printer.id, clientFor(printer)))) {
+				if (jobActive(await currentState(printer.id, backendFor(printer)))) {
 					audit(SYSTEM, 'power.auto_off.cancelled', { printer, detail: 'A new print started' });
 					return;
 				}

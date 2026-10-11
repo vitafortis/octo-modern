@@ -3,7 +3,6 @@ import { BadRequest, body, handler } from '#lib/server/http.ts';
 import { confirmRequired, controlTarget, refreshSoon } from '#lib/server/control.ts';
 import { audit } from '#lib/server/permissions.ts';
 import { printers } from '#lib/server/octoprint/manager.ts';
-import { parseJobResponse } from '#lib/server/octoprint/parse.ts';
 import { FILAMENT_ASK } from '#lib/spools.ts';
 import { filamentWarning, perToolMm, wantsFilamentCheck } from '#lib/server/spools/check.ts';
 import type { RequestHandler } from './$types';
@@ -17,22 +16,22 @@ type Command = (typeof COMMANDS)[number];
  * holds less filament than the file needs (409 `confirmRequired`, then resend).
  */
 export const POST: RequestHandler = handler(async ({ params, locals, request }) => {
-	const { printer, client } = controlTarget(locals.user, params.id);
+	const { printer, backend } = controlTarget(locals.user, params.id);
 	const b = await body(request);
 	const command = b.command as Command;
 	if (!COMMANDS.includes(command)) throw new BadRequest(`"command" must be one of ${COMMANDS.join(', ')}`);
 	if (command === 'cancel' && b.confirm !== true) return confirmRequired('Cancelling ends the print and can’t be undone. Send confirm: true to cancel.');
 	if ((command === 'start' || command === 'restart') && b.confirm !== true && wantsFilamentCheck(printer.id)) {
-		const job = parseJobResponse(await client.job().catch(() => null)).job;
-		const perTool = perToolMm(job?.filament);
+		const job = (await backend.status().catch(() => null))?.job ?? null;
+		let perTool = perToolMm(job?.filament);
+		// Klipper's status has no analysis: ask for the file's slicer metadata.
+		if (!Object.keys(perTool).length && job?.file) perTool = (await backend.fileDetails(job.file.origin === 'sdcard' ? 'sdcard' : 'local', job.file.path))?.perTool ?? {};
 		const warning = Object.keys(perTool).length ? await filamentWarning(printer.id, { perTool }) : null;
 		if (warning) return confirmRequired(warning, FILAMENT_ASK);
 	}
 	const snap = printers.snapshot(printer.id);
 	const file = snap?.job?.file?.display ?? null;
-	if (command === 'pause') await client.jobCommand('pause', 'pause');
-	else if (command === 'resume') await client.jobCommand('pause', 'resume');
-	else await client.jobCommand(command);
+	await backend.jobCommand(command);
 	audit(locals, `job.${command}`, { printer, detail: file ?? undefined });
 	refreshSoon(printer.id);
 	return json({ ok: true });

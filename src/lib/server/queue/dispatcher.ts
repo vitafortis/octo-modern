@@ -18,7 +18,9 @@
  *   notification goes out. "Check again" requeues it; "Print anyway" requeues it
  *   with the check skipped for its next start.
  */
-import { printers, clientFor } from '../octoprint/manager.ts';
+import { printers } from '../octoprint/manager.ts';
+import { backendFor } from '../backend/index.ts';
+import { canReach } from '#lib/printer-kind.ts';
 import { history } from '../history/tracker.ts';
 import { openPrints } from '../history/store.ts';
 import { notify } from '../notify/index.ts';
@@ -29,10 +31,10 @@ import { getSource } from '../library/sources.ts';
 import { power } from '../power/service.ts';
 import { fileMeta, readMetaFrom, sourceAllowsPrinter, withDriver } from '../library/service.ts';
 import { startSend } from '../library/send.ts';
-import { octoprintFileSize, stagedPath, stagedSize, uploadFileToPrinter } from './files.ts';
+import { printerFileSize, stagedPath, stagedSize, uploadFileToPrinter } from './files.ts';
 import { filamentOverride, finishRun, getJob, getQueuePrinter, insertRun, isPaused, listJobs, setAwaitingClear, setFilamentOverride, setHeld, transition, type StoredJob, type StoredQueuePrinter } from './store.ts';
 import { filamentWarning, needForFile, needFromMeta, wantsFilamentCheck } from '../spools/check.ts';
-import type { OctoPrintClient } from '../octoprint/client.ts';
+import type { PrinterBackend } from '../backend/types.ts';
 import type { FilamentNeed } from '#lib/spools.ts';
 import { open } from 'node:fs/promises';
 import { jobActive, type PrinterState } from '#lib/printer.ts';
@@ -156,9 +158,9 @@ async function readRange(file: string, start: number, end: number): Promise<Buff
  * printer's own file), the library's slicer metadata, or the uploaded file's header.
  * Null when unknown (then nothing is held).
  */
-export async function jobFilamentNeed(job: Pick<StoredJob, 'id' | 'source' | 'sourceId' | 'path'>, client: OctoPrintClient): Promise<FilamentNeed | null> {
+export async function jobFilamentNeed(job: Pick<StoredJob, 'id' | 'source' | 'sourceId' | 'path'>, backend: PrinterBackend): Promise<FilamentNeed | null> {
 	try {
-		if (job.source === 'printer') return await needForFile(client, 'local', job.path);
+		if (job.source === 'printer') return await needForFile(backend, 'local', job.path);
 		if (job.source === 'library') {
 			const src = job.sourceId ? getSource(job.sourceId) : undefined;
 			return src ? needFromMeta((await fileMeta(src, job.path)).meta) : null;
@@ -234,7 +236,8 @@ class Dispatcher {
 				awaitingClear: q.awaitingClear,
 				held: q.held,
 				state: printers.snapshot(printer.id)?.state,
-				hasApiKey: printer.hasApiKey,
+				// Reachable at all: OctoPrint needs a key, Moonraker may not.
+				hasApiKey: canReach(printer),
 				busy: jobs.some((j) => j.activePrinterId === printer.id && (j.status === 'starting' || j.status === 'printing')),
 				tracking: openPrints(printer.id).length > 0
 			};
@@ -340,15 +343,15 @@ class Dispatcher {
 		const locals: Locals = { user: creator };
 		const copy = `${job.done + 1}/${job.copies}`;
 		try {
-			const client = clientFor(printer);
-			const state = await currentState(printer.id, client);
+			const backend = backendFor(printer);
+			const state = await currentState(printer.id, backend);
 			if (state !== 'operational') {
 				transition(job.id, 'starting', { status: 'queued', activePrinterId: null });
 				return;
 			}
 			// The same filament check as starting a print by hand; "Print anyway" skips it once.
 			if (!filamentOverride(job.id) && wantsFilamentCheck(printer.id)) {
-				const warning = await filamentWarning(printer.id, await jobFilamentNeed(job, client));
+				const warning = await filamentWarning(printer.id, await jobFilamentNeed(job, backend));
 				if (warning) {
 					await this.holdForFilament(job, printer, warning);
 					return;
@@ -358,20 +361,20 @@ class Dispatcher {
 			let path: string;
 			if (job.source === 'printer') {
 				path = job.path;
-				await client.selectFile('local', path, true);
+				await backend.selectFile('local', path, true);
 				audit(locals, 'job.start', { printer, detail: path });
 			} else if (job.source === 'library') {
 				const src = job.sourceId ? getSource(job.sourceId) : undefined;
 				if (!src) throw new Error('The library source was removed');
 				const name = baseName(job.path);
-				const [have, st] = await Promise.all([octoprintFileSize(client, name), withDriver(src, (d) => d.stat(job.path))]);
+				const [have, st] = await Promise.all([printerFileSize(backend, name), withDriver(src, (d) => d.stat(job.path))]);
 				if (have != null && have === st.size) {
 					// Already on the printer (an earlier copy): just print it.
 					path = name;
-					await client.selectFile('local', path, true);
+					await backend.selectFile('local', path, true);
 					audit(locals, 'job.start', { printer, detail: path });
 				} else {
-					const send = await startSend(locals, { src, path: job.path, printer, client, folder: '', print: true });
+					const send = await startSend(locals, { src, path: job.path, printer, backend, folder: '', print: true });
 					const started = Date.now();
 					while (!send.finishedAt && Date.now() - started < SEND_TIMEOUT_MS) await new Promise((r) => setTimeout(r, 500));
 					if (send.state !== 'done') throw new Error(send.error ?? 'The transfer didn’t finish');
@@ -382,12 +385,12 @@ class Dispatcher {
 				const file = stagedPath(job.id);
 				const size = await stagedSize(job.id);
 				if (size == null) throw new Error('The uploaded file is gone');
-				const have = await octoprintFileSize(client, job.name);
+				const have = await printerFileSize(backend, job.name);
 				if (have != null && have === size) {
 					path = job.name;
-					await client.selectFile('local', path, true);
+					await backend.selectFile('local', path, true);
 				} else {
-					const r = await uploadFileToPrinter(client, { file, name: job.name, print: true });
+					const r = await uploadFileToPrinter(backend, { file, name: job.name, print: true });
 					if (!r.printing) throw new Error('Uploaded, but the printer wasn’t ready to print');
 					path = r.path;
 				}

@@ -23,13 +23,13 @@
 		{/if}
 		<!-- Below xl one column: server, job, webcam, temperatures, filament, power. -->
 		<WebcamView printerId={printer.id} compact class="order-3 w-full short:mx-auto short:max-w-[calc(75dvh*16/9)]" height="min(24rem, 40vh)" />
-		<div class="order-4 min-w-0"><TemperatureCard {live} {canControl} /></div>
+		<div class="order-4 min-w-0"><TemperatureCard {live} {canControl} kind={printer.kind} /></div>
 	</div>
 	<div class="contents space-y-4 xl:block">
 		<section class="card order-1 p-4 text-[0.8125rem]">
 			<h2 class="flex items-center gap-2 text-sm font-semibold"><Gauge class="size-4 text-primary" />Server</h2>
 			<dl class="mt-3 space-y-2">
-				<div class="flex justify-between gap-3"><dt class="text-muted-foreground">OctoPrint</dt><dd class="font-mono text-xs">{s.version ?? printer.octoprintVersion ?? '—'}</dd></div>
+				<div class="flex justify-between gap-3"><dt class="text-muted-foreground">{printer.kind === 'moonraker' ? 'Software' : 'OctoPrint'}</dt><dd class="truncate font-mono text-xs" title={s.version ?? printer.octoprintVersion ?? ''}>{s.version ?? printer.octoprintVersion ?? '—'}</dd></div>
 				<div class="flex justify-between gap-3"><dt class="text-muted-foreground">State</dt><dd class="truncate text-xs">{s.stateText}</dd></div>
 				<div class="flex justify-between gap-3">
 					<dt class="text-muted-foreground">Updates</dt>
@@ -40,7 +40,7 @@
 				<div class="flex justify-between gap-3"><dt class="text-muted-foreground">Last update</dt><dd class="text-xs">{s.updatedAt ? ago(new Date(s.updatedAt).toISOString()) : 'never'}</dd></div>
 			</dl>
 		</section>
-		<div class="order-2"><JobCard {live} {canControl} /></div>
+		<div class="order-2"><JobCard {live} {canControl} kind={printer.kind} /></div>
 		<div class="order-5 min-w-0 empty:hidden"><SpoolCard {printer} {live} {canControl} /></div>
 		<div class="order-6 min-w-0 empty:hidden"><PowerCard {printer} {canControl} /></div>
 	</div>

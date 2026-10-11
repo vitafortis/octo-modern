@@ -1,12 +1,15 @@
 <script lang="ts">
-	import { Cable, ChevronDown, LoaderCircle, Plug, Unplug } from '@lucide/svelte';
+	import { Cable, ChevronDown, LoaderCircle, Plug, RotateCcw, Unplug } from '@lucide/svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
-	import { connectPrinter, disconnectPrinter } from '#lib/client/actions.ts';
+	import { connectPrinter, disconnectPrinter, restartKlipper } from '#lib/client/actions.ts';
 	import type { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { jobActive } from '#lib/printer.ts';
 
-	/** Connect (with port / baud rate / profile from OctoPrint) or disconnect the printer. */
-	let { live, canControl }: { live: LivePrinter; canControl: boolean } = $props();
+	/**
+	 * OctoPrint: connect (with port / baud rate / profile from OctoPrint) or disconnect the printer.
+	 * Klipper: no serial connection to manage; a firmware restart when Klipper is shut down or in error.
+	 */
+	let { live, canControl, kind = 'octoprint' }: { live: LivePrinter; canControl: boolean; kind?: 'octoprint' | 'moonraker' } = $props();
 
 	type Info = {
 		current: { state: string; port: string | null; baudrate: number | null; printerProfile: string | null };
@@ -64,7 +67,15 @@
 
 <svelte:window onclick={onwindowclick} />
 
-{#if canControl && s.state !== 'offline'}
+{#if kind === 'moonraker'}
+	{#if canControl && (s.state === 'error' || s.state === 'disconnected')}
+		<button class="btn btn-primary btn-sm" disabled={busy} title="FIRMWARE_RESTART: resets the MCU and reloads Klipper" onclick={async () => ((busy = true), await restartKlipper(live.id), (busy = false))} data-testid="firmware-restart">
+			{#if busy}<LoaderCircle class="animate-spin" />{:else}<RotateCcw />{/if}Firmware restart
+		</button>
+	{:else if s.state === 'connecting'}
+		<span class="badge badge-warning"><LoaderCircle class="animate-spin" />Klipper starting</span>
+	{/if}
+{:else if canControl && s.state !== 'offline'}
 	<div class="relative" bind:this={root}>
 		{#if connected}
 			<button class="btn btn-secondary btn-sm" disabled={busy} onclick={disconnect} title="Disconnect the printer from OctoPrint"><Unplug />Disconnect</button>

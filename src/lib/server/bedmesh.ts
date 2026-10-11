@@ -15,7 +15,8 @@
  */
 import { createHash } from 'node:crypto';
 import { getKv, getPrinter, listPrinters, setKv, sqlite } from './store.ts';
-import { clientFor, printers } from './octoprint/manager.ts';
+import { printers } from './octoprint/manager.ts';
+import { octoprintClient } from './backend/index.ts';
 import { toOctoPrintError } from './octoprint/errors.ts';
 import { notify } from './notify/index.ts';
 import type { LiveEvent } from './octoprint/model.ts';
@@ -60,8 +61,10 @@ export function cachedPlugin(printerId: string): Omit<PluginInfo, 'stored'> | nu
  * it stores (which is ingested). On failure, the last known answer with `error` set.
  */
 export async function detectPlugin(printerId: string): Promise<PluginInfo> {
+	// An OctoPrint plugin: Klipper printers never have it (and aren't asked).
+	if (getPrinter(printerId)?.kind === 'moonraker') return { installed: false, commands: [], saveMesh: false, timeoutS: 0, storedTimestamp: null, checkedAt: new Date().toISOString(), stored: null, error: null };
 	try {
-		const settings = await clientFor(printerId).settings();
+		const settings = await octoprintClient(printerId, 'Bed mesh').settings();
 		const info = parsePluginSettings(settings?.plugins);
 		const { stored, ...rest } = info;
 		setKv(pluginKey(printerId), { ...rest, error: null });
@@ -76,6 +79,7 @@ export async function detectPlugin(printerId: string): Promise<PluginInfo> {
 
 /** Known installed (from the cache; checks OctoPrint, up to `waitMs`, when it was never checked). */
 export async function pluginInstalled(printerId: string, waitMs = 2_000): Promise<boolean> {
+	if (getPrinter(printerId)?.kind === 'moonraker') return false;
 	const cached = cachedPlugin(printerId);
 	if (cached) return cached.installed;
 	const probe = detectPlugin(printerId).then((i) => i.installed);
@@ -278,7 +282,7 @@ async function saveToPlugin(printerId: string, s: MeshSnapshot, zMax: number | n
 	const info = cachedPlugin(printerId);
 	if (!info?.installed || !info.saveMesh) return;
 	try {
-		await clientFor(printerId).post('/api/settings', {
+		await octoprintClient(printerId, 'Bed mesh').post('/api/settings', {
 			plugins: {
 				[BLV_PLUGIN]: {
 					stored_mesh: s.mesh.z.map((r) => r.map((v) => (v === null ? null : String(v)))),
@@ -334,7 +338,7 @@ export async function startUpdate(printerId: string, info: PluginInfo, by: strin
 	};
 	live.running.set(printerId, run);
 	try {
-		await clientFor(printerId).sendCommands(updateCommands(info.commands));
+		await octoprintClient(printerId, 'Bed mesh').sendCommands(updateCommands(info.commands));
 	} catch (err) {
 		finish(printerId, run, 'error', toOctoPrintError(err).message);
 		throw err;
@@ -348,7 +352,7 @@ export async function startUpdate(printerId: string, info: PluginInfo, by: strin
 	run.poller = setInterval(async () => {
 		if (live.running.get(printerId) !== run || printers.pushState(printerId) === 'open') return;
 		try {
-			const p = parsePluginSettings((await clientFor(printerId).settings())?.plugins);
+			const p = parsePluginSettings((await octoprintClient(printerId, 'Bed mesh').settings())?.plugins);
 			if (p.stored && hashOf(p.stored) !== run.baseline && live.running.get(printerId) === run) {
 				const res = ingest(printerId, p.stored, 'update', { pluginTimestamp: p.storedTimestamp });
 				if (res) finish(printerId, run, 'done', null, res.snapshot.id);
@@ -365,7 +369,7 @@ export async function startUpdate(printerId: string, info: PluginInfo, by: strin
 export async function syncAll(): Promise<void> {
 	observePlugin();
 	for (const p of listPrinters()) {
-		if (live.running.has(p.id)) continue;
+		if (live.running.has(p.id) || p.kind === 'moonraker') continue;
 		await detectPlugin(p.id);
 	}
 }

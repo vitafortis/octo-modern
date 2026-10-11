@@ -2,9 +2,11 @@ import { json } from '@sveltejs/kit';
 import { handler, NotFound } from '#lib/server/http.ts';
 import { audit, requireControl, requirePrinter } from '#lib/server/permissions.ts';
 import { deleteMesh, driftSettings, getMesh, saveDriftSettings } from '#lib/server/bedmesh.ts';
+import { octoprintClient } from '#lib/server/backend/index.ts';
 import type { RequestHandler } from './$types';
 
 function meshOf(printerId: string, raw: string) {
+	octoprintClient(printerId, 'Bed mesh'); // OctoPrint's Bed Visualizer only: 400 for Klipper
 	const m = /^\d+$/.test(raw) ? getMesh(Number(raw)) : undefined;
 	if (!m || m.printerId !== printerId) throw new NotFound('Mesh not found');
 	return m;

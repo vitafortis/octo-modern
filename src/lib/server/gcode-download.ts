@@ -5,8 +5,9 @@
  * printer (or the library source) may preview its files.
  */
 import { Readable } from 'node:stream';
-import { encodePath, type OctoPrintClient } from './octoprint/client.ts';
 import { toOctoPrintError } from './octoprint/errors.ts';
+import type { PrinterBackend } from './backend/types.ts';
+import { OctoPrintBackend } from './backend/octoprint.ts';
 import { openRead, withDriver } from './library/service.ts';
 import { LibraryError } from './library/drivers.ts';
 import type { LibrarySource } from '#lib/library.ts';
@@ -55,21 +56,22 @@ export function rangeHeaders(size: number, range: ByteRange | null, name: string
 const unsatisfiable = (size: number) => new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } });
 
 /**
- * An OctoPrint local file, passing the Range header through (OctoPrint's download
- * handler supports ranges). Aborts the upstream request when the browser goes away.
+ * A file in the printer's storage (OctoPrint's local files, Klipper's gcodes folder),
+ * passing the Range header through (both servers support ranges). Aborts the upstream
+ * request when the browser goes away.
  */
-export async function octoprintDownload(client: OctoPrintClient, path: string, range: string | null, signal: AbortSignal): Promise<Response> {
-	const headers: Record<string, string> = { accept: '*/*' };
+export async function printerDownload(backend: PrinterBackend, path: string, range: string | null, signal: AbortSignal): Promise<Response> {
+	const headers: Record<string, string> = {};
 	if (range) headers.range = range;
 	let res: Response;
 	try {
-		res = await client.request('GET', `/downloads/files/local/${encodePath(path)}`, { headers, allow: [206, 404, 416], timeoutMs: 60 * 60_000, signal });
+		res = await backend.download(path, { headers, signal });
 	} catch (err) {
-		throw toOctoPrintError(err, client.host);
+		throw toOctoPrintError(err, backend.host);
 	}
 	if (res.status === 404) {
 		await res.body?.cancel().catch(() => {});
-		return Response.json({ message: 'File not found on OctoPrint', code: 'NOT_FOUND' }, { status: 404 });
+		return Response.json({ message: 'File not found on the printer', code: 'NOT_FOUND' }, { status: 404 });
 	}
 	const out: Record<string, string> = { ...BASE_HEADERS };
 	for (const k of ['content-length', 'content-range', 'last-modified', 'etag']) {
@@ -93,4 +95,9 @@ export async function libraryDownload(src: LibrarySource, path: string, rangeHea
 	if (st.size === 0) return new Response('', { headers: rangeHeaders(0, null, name) });
 	const stream = await openRead(src, path, range ?? undefined);
 	return new Response(Readable.toWeb(stream) as ReadableStream<Uint8Array>, { status: range ? 206 : 200, headers: rangeHeaders(st.size, range, name) });
+}
+
+/** An OctoPrint local file (kept for callers holding an OctoPrint client). */
+export function octoprintDownload(client: import('./octoprint/client.ts').OctoPrintClient, path: string, range: string | null, signal: AbortSignal): Promise<Response> {
+	return printerDownload(new OctoPrintBackend(client), path, range, signal);
 }

@@ -8,7 +8,7 @@
 	import type { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { formatTemp, heaterColor, heaterKeys, heaterLabel, isConnected } from '#lib/printer.ts';
 
-	let { live, canControl }: { live: LivePrinter; canControl: boolean } = $props();
+	let { live, canControl, kind = 'octoprint' }: { live: LivePrinter; canControl: boolean; kind?: 'octoprint' | 'moonraker' } = $props();
 
 	type Profile = { name: string; extruder: number | null; bed: number | null; chamber: number | null };
 
@@ -147,7 +147,7 @@
 			{#each profiles as p (p.name)}
 				<button class="btn btn-secondary btn-sm" disabled={!connected || !!busy} onclick={() => apply(presetTargets(p), p.name)} title="Hotend {p.extruder ?? '—'}° · bed {p.bed ?? '—'}°">{p.name}</button>
 			{:else}
-				<span class="text-[0.6875rem] text-muted-foreground">none in OctoPrint (Settings → Temperatures)</span>
+				<span class="text-[0.6875rem] text-muted-foreground">{kind === 'moonraker' ? 'none in Mainsail (Settings → Presets)' : 'none in OctoPrint (Settings → Temperatures)'}</span>
 			{/each}
 			<button class="btn btn-ghost btn-sm ml-auto" disabled={!connected || !anyHeating || !!busy} onclick={() => apply(allOff, 'off')}><Power />All off</button>
 		</div>

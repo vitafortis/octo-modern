@@ -16,7 +16,7 @@
 <svelte:head><title>Overview · octo·modern</title></svelte:head>
 
 <div class="h-full overflow-y-auto">
-	<PageHeader title="Overview" description="Every OctoPrint server, live.">
+	<PageHeader title="Overview" description="Every printer, live.">
 		{#snippet actions()}
 			{#if isAdmin()}<button class="btn btn-primary" onclick={() => (editor.target = 'new')}><Plus />Add printer</button>{/if}
 		{/snippet}
@@ -30,7 +30,7 @@
 					<div class="mx-auto grid size-12 place-items-center rounded-xl bg-primary-soft text-primary"><PrinterIcon class="size-6" /></div>
 					<h2 class="mt-4 text-lg font-semibold tracking-tight">No printers yet</h2>
 					<p class="mt-1.5 text-sm text-muted-foreground">
-						Add an OctoPrint server with its URL and an API key. octo·modern keeps the key on the server and talks to OctoPrint for you.
+						Add an OctoPrint server (URL and API key) or a Klipper printer (its Moonraker URL). octo·modern keeps keys on the server and talks to the printers for you.
 					</p>
 					{#if isAdmin()}
 						<button class="btn btn-primary mt-6" onclick={() => (editor.target = 'new')}><Plus />Add printer</button>

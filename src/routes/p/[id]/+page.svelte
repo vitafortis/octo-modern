@@ -6,6 +6,7 @@
 	import ConnectionControls from '#lib/components/printer/ConnectionControls.svelte';
 	import PowerButtons from '#lib/components/power/PowerButtons.svelte';
 	import { tabsFor } from '#lib/components/printer/tabs.ts';
+	import { hiddenTabs, SERVER_LABEL } from '#lib/printer-kind.ts';
 	import { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { emergencyStop, jobCommand } from '#lib/client/actions.ts';
 	import { COLORS } from '#lib/client/format.ts';
@@ -22,6 +23,7 @@
 	// The store copy reflects edits made in the dialog without a reload.
 	const printer = $derived(printers.list.find((p) => p.id === data.printer.id) ?? data.printer);
 	const canControl = $derived(data.canControl);
+	const klipper = $derived(printer.kind === 'moonraker');
 
 	// One live connection per printer page; a new one when navigating to another printer.
 	const live = $derived(new LivePrinter(data.printer.id, data.snapshot ?? undefined));
@@ -29,7 +31,8 @@
 	// The queue's "bed is clear" prompt for this printer.
 	$effect(() => pollQueue());
 
-	const TABS = $derived(tabsFor(data.features));
+	// Tabs whose plugin is missing, and OctoPrint-only tabs on Klipper printers (timelapse, bed mesh), stay hidden.
+	const TABS = $derived(tabsFor(data.features).filter((t) => !hiddenTabs(printer).has(t.id)));
 	const tab = $derived(TABS.find((t) => t.id === page.url.searchParams.get('tab')) ?? TABS[0]);
 	function openTab(id: string) {
 		const url = new URL(page.url.href);
@@ -76,7 +79,7 @@
 					<StateBadge state={s.state} text={s.stateText} />
 				</div>
 				<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground short:hidden">
-					{printer.baseUrl.replace(/^https?:\/\//, '')}{#if s.version}{' · '}OctoPrint {s.version}{/if}
+					{printer.baseUrl.replace(/^https?:\/\//, '')}{#if s.version}{' · '}{klipper ? s.version : `OctoPrint ${s.version}`}{/if}
 				</p>
 			</div>
 			<div class="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -87,12 +90,12 @@
 					<!-- On phones these live in the bar at the bottom, under the thumb. -->
 					{#if !phone.current}{@render jobButtons(false)}{/if}
 				{:else}
-					<ConnectionControls {live} {canControl} />
+					<ConnectionControls {live} {canControl} kind={printer.kind} />
 				{/if}
 				{#if canControl}<PowerButtons printerId={printer.id} name={printer.name} compact={phone.current} />{/if}
 				{#if canControl && isConnected(s.state) && !(active && phone.current)}
 					<!-- Phones: outlined rather than a solid red block next to Connect/Disconnect; it asks first either way. -->
-					<button class="btn btn-sm {phone.current ? 'btn-danger-outline' : 'btn-danger'}" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>
+					<button class="btn btn-sm {phone.current ? 'btn-danger-outline' : 'btn-danger'}" title={klipper ? 'Emergency stop (printer.emergency_stop)' : 'Emergency stop (M112)'} onclick={() => emergencyStop(printer.id, printer.name, klipper)}><OctagonX />Stop</button>
 				{/if}
 				{#if isAdmin()}
 					<button class="btn btn-ghost btn-icon btn-sm" title="Edit server" aria-label="Edit server" onclick={() => (editor.target = printer)}><Settings2 /></button>
@@ -119,7 +122,7 @@
 		<div class="mx-4 mt-4 flex items-start gap-2 sm:mx-6 lg:mx-8 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[0.8125rem]">
 			<WifiOff class="mt-0.5 size-4 shrink-0 text-danger" />
 			<div>
-				<p class="font-medium">Can’t reach OctoPrint: {s.problem.message}</p>
+				<p class="font-medium">Can’t reach {SERVER_LABEL[printer.kind]}: {s.problem.message}</p>
 				{#if s.problem.hint}<p class="mt-0.5 text-xs text-muted-foreground">{s.problem.hint}</p>{/if}
 			</div>
 		</div>
@@ -143,7 +146,7 @@
 			<div class="page-x flex items-center gap-2 pt-2.5 pb-safe">
 				{@render jobButtons(true)}
 				<!-- Set apart, and it still asks first. -->
-				<button class="btn btn-icon btn-danger-outline ml-1" title="Emergency stop (M112)" aria-label="Emergency stop" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX class="size-5!" /></button>
+				<button class="btn btn-icon btn-danger-outline ml-1" title="Emergency stop (M112)" aria-label="Emergency stop" onclick={() => emergencyStop(printer.id, printer.name, klipper)}><OctagonX class="size-5!" /></button>
 			</div>
 		</div>
 	{/if}

@@ -173,6 +173,33 @@ export class LiveModel {
 		this.commit(next, added, now);
 	}
 
+	// --- for backends without OctoPrint's push protocol (Moonraker) -----------------------
+
+	/**
+	 * Applies state a backend built itself: snapshot fields, new temperature points, and
+	 * optionally a rebuilt temperature history (e.g. Moonraker's temperature store).
+	 */
+	applyLive(next: Partial<LiveSnapshot>, opts: { samples?: TempSample[]; history?: TempSample[] } = {}, now = Date.now()) {
+		if (opts.history) {
+			this.history.merge(opts.history);
+			this.emit({ type: 'history', samples: this.history.toArray() });
+		}
+		const added = (opts.samples ?? []).filter((s) => this.history.push(s));
+		this.commit({ problem: null, ...next }, added, now);
+	}
+
+	/** New terminal lines; `reset` replaces the backlog. */
+	addLogs(lines: string[], reset = false) {
+		if (!reset) return this.appendLogs(lines);
+		this.logs = lines.slice(-MAX_LOG_LINES);
+		this.emit({ type: 'log', lines: this.logs, reset: true });
+	}
+
+	/** An event in OctoPrint's vocabulary (PrintStarted, PrintDone, UpdatedFiles, …). */
+	emitEvent(name: string, payload: unknown = null) {
+		this.emit({ type: 'event', name, payload });
+	}
+
 	/** OctoPrint can't be reached: keep the last job info, but mark it offline. */
 	setProblem(err: Pick<OctoPrintError, 'message' | 'hint' | 'code'>, now = Date.now()) {
 		const problem = { message: err.message, hint: err.hint, code: err.code };

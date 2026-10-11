@@ -22,7 +22,8 @@ import { rm } from 'node:fs/promises';
 import { json } from '@sveltejs/kit';
 import { audit } from './permissions.ts';
 import { refreshSoon } from './control.ts';
-import { clientFor } from './octoprint/manager.ts';
+import { backendFor } from './backend/index.ts';
+import { canReach } from '#lib/printer-kind.ts';
 import { bytesLabel } from './octoprint/files-util.ts';
 import { getPrinter } from './store.ts';
 import { getSource } from './library/sources.ts';
@@ -60,7 +61,7 @@ export function uploadTargetProblem(t: UploadTarget): string | null {
 		case 'printer': {
 			const p = getPrinter(t.printerId);
 			if (!p) return 'The printer no longer exists';
-			return p.hasApiKey ? null : `${p.name} has no OctoPrint API key saved`;
+			return canReach(p) ? null : `${p.name} has no OctoPrint API key saved`;
 		}
 	}
 }
@@ -162,7 +163,7 @@ export async function handleUpload(request: Request, url: URL, principal: TokenP
 			case 'printer': {
 				const printer = getPrinter(target.printerId)!;
 				const doPrint = print && target.allowPrint;
-				const r = await uploadFileToPrinter(clientFor(printer), { file: tmp, name, folder, select: select && target.allowPrint, print: doPrint });
+				const r = await uploadFileToPrinter(backendFor(printer), { file: tmp, name, folder, select: select && target.allowPrint, print: doPrint });
 				audit(locals, 'file.upload', {
 					printer,
 					detail: `${who}: ${r.path} (${size})${print ? (!target.allowPrint ? ', print requested but this key may not start prints' : r.printing ? ', printing' : ', print requested but the printer wasn’t ready') : ''}`

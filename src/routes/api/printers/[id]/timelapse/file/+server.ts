@@ -3,6 +3,7 @@ import { BadRequest, handler } from '#lib/server/http.ts';
 import { confirmRequired, controlTarget, viewTarget } from '#lib/server/control.ts';
 import { audit } from '#lib/server/permissions.ts';
 import { fetchTimelapseFile, forwardHeaders, PASS_STATUSES, responseHeaders, validTimelapseName } from '#lib/server/octoprint/timelapse.ts';
+import { octoprintClient } from '#lib/server/backend/index.ts';
 import type { RequestHandler } from './$types';
 
 function nameParam(url: URL): string {
@@ -17,7 +18,7 @@ function nameParam(url: URL): string {
  * makes it an attachment.
  */
 export const GET: RequestHandler = handler(async ({ params, locals, url, request }) => {
-	const { client } = viewTarget(locals.user, params.id);
+	const client = octoprintClient(viewTarget(locals.user, params.id).printer, 'Timelapse');
 	const name = nameParam(url);
 	const res = await fetchTimelapseFile(client, name, forwardHeaders(request.headers), request.signal);
 	if (!PASS_STATUSES.has(res.status)) {
@@ -31,7 +32,8 @@ export const GET: RequestHandler = handler(async ({ params, locals, url, request
 
 /** Deletes a rendered timelapse: `?name=<file>&confirm=1`. */
 export const DELETE: RequestHandler = handler(async ({ params, locals, url }) => {
-	const { printer, client } = controlTarget(locals.user, params.id);
+	const { printer } = controlTarget(locals.user, params.id);
+	const client = octoprintClient(printer, 'Timelapse');
 	const name = nameParam(url);
 	if (url.searchParams.get('confirm') !== '1') return confirmRequired(`Deleting ${name} can’t be undone. Add confirm=1 to delete it.`);
 	await client.json('DELETE', `/api/timelapse/${encodeURIComponent(name)}`);

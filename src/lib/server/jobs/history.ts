@@ -8,6 +8,7 @@ import { printers } from '../octoprint/manager.ts';
 import { listPrinters } from '../store.ts';
 import { history } from '../history/tracker.ts';
 import { importedAt, importHistory } from '../history/import.ts';
+import { canReach } from '#lib/printer-kind.ts';
 
 defineJob({
 	name: 'print-history',
@@ -16,12 +17,12 @@ defineJob({
 	run: async () => {
 		history.start();
 		for (const p of listPrinters()) {
-			if (!p.hasApiKey || importedAt(p.id)) continue;
+			if (!canReach(p) || importedAt(p.id)) continue;
 			const state = printers.snapshot(p.id)?.state;
 			if (!state || state === 'offline' || state === 'unknown') continue;
 			try {
 				const r = await importHistory(p);
-				if (r.imported) console.log(`[octo-modern] imported ${r.imported} earlier prints of ${p.name} from OctoPrint (${r.sources.join(', ')})`);
+				if (r.imported) console.log(`[octo-modern] imported ${r.imported} earlier prints of ${p.name} (${r.sources.join(', ')})`);
 			} catch (err) {
 				console.warn(`[octo-modern] couldn't import the print history of ${p.name}: ${(err as Error).message}`);
 			}

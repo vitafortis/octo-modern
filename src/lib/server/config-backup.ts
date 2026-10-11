@@ -39,6 +39,8 @@ export const NO_CATEGORIES: BackupInclude = { printers: false, users: false, set
 export interface BackupPrinter {
 	id: string;
 	name: string;
+	/** Missing in backups from before Klipper support: OctoPrint. */
+	kind?: 'octoprint' | 'moonraker';
 	baseUrl: string;
 	/** Decrypted; re-sealed with the target install's master key on restore. */
 	apiKey: string | null;
@@ -132,6 +134,7 @@ export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): Ba
 		payload.printers = (h.prepare('SELECT * FROM printers ORDER BY sort, name COLLATE NOCASE').all() as Row[]).map((r) => ({
 			id: r.id as string,
 			name: r.name as string,
+			kind: r.kind === 'moonraker' ? 'moonraker' : 'octoprint',
 			baseUrl: r.base_url as string,
 			apiKey: getApiKey(r.id as string) ?? null,
 			verifyTls: r.verify_tls !== 0,
@@ -348,13 +351,13 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 		const restoredPrinters = new Set<string>();
 		if (choice.printers && p.printers) {
 			const exists = h.prepare('SELECT 1 FROM printers WHERE id = ?');
-			const update = h.prepare('UPDATE printers SET name = ?, base_url = ?, secret = ?, verify_tls = ?, webcam_url = ?, color = ?, sort = ?, updated_at = ? WHERE id = ?');
+			const update = h.prepare('UPDATE printers SET name = ?, base_url = ?, secret = ?, verify_tls = ?, webcam_url = ?, color = ?, sort = ?, kind = ?, updated_at = ? WHERE id = ?');
 			const insert = h.prepare(
-				`INSERT INTO printers (id, name, base_url, secret, verify_tls, webcam_url, color, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+				`INSERT INTO printers (id, name, base_url, secret, verify_tls, webcam_url, color, sort, kind, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 			);
 			for (const s of p.printers) {
 				const secret = s.apiKey ? encrypt(JSON.stringify({ apiKey: s.apiKey }), `printer:${s.id}`) : null;
-				const fields = [s.name, s.baseUrl, secret, s.verifyTls === false ? 0 : 1, s.webcamUrl ?? null, s.color || 'violet', Number(s.sort) || 0] as const;
+				const fields = [s.name, s.baseUrl, secret, s.verifyTls === false ? 0 : 1, s.webcamUrl ?? null, s.color || 'violet', Number(s.sort) || 0, s.kind === 'moonraker' ? 'moonraker' : 'octoprint'] as const;
 				if (exists.get(s.id)) {
 					update.run(...fields, now, s.id);
 					result.printers.updated++;

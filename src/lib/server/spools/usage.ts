@@ -9,7 +9,7 @@
  * reported. Failed reports stay pending and are retried by the job for a week.
  */
 import { printers } from '../octoprint/manager.ts';
-import { clientFor } from '../octoprint/manager.ts';
+import { backendFor } from '../backend/index.ts';
 import { getKv, getPrinter, listPrinters, setKv, sqlite } from '../store.ts';
 import { openPrints } from '../history/store.ts';
 import { notify } from '../notify/index.ts';
@@ -186,7 +186,7 @@ export function finishUsage(record: PrintRecord): Promise<ToolShare[]> {
 		}
 		const printer = getPrinter(record.printerId);
 		if (!Object.keys(planned).length && printer && spoolmanConfigured() && listAssignments(record.printerId).length) {
-			planned = (await needForFile(clientFor(printer), record.origin, record.path))?.perTool ?? {};
+			planned = (await needForFile(backendFor(printer), record.origin, record.path))?.perTool ?? {};
 		}
 		let shares: ToolShare[];
 		const spoolOf = new Map<number, number>(rows.map((r) => [r.tool, r.spoolId]));

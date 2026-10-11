@@ -6,7 +6,7 @@
 //   E2E_KEEP=1 pnpm e2e:bedmesh        # leave the app and mocks running afterwards
 //   E2E_SKIP_BUILD=1 pnpm e2e:bedmesh  # reuse ./build
 //
-// Ports 5400–5403: app 5400, OctoPrint 5401 (plugin) and 5402 (none), webhook 5403.
+// Ports 5400–5403 (E2E_PORT_BASE moves them): app +0, OctoPrint +1 (plugin) and +2 (none), webhook +3.
 // Needs a Playwright Chromium. Screenshots land in docs/screenshots/.
 import { execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -20,7 +20,8 @@ import { demoMesh, startMockOctoPrint } from './mock-octoprint.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const SHOTS = join(ROOT, 'docs/screenshots');
-const APP_PORT = 5400;
+const PORT_BASE = Number(process.env.E2E_PORT_BASE ?? 5400);
+const APP_PORT = PORT_BASE;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const ADMIN = { email: 'admin@example.com', name: 'Ada Admin', password: 'e2e-admin-password' };
 const OPERATOR = { email: 'operator@example.com', name: 'Otto Operator', password: 'e2e-operator-password' };
@@ -77,14 +78,14 @@ async function main() {
 	mkdirSync(SHOTS, { recursive: true });
 	log('starting mock OctoPrint servers and a webhook catcher');
 	const mk4Op = await startMockOctoPrint({
-		port: 5401,
+		port: PORT_BASE + 1,
 		apiKey: 'mk4-bed-key',
 		push: true,
 		connectMs: 300,
 		printSeconds: 60,
 		bedVisualizer: { mesh: meshOfWeek(0), timestamp: '01/08/2026, 09:00:00', delayMs: 3500, nextMesh: () => demoMesh(7, { bow: 0.16, tilt: 0.04, seed: 9 }), bed: { type: 'rectangular', x_min: 10, x_max: 240, y_min: 10, y_max: 200, z_min: 0, z_max: 2 } }
 	});
-	const enderOp = await startMockOctoPrint({ port: 5402, apiKey: 'ender-bed-key', connectMs: 300 });
+	const enderOp = await startMockOctoPrint({ port: PORT_BASE + 2, apiKey: 'ender-bed-key', connectMs: 300 });
 	const hookServer = createServer((req, res) => {
 		let body = '';
 		req.on('data', (d) => (body += d));
@@ -93,7 +94,7 @@ async function main() {
 			res.end('ok');
 		});
 	});
-	await new Promise((r) => hookServer.listen(5403, '127.0.0.1', r));
+	await new Promise((r) => hookServer.listen(PORT_BASE + 3, '127.0.0.1', r));
 	closers.push(mk4Op.close, enderOp.close, () => (hookServer.closeAllConnections(), new Promise((r) => hookServer.close(r))));
 	for (const [op, key] of [
 		[mk4Op, 'mk4-bed-key'],
@@ -198,7 +199,7 @@ async function main() {
 
 	// --- drift alerts --------------------------------------------------------------------------------
 	log('drift alerts: settings and a webhook rule for bed.drift');
-	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e hook', secrets: { url: 'http://127.0.0.1:5403/bed' } });
+	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e hook', secrets: { url: `http://127.0.0.1:${PORT_BASE + 3}/bed` } });
 	assert.equal(hookChannel.status, 201, hookChannel.text);
 	const rules = await admin.put('/api/settings/notifications', { rules: [{ name: 'Bed', printers: 'all', events: ['bed.drift'], channels: [hookChannel.data.channel.id] }] });
 	assert.equal(rules.status, 200, rules.text);
