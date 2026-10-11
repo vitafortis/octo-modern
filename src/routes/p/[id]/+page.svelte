@@ -4,6 +4,7 @@
 	import { CirclePause, CirclePlay, CircleStop, OctagonX, Settings2, WifiOff } from '@lucide/svelte';
 	import StateBadge from '#lib/components/printer/StateBadge.svelte';
 	import ConnectionControls from '#lib/components/printer/ConnectionControls.svelte';
+	import PowerButtons from '#lib/components/power/PowerButtons.svelte';
 	import { TABS } from '#lib/components/printer/tabs.ts';
 	import { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { emergencyStop, jobCommand } from '#lib/client/actions.ts';
@@ -12,6 +13,8 @@
 	import { editor, isAdmin, printers } from '#lib/client/state.svelte.ts';
 	import { isConnected, jobActive, progressPercent } from '#lib/printer.ts';
 	import { phone } from '#lib/client/viewport.svelte.ts';
+	import BedClearBanner from '#lib/components/queue/BedClearBanner.svelte';
+	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -23,6 +26,8 @@
 	// One live connection per printer page; a new one when navigating to another printer.
 	const live = $derived(new LivePrinter(data.printer.id, data.snapshot ?? undefined));
 	$effect(() => live.connect());
+	// The queue's "bed is clear" prompt for this printer.
+	$effect(() => pollQueue());
 
 	const tab = $derived(TABS.find((t) => t.id === page.url.searchParams.get('tab')) ?? TABS[0]);
 	function openTab(id: string) {
@@ -83,6 +88,7 @@
 				{:else}
 					<ConnectionControls {live} {canControl} />
 				{/if}
+				{#if canControl}<PowerButtons printerId={printer.id} name={printer.name} compact={phone.current} />{/if}
 				{#if canControl && isConnected(s.state) && !(active && phone.current)}
 					<!-- Phones: outlined rather than a solid red block next to Connect/Disconnect; it asks first either way. -->
 					<button class="btn btn-sm {phone.current ? 'border border-danger/50 text-danger' : 'btn-danger'}" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>
@@ -116,6 +122,11 @@
 				{#if s.problem.hint}<p class="mt-0.5 text-xs text-muted-foreground">{s.problem.hint}</p>{/if}
 			</div>
 		</div>
+	{/if}
+
+	<!-- Print queue: waiting for someone to clear the bed (above the scrolling content, so it's in reach on phones). -->
+	{#if tab.id !== 'queue'}
+	<BedClearBanner class="mx-4 mt-3 sm:mx-6 lg:mx-8" printerId={printer.id} name={printer.name} state={s.state} {canControl} />
 	{/if}
 
 	<div class="page-x min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 lg:py-5 {tab.id === 'terminal' ? 'flex flex-col max-sm:py-2' : ''}">

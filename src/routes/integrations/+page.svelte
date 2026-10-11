@@ -287,5 +287,15 @@
 			</p>
 			<ApiTokens />
 		</section>
+
+		<!-- Slicer upload keys (OctoPrint-compatible API) -->
+		<section id="slicer" class="card scroll-mt-6 p-5">
+			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><KeyRound class="size-4 text-primary" />Slicer upload keys</h2>
+			<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+				PrusaSlicer, OrcaSlicer and Cura can send G-code to octo·modern as if it were an OctoPrint server. Each key decides where uploads go: the print queue,
+				a folder in a writable library source, or straight to one printer.
+			</p>
+			<ApiTokens scope="upload" />
+		</section>
 	</div>
 </div>

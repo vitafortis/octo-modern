@@ -23,19 +23,23 @@
 - **Jobs**: print, pause, resume, restart and cancel. Cancelling always asks first, from the dashboard, the printer header or the overview card.
 - **Files**: browse OctoPrint's storage and the SD card with folders, sizes, upload dates, estimated print time, filament and the last print's outcome (and slicer thumbnails, if a thumbnail plugin provides them). Search and sort, drag and drop G-code to upload with progress, "print after upload", print or load any file, create folders, and delete (with confirmation). Uploads stream through octo·modern to OctoPrint without being held in memory, so files of hundreds of megabytes are fine.
 - **Library**: print G-code straight from your NAS (a mounted NFS/SMB share, SMB, SFTP or WebDAV). Browse and search it with slicer thumbnails, print time and filament read from each file, then send it to any printer, or send and print, streamed without a copy in between. See [Library](#library-print-from-your-nas).
+- **Print queue**: one queue for every printer. Add jobs from the library, a printer's files or an upload, for a specific printer or "any compatible printer" (free-form tags such as `0.4mm`, `petg`); drag or use the arrows to reorder, set copies, pause. A printer takes the next job when it's idle and someone has confirmed its **bed is clear**, which it asks for after every print (with a notification); a failed or cancelled queued print pauses that printer. See [Print queue](#print-queue).
+- **Slicer uploads**: PrusaSlicer, OrcaSlicer and Cura can send G-code to octo·modern as if it were an OctoPrint server, with an upload key that decides where it goes: the queue, a library folder, or one printer. See [Slicer uploads](#slicer-uploads).
 - **Webcams**: the live MJPEG stream on the dashboard (with fullscreen) and its own tab, relayed by octo·modern so it works wherever octo·modern does, even when the camera is on a LAN address the browser can't reach. Several cameras per printer get a switcher; flip and rotation follow OctoPrint's settings; HLS and WebRTC cameras get an "Open stream" link.
 - **Control**: jog X/Y/Z in 0.1–100 mm steps (buttons or arrow keys, Page Up/Down and Home while the pad has focus), home, motors off, feed and flow rate overrides, part fan, extrude/retract and tool select. It follows the printer profile (axis inversion, build volume, extruder count, heated bed/chamber) and shows OctoPrint's custom controls (sections, commands, scripts, sliders and inputs, feedback lines). Movement is refused while a print runs, by the server too; jogs are coalesced in the audit log.
 - **Terminal**: the live serial log (virtualized, follows the bottom until you scroll up), filters for temperature reports, `ok`, SD status, `wait` and `busy`, search with highlighting, clear and copy. A G-code prompt with multi-line send, history (↑/↓, kept per user and printer), autocomplete with short descriptions, optional uppercasing, and an emergency stop button.
 - **Discover**: find OctoPrint in Docker (through a read-only socket proxy), in [Arcane](https://getarcane.app), over mDNS and with a subnet scan, see which serial port each container owns, and add one by approving octo·modern in OctoPrint (Application Keys), no key to copy. See [Discover](#discover).
 - **Print history**: every print on every printer, recorded whether or not anyone has a browser open: file, start and end, duration, result (success, failed, cancelled), filament used, who started it, a webcam picture of how it ended, and notes. A History tab per printer and a History page across all of them, with filters, success rate, print time and filament per printer and per week, CSV export, and "print again". Earlier prints are imported from OctoPrint. See [Print history](#print-history).
 - **Timelapses**: watch OctoPrint's timelapses in the browser (with seeking), download and delete them, render unrendered ones, and change the timelapse settings.
-- **Notifications** when a print finishes, fails or is cancelled, a spool runs low or maintenance falls due: ntfy, Discord or any webhook.
+- **Notifications** when a print finishes, fails or is cancelled, a printer is powered on or off, a spool runs low or maintenance falls due: ntfy, Discord or any webhook.
+- **Smart plug power**: switch each printer with a Shelly (Gen1 and Gen2+), Tasmota, Home Assistant or any HTTP switch, from the printer page, its overview card or a right-click in the sidebar, with the plug's watts and energy where it measures them. After power-on octo·modern connects the printer; after a print it can turn it off once the hotend has cooled; and it can switch a printer on when a print is sent to it. Turning off asks first while the printer is hot, and twice while it prints. See [Smart plugs](#smart-plugs).
 - **Spoolman**: pick the active [Spoolman](https://github.com/Donkie/Spoolman) spool per printer and extruder (search, colour, material, what's left), see it on the dashboard, and have each print's filament reported to Spoolman as it prints and when it ends. Before a print starts, octo·modern warns when the spool won't last. See [Spools, costs and maintenance](#spools-costs-and-maintenance).
 - **Cost per print**: filament (by the spool's price from Spoolman, or a price per kg per material) plus electricity (print time × each printer's power draw), on every history entry, in the History stats per printer and in the CSV export; earlier prints are costed too.
 - **Maintenance reminders**: per-printer tasks counted in print hours, filament used or days (nozzle, belts, rails, bed, e-steps offered), with due/overdue badges, "Done" with notes and a log of who did what when.
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
+- **AI failure detection**: while a printer prints, webcam frames go to your own [Obico](https://www.obico.io) ML container; a smoothed failure score (Obico's own algorithm) warns you with the annotated frame and can pause a print that has turned to spaghetti. A "false alarm" button quiets it for the rest of the print. See [Failure detection](#failure-detection).
 - **Audit log**: every print started, paused or cancelled, every temperature change, upload, deletion, G-code command and connection change, with who did it and from where.
 - **Single sign-on**: any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …), with accounts created automatically for matching emails.
 - **Status API for dashboards**: read-only tokens for Homepage, Glance, Uptime Kuma and Home Assistant. See [Dashboards and monitoring](#dashboards-and-monitoring).
@@ -151,17 +155,24 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Watch printers: state, temperatures, webcam, files | ✓ | ✓ | ✓ |
 | Start, pause, resume, cancel prints | ✓ | ✓ | |
 | Set temperatures, connect/disconnect, G-code, emergency stop | ✓ | ✓ | |
+| Power printers on and off (smart plug), "Keep on" | ✓ | ✓ | |
 | Upload, print and delete files | ✓ | ✓ | |
 | Browse the library | ✓ | ✓ | ✓ |
 | Send library files to printers, save printer files to the library | ✓ | ✓ | |
+| Watch the print queue | ✓ | ✓ | ✓ |
+| Add, reorder and remove queued jobs, pause the queue, confirm a bed is clear | ✓ | ✓ | |
+| Printer tags (for the queue), slicer upload keys | ✓ | | |
 | Watch the print history and timelapses, export CSV | ✓ | ✓ | ✓ |
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
+| Watch failure detection (score, last frame) | ✓ | ✓ | ✓ |
+| Turn failure detection on/off per printer, its sensitivity and action; mark a false alarm | ✓ | ✓ | |
 | See spools, print costs and maintenance tasks | ✓ | ✓ | ✓ |
 | Choose a printer's active spool; add, edit and complete maintenance tasks | ✓ | ✓ | |
 | Spoolman connection, cost settings | ✓ | | |
 | Timelapse settings, delete history entries, import history, notifications | ✓ | | |
+| Set up smart plugs and their automations, test them | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
-| Users, Integrations, Audit log, Settings, backups, library sources | ✓ | | |
+| Users, Integrations, Audit log, Settings (including the ML API), backups, library sources | ✓ | | |
 
 Operators and viewers see every printer, or only the ones you pick under **Users → Printers**. Printers someone hasn't been given don't exist as far as they can tell. Roles are enforced on the server for every route, not just hidden in the UI.
 
@@ -253,7 +264,7 @@ A print shorter than one poll interval, started and finished while nobody watche
 
 **Importing**: the first time a printer is reachable, octo·modern imports its earlier prints once: every print the [PrintJobHistory](https://plugins.octoprint.org/plugins/PrintJobHistory/) plugin recorded, if it's installed, otherwise the last print of each file from OctoPrint's file statistics (OctoPrint counts a cancel as a failure there, so those come in as failed). Admins can import again from the History page; prints already recorded aren't duplicated.
 
-**Notifications**: admins add channels under **History → Notifications**: [ntfy](https://ntfy.sh) (topic, optional token), a Discord webhook, or a generic webhook, each for finished, failed and/or cancelled prints, with a test button. Webhook URLs and tokens are stored encrypted. A generic webhook receives a JSON `POST`:
+**Notifications**: admins add channels under **History → Notifications**: [ntfy](https://ntfy.sh) (topic, optional token), a Discord webhook, or a generic webhook, each for finished, failed and/or cancelled prints (and the print queue's **clear the bed** prompt, event `queue.bed_clear_needed`), with a test button. Webhook URLs and tokens are stored encrypted. A generic webhook receives a JSON `POST`:
 
 ```json
 {
@@ -288,19 +299,106 @@ The **Filament** page shows which spool is on which printer, and holds the admin
 
 **Maintenance** (the **Maintenance** page, and a tab per printer): tasks with an interval in print hours, kg of filament or days, counted from the print history since the task was last done (or since a "last done" date you give when adding it). New printers are offered nozzle change (500 h), belt tension (200 h), lubricating rods and rails (150 h), cleaning the bed (7 days) and checking e-steps (5 kg). A task is **due soon** at 90 % of its interval and **overdue** past it; the sidebar shows how many are overdue, and `maintenance.due` is sent once when a task becomes overdue. **Done** (operators) logs who did it, when, at what usage and your notes, and starts the count again.
 
+## Smart plugs
+
+Admins set up a printer's plug from the **Power** card on its dashboard (**Set up a smart plug**, or the settings icon on the card). **Test** reads the plug's state without switching it. Usernames, passwords and tokens are sealed with AES-256-GCM like API keys and never sent back to the browser (leave a field empty to keep what's saved); credentials in a URL are refused. Plugs aren't part of backups yet.
+
+| Device | How octo·modern talks to it | Login | Watts / energy |
+| --- | --- | --- | --- |
+| **Shelly Gen1** (Plug S, 1PM, …) | `/relay/<n>?turn=on\|off`, state and meter from `/status` | Basic (if set) | ✓ |
+| **Shelly Gen2+** (Plus, Pro, Gen3/4) | RPC `Switch.Set` / `Switch.GetStatus` (generation detected from `/shelly`) | Digest, user `admin` | ✓ |
+| **Tasmota** | `/cm?cmnd=Power<n> On\|Off`, energy from `Status 8` | web admin password, as `user`/`password` | ✓ (energy-monitoring builds) |
+| **Home Assistant** | `switch.*`, `light.*` or `input_boolean.*` over the REST API | long-lived access token | optional `sensor.*` entities (W, kWh) |
+| **HTTP** | your own on/off (and optional status) URLs and methods; the status answer is matched against a text or `/regex/` | Basic/Digest or an `Authorization` header | – |
+
+Operators switch printers from the printer header, the **Power** card, the overview card, or by right-clicking (long-pressing) a printer in the sidebar:
+
+- **Turning off** disconnects OctoPrint from the printer first. While a hotend or the bed is hot (50 °C / 40 °C by default) it asks first; while a print runs it always asks twice, and the server enforces both (`409` with `confirmField: "confirm"`, then `"confirmPrinting"`).
+- **Connect after power-on** (on by default): once the plug is on, octo·modern waits for the printer and asks OctoPrint to connect, retrying for about three minutes.
+- **Power off after a print**: when a print ends, a countdown starts; once the printer has been idle for N minutes (default 10) *and* every hotend is below X °C (default 50), octo·modern disconnects it and switches the plug off. A new print cancels the countdown, and **Keep on** (card, overview, sidebar menu) cancels it for this print. While print-queue jobs wait for that printer's bed to be cleared, a due power-off is held (the card says so) unless **Stay on for the print queue** is turned off. The countdown lives in memory: a restart in between forgets it.
+- **Power on for new prints**: printing a file (or sending one from the library with **Send & print**) to a printer whose plug is off switches it on and waits for it to connect first. The print queue does the same: when a printer with auto power-on is off (or disconnected), its bed is confirmed clear and a queued job fits it, the queue switches it on, waits for it to connect and starts the job. Other features call `ensurePrinterOn(printerId)` from `src/lib/server/power/service.ts`.
+
+Every switch, test, setup change, auto power-on/off, countdown and "Keep on" is in the audit log (`power.*`; automatic ones without a user), and notification channels can subscribe to **Power on** / **Power off** (`event: "power.on"` / `"power.off"` in the webhook JSON, with `print: null`). Plug readings refresh every 15 s; the API is `GET /api/power` (every visible printer's plug: state, watts, countdown, no addresses), `GET/POST /api/printers/<id>/power` (`{ action: "on" | "off" | "keep_on" }`), and for admins `GET/PUT/DELETE /api/printers/<id>/power/config` and `POST …/power/test`.
+
 ## Timelapses
 
 The **Timelapse** tab lists OctoPrint's rendered timelapses with their thumbnails, plays them in the browser and downloads them. octo·modern relays the videos with HTTP Range requests passed through, so the player can seek without downloading the whole file, and the browser never needs to reach OctoPrint. Operators delete timelapses and render or delete unrendered ones; admins change the settings (off, on each layer change, or timed; frame rate, interval, post-roll). OctoPrint needs a webcam snapshot URL and ffmpeg to record timelapses (the `octoprint/octoprint` image has ffmpeg).
 
+## Failure detection
+
+octo·modern watches printing printers with **Obico's failure-detection model** (the "Spaghetti Detective"), running in your own `ml_api` container from [obico-server](https://github.com/TheSpaghettiDetective/obico-server). No Obico account or cloud is involved. Add the container with [`compose.detect.yaml`](compose.detect.yaml):
+
+```sh
+echo "ML_API_TOKEN=$(openssl rand -hex 32)" >> .env
+docker compose -f compose.yaml -f compose.detect.yaml up -d
+```
+
+Then, as an admin, check **Settings → Failure detection** (the ML API URL, its token, and *octo·modern's address as the ML container sees it*, usually `http://octo-modern:3000`); **Test** checks the model is loaded and does a full round trip. Turn detection on per printer in its **Failure detection** tab.
+
+**What happens while a printer prints**
+
+1. After the first minutes of the print (default 5, by OctoPrint's print time; covers the first layer), every *N* seconds (default 10, which is what Obico's thresholds are tuned for) octo·modern takes a webcam snapshot, the same way the Webcam tab does.
+2. It sends the ML API `GET /p/?img=<one-time link to that frame>`; the container downloads the frame and answers with boxes and confidences.
+3. The detections feed a smoothed **failure score**, Obico's first-generation algorithm ported as is (and tested frame by frame against obico-server's code): `p` = the sum of the frame's confidences; an exponentially weighted mean of `p` over 12 frames; minus a long-term baseline of what this camera normally looks like (a rolling mean over ~7200 frames, kept per printer across prints, so a camera that always sees a bit of "failure" doesn't cry wolf); times the sensitivity (Obico's `detective_sensitivity`, 1.0 by default). It's compared against a warning threshold of `(short-term mean − baseline) × 3.8`, clamped to 0.38–0.78, and a failure threshold of 1.75 × that. The panel shows it on Obico's 0–100 % scale: **warning** from 33 %, **failure** from 67 %.
+4. **Warning**: a `failure.suspected` notification with the frame, boxes drawn in (once; again only after 10 minutes back to normal). **Failure**, once per print, the printer's setting: *do nothing*, *notify*, or *pause the print* (OctoPrint's pause, in the audit log as `octo·modern detector`, plus a notification).
+5. **This is a false alarm** (operators) turns detection off until the print ends. Paused prints get no frames; nothing is resumed automatically.
+
+The tab shows the score over the print, the last analysed frame with its boxes, what happened (warnings, pauses, errors such as an unreachable ML API) and the settings. Channels get these notifications when **Failure suspected** is ticked under **History → Notifications**: ntfy gets the JPEG as an attachment, Discord in the embed, and a generic webhook gets the usual JSON with `"event": "failure.suspected"` plus `"detection": { "level": "warning" | "failure", "score": 0.71, "action": "notify" | "none" | "paused" | "pause-failed" }` and `"image": { "contentType": "image/jpeg", "filename": "failure.jpg", "base64": "…" }`.
+
+**The ML API, as verified in obico-server's source** (`release` branch, commit `6f93896`: `ml_api/server.py`, `ml_api/auth.py`, `ml_api/lib/onnx.py`, `backend/lib/prediction.py`, `backend/lib/failure_detection.py`):
+
+| | |
+| --- | --- |
+| `GET /p/?img=<url>` | Downloads the image from `<url>` (0.1 s connect / 5 s read timeout, up to 3 tries on connection errors and 5xx), returns `200 {"detections": [["failure", 0.83, [xc, yc, w, h]], …]}`: box centre and size in pixels of that image, every box above 0.08 confidence. `400 {"detections": [], "message": …}` when it can't fetch or decode the image, `422` without `img` |
+| `GET /hc/` | `ok` once the model has loaded (no auth) |
+| Auth | With `ML_API_TOKEN` set on the container, `/p/` needs `Authorization: Bearer <token>` and answers a bare `401` otherwise; without it, no auth |
+
+There is **no endpoint that takes image bytes** (no POST, no upload), so the frame has to be at a URL the container can reach, which is why octo·modern serves it through the one-time link (see [Security model](#security-model)). Detection state is kept in memory, so after a restart a running print's score starts over (the long-term baseline is saved).
+
+## Print queue
+
+**Queue** (in the sidebar) holds prints waiting for a printer; each printer's **Queue** tab shows the jobs it could take.
+
+- **Adding jobs**: **Add job** on the Queue page (from the library, or upload a file, which octo·modern keeps in its data folder until the job is removed), **Add to queue** on a library file, or the queue button on a file in a printer's **Files** tab (that file prints on that printer only). Slicers can add jobs too ([Slicer uploads](#slicer-uploads)).
+- **Which printer**: a job targets one printer, or **any compatible printer**: one whose tags include every tag the job requires. Admins set each printer's tags on the Queue page (free-form, e.g. `0.4mm`, `petg`, `bed:300`). Jobs added by an operator who only sees some printers only go to those.
+- **Order and copies**: drag a job (or use the up/down arrows; on phones, the ⋯ menu) to reorder; set how many copies to print. Copies print one after another, each needing a clear bed.
+- **Bed is clear**: every print, queued or not, leaves the printer **awaiting bed clear**; nothing more is sent to it until someone confirms with **Bed is clear** (on the overview card, the printer page or the Queue page). Printers start out unconfirmed. When jobs are waiting, a `queue.bed_clear_needed` notification goes to channels subscribed to **Queue: clear the bed** (History → Notifications). A button or automation next to the printer can confirm too: `POST /api/status/<printer id>/bed-clear` with a status token created with **May confirm bed clear**.
+- **Dispatch**: every few seconds (and right after a change), each printer that's connected, idle, not paused and confirmed clear takes the first matching job. Library and uploaded files are transferred first unless the printer already has a file of that name and size; then octo·modern selects and prints it, crediting the person who queued it in the history.
+- **Failures**: if a queued print fails or is cancelled, or can't be started, the job is marked failed (with **Requeue**, which puts it at the end) and that printer's queue is paused until someone resumes it. **Pause queue** stops all new starts; running prints carry on.
+- **History**: each run of a job is linked to its print history entry. The queue and every printer's state are kept in the database, so a restart picks up where it left off.
+
+## Slicer uploads
+
+octo·modern answers enough of OctoPrint's API for slicers to upload to it: `GET /api/version`, `GET /api/server`, `POST /api/files/local` (multipart, honouring `print`/`select` and `path`), plus the read-only settings, printer profile, printer, job and connection answers Cura's plugin polls. It lives under **`/octoprint`**, so the slicer's host is
+
+```
+http://<octo·modern host>:3040/octoprint
+```
+
+(octo·modern's own `/api/…` is a different, session-only API; the prefix keeps the two apart.)
+
+1. Under **Integrations → Slicer upload keys** (admins), create a key and choose where its uploads go:
+   - **The print queue**: a job for a chosen printer, or for any printer with the tags you give (e.g. a "PETG" key);
+   - **A library folder**: a folder in a *writable* library source (the slicer's subfolder, if any, goes below it);
+   - **A printer**: straight into its OctoPrint, optionally allowed to start the print ("Upload and print").
+2. Copy the key (shown once). It is an `ocm_…` token with scope `upload`; it opens `/octoprint/api/…` and nothing else, and can expire or be revoked like other tokens.
+3. Add octo·modern in the slicer:
+   - **PrusaSlicer**: Printer settings → Physical printer (the cog next to the printer) → Host type **OctoPrint**, Hostname/IP/URL `http://octo-modern.lan:3040/octoprint`, API key = the key → **Test**. Then **Send to print host** (or *Upload and print*).
+   - **OrcaSlicer**: the printer's **Connection** (Wi-Fi icon next to the printer) → Host type **Octo/Klipper**, Hostname/IP/URL `http://octo-modern.lan:3040/octoprint`, API key = the key → **Test** → **OK**. Use **Print** / **Send** on the Prepare/Preview tab.
+   - **Cura**: Marketplace → install **OctoPrint Connection** → Preferences → Printers → **Connect OctoPrint** → **Add** a manual instance: Name *octo·modern*, IP address or hostname `octo-modern.lan`, Port `3040`, Path `/octoprint/`; paste the key into **API key** (if Cura refuses the underscore, paste it without `ocm_`), then **Connect**. **Print with OctoPrint** uploads (Cura asks to start the print; only keys for a printer that may start prints do).
+
+Keys are letters and digits after `ocm_`, and octo·modern also accepts them without the prefix. An upload with *Upload and print* to the queue or library just stores the file (the queue starts it when a printer is ready).
+
 ## Dashboards and monitoring
 
-Create a token under **Integrations → Status API tokens** (admins). It's shown once; only its SHA-256 is stored. Tokens can expire, can be revoked, and record when they were last used. They open these routes only, and only for `GET`. They're never accepted as a session anywhere else.
+Create a token under **Integrations → Status API tokens** (admins). It's shown once; only its SHA-256 is stored. Tokens can expire, can be revoked, and record when they were last used. They open these routes only, and only for `GET` (plus the bed-clear `POST` for tokens allowed to). They're never accepted as a session anywhere else.
 
 | Route | Returns |
 | --- | --- |
 | `GET /api/status` | `{ printers, online, printing, checkedAt, items: [...] }` |
 | `GET /api/status/<id>` | one item; add `?strict=1` to get HTTP 503 while it's unreachable or in an error state |
 | `GET /api/status/badge/<id>.svg` | a shields-style badge, e.g. `printing 42%` (`?label=` sets the left text) |
+| `POST /api/status/<id>/bed-clear` | confirms the printer's bed is clear for the [print queue](#print-queue); only tokens created with **May confirm bed clear** (409 while it prints) |
 
 Each item has `id`, `name`, `state` (`operational`, `printing`, `paused`, `error`, `offline`, `disconnected`, …), `stateLabel`, `online`, `printing`, `progress` (0–100 while a job runs), `file`, `printTimeSeconds`, `printTimeLeftSeconds`, `eta`, `filamentMeters`, `temperatures` (`{ tool0: { actual, target }, bed: … }`), `version`, `lastUpdatedAt`, and, when unreachable, a short `error` code such as `ECONNREFUSED`. The OctoPrint URL is included only if the token was created with **Include addresses**. Answers come from the state octo·modern already keeps, so frequent polling never reaches OctoPrint. Printer ids are in `/api/status` and in each printer's URL (`/p/<id>`).
 
@@ -415,6 +513,14 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **A print**: how it ended, notes, print again | **History tab** of one printer |
 | ![Timelapse player](docs/screenshots/timelapse-player.png) | ![Timelapses, light](docs/screenshots/timelapse-light.png) |
 | **Timelapse**: play with seeking, download | **Timelapse settings**, light |
+| ![Failure detection](docs/screenshots/detection.png) | ![Failure detection, light](docs/screenshots/detection-light.png) |
+| **Failure detection**: score, last frame with boxes, paused by the detector | **Failure detection**, light |
+| ![Queue](docs/screenshots/queue.png) | ![Queue, light](docs/screenshots/queue-light.png) |
+| **Queue**: jobs, copies, printers and their tags | **Queue**, light |
+| ![Bed is clear](docs/screenshots/queue-bed-clear.png) | ![Slicer upload keys](docs/screenshots/slicer-keys.png) |
+| **Queue tab**: confirm the bed is clear | **Slicer upload keys** for PrusaSlicer, OrcaSlicer, Cura |
+| ![Queue on a phone](docs/screenshots/mobile-queue.png) | ![Bed is clear on a phone](docs/screenshots/mobile-queue-bed-clear.png) |
+| **Queue** on a phone | **Bed is clear** on a phone |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
 | ![Filament card on the dashboard](docs/screenshots/spools-dashboard.png) | ![Choosing a spool](docs/screenshots/spool-picker.png) |
@@ -425,6 +531,10 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **Maintenance**: due and overdue per printer | **Done**, with notes, logged |
 | ![History with costs](docs/screenshots/history-costs.png) | ![Maintenance, light](docs/screenshots/maintenance-light.png) |
 | **Cost per print** in the history | **Maintenance**, light |
+| ![Smart plug](docs/screenshots/power.png) | ![Power overview](docs/screenshots/power-overview.png) |
+| **Power**: plug state, watts, auto power-off countdown | **Overview** and sidebar menu: on/off, Keep on |
+| ![Smart plug setup](docs/screenshots/power-config.png) | ![Second confirmation](docs/screenshots/power-confirm.png) |
+| **Smart plug setup** with Test | Cutting power mid-print asks **twice** |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
 | **Discover**, light | **Setup** offers what it found |
 | ![Approve in OctoPrint](docs/screenshots/discover-approve.png) | ![Discover: Arcane](docs/screenshots/discover-arcane.png) |
@@ -450,6 +560,9 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | `OCM_DOCKER_HOSTS` | the local socket, if present | Docker endpoints for Discover, e.g. `tcp://docker-proxy:2375,tcp://nas.lan:2375`; `none` turns it off |
 | `OCM_SELF_CONTAINER` | — | octo·modern's own container name, when Discover can't find it by hostname or IP |
 | `OCM_ARCANE_URL`, `OCM_ARCANE_API_KEY`, `OCM_ARCANE_NAME` | — | An Arcane instance for Discover (or connect one in the UI) |
+| `OCM_ML_API_URL` | — | Obico's ML API for failure detection, e.g. `http://ml_api:3333` (or set it under Settings → Failure detection, which overrides this) |
+| `OCM_ML_API_TOKEN` | — | The ml_api container's `ML_API_TOKEN`, sent as `Authorization: Bearer …` |
+| `OCM_DETECT_PUBLIC_URL` | — | octo·modern's address as the ML container reaches it, e.g. `http://octo-modern:3000` |
 | `OCM_POLL_INTERVAL_MS` | `10000` | Status poll for printers nobody is watching live |
 | `OCM_REQUEST_TIMEOUT_MS` | `10000` | Timeout for each request to OctoPrint |
 | `OCM_PUSH_THROTTLE` | `2` | Live updates arrive every 500 ms × this |
@@ -472,6 +585,7 @@ Under **Settings → Backup & restore**, admins download an encrypted file with 
 - **Sign-in** is by OIDC or by local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies tied to a user and end when the user is disabled or their role changes. Writes from another origin are rejected.
 - **Discovery** is admin-only and read-only: Docker and Arcane are only read (`GET`), a socket proxy keeps writes blocked, and fingerprinting uses unauthenticated `GET`s. Keys from the Application Keys flow are polled for by octo·modern's server and go straight into the encrypted store; the browser only sees the request's state. Subnet scans need an admin, are capped at 4096 addresses and are audited.
 - **Library sources**: NAS passwords and SFTP keys are sealed like API keys (bound to the source) and never sent to a browser. Sources are read-only unless an admin allows writing; folder sources refuse `..` and symlinks that lead outside the folder; SFTP host keys can be pinned.
+- **Failure detection frames**: Obico's ML API only accepts an image URL, so octo·modern serves each frame at `/api/detect/frame/<token>`: a 256-bit random, single-use token (only its SHA-256 is kept, in memory) that expires after 30 s and is revoked when the ML API answers. It serves that one captured frame, never the camera itself. Apart from the token-only status API, it's the only path open without a session, and only for `GET`. The ML API token is sealed like API keys.
 - **Backup files** hold decrypted API keys and the SSO client secret, re-encrypted with AES-256-GCM under a key derived from your passphrase (scrypt). Treat the file and its passphrase like a password manager export.
 
 ## Development
@@ -493,7 +607,7 @@ pnpm e2e:history                      # print history, notifications and timelap
 pnpm e2e:mobile                       # phones: no sideways scrolling at 360/390/430 px, thumb-sized controls
 ```
 
-`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.
+`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. `pnpm e2e:power` (ports `:3230`–`:3236`) needs no Docker: it runs two mock OctoPrint servers powered by a mock Shelly Gen2 (Digest login) and a mock Tasmota, and checks plug setup and tests (admins only, sealed passwords), power-on with auto-connect, the hot and printing confirmations (in Chromium too), auto power-on for a print, the auto power-off countdown with Keep on and cancelling, the webhooks, the audit log and a 390 px phone, then writes the `power*.png` screenshots. The adapters are unit-tested against the same mocks (`scripts/e2e/mock-plugs.mjs`); nothing contacts a real device. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.
 
 `pnpm e2e:discover` starts three OctoPrint servers on `:5151`–`:5153` and has octo·modern discover them through a mock Docker API (fictional containers, devices and networks pointing at the real ports, on `:5251`), a mock Arcane (`:5252`), a unicast mDNS responder (`OCM_MDNS_TARGET=127.0.0.1:5253`), the real local Docker socket (read-only) and a subnet scan of `127.0.0.1`. It runs the setup wizard in Chromium, adds printers through the Application Keys flow (approving and denying in OctoPrint by logging in to its API as its admin), pastes a key, moves a published port and relinks the saved printer, then writes the Discover screenshots and cleans up.
 

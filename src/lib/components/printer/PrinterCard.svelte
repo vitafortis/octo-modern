@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { CircleAlert, CirclePause, CirclePlay, CircleStop, Clock, FileBox, Settings2, Unplug } from '@lucide/svelte';
 	import StateBadge from './StateBadge.svelte';
+	import BedClearBanner from '../queue/BedClearBanner.svelte';
+	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import WebcamThumb from './WebcamThumb.svelte';
+	import PowerStrip from '../power/PowerStrip.svelte';
 	import { COLORS } from '#lib/client/format.ts';
 	import { editor, isAdmin } from '#lib/client/state.svelte.ts';
 	import { jobCommand } from '#lib/client/actions.ts';
@@ -10,6 +13,7 @@
 
 	let { printer, snapshot }: { printer: Printer; snapshot: LiveSnapshot | undefined } = $props();
 
+	$effect(() => pollQueue());
 	const color = $derived(COLORS[printer.color] ?? COLORS.violet);
 	const s = $derived(snapshot);
 	const active = $derived(s ? jobActive(s.state) : false);
@@ -66,6 +70,8 @@
 		{/if}
 		</div>
 	</a>
+	<!-- Print queue: the bed needs clearing before the next job. -->
+	<BedClearBanner class="relative mx-3 mb-3" compact printerId={printer.id} name={printer.name} state={s?.state} canControl={!!printer.access?.control} />
 	{#if printer.access?.control && s && jobActive(s.state)}
 		<div class="relative flex items-center gap-1.5 border-t border-border bg-surface px-4 py-2">
 			{#if s.state === 'paused'}
@@ -76,6 +82,7 @@
 			<button class="btn btn-secondary btn-sm ml-auto border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />Cancel print</button>
 		</div>
 	{/if}
+	<PowerStrip {printer} />
 	{#if isAdmin()}
 		<button class="btn btn-ghost btn-icon btn-sm absolute top-2 right-2 bg-card/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 touch:opacity-100" title="Edit {printer.name}" onclick={() => (editor.target = printer)}><Settings2 /></button>
 	{/if}
