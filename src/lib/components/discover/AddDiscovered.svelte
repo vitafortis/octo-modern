@@ -153,7 +153,7 @@
 	width="max-w-xl"
 >
 	<div class="space-y-4">
-		<div class="grid grid-cols-[1fr_1.5fr] gap-3">
+		<div class="grid gap-3 sm:grid-cols-[1fr_1.5fr]">
 			<div>
 				<label class="label" for="d-name">Name</label>
 				<input id="d-name" class="input" bind:value={name} disabled={!!request} />

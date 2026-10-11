@@ -8,6 +8,7 @@
 	import { editor, isAdmin, printers, setTheme, statuses, theme } from '#lib/client/state.svelte.ts';
 	import { isPaletteShortcut, loadRecents, noteRecent, palette, recents } from '#lib/client/palette.svelte.ts';
 	import { STATE_LABEL } from '#lib/printer.ts';
+	import { compactShell } from '#lib/client/viewport.svelte.ts';
 
 	let { ontogglesidebar, signedIn = true }: { ontogglesidebar: () => void; signedIn?: boolean } = $props();
 
@@ -64,7 +65,7 @@
 		if (isAdmin()) out.push({ key: 'act:new-printer', group: 'Actions', title: 'Add printer', icon: Plus, keywords: 'new server octoprint', run: () => void (editor.target = 'new') });
 		out.push(
 			{ key: 'act:theme', group: 'Actions', title: theme.value === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', icon: theme.value === 'dark' ? Sun : Moon, keywords: 'toggle theme dark light', run: () => setTheme(theme.value === 'dark' ? 'light' : 'dark') },
-			{ key: 'act:sidebar', group: 'Actions', title: 'Toggle sidebar', subtitle: '⌘B', icon: PanelLeft, keywords: 'collapse expand', run: ontogglesidebar },
+			{ key: 'act:sidebar', group: 'Actions', title: compactShell.current ? 'Open the menu' : 'Toggle sidebar', subtitle: compactShell.current ? undefined : '⌘B', icon: PanelLeft, keywords: 'collapse expand sidebar drawer menu', run: ontogglesidebar },
 			{ key: 'act:sign-out', group: 'Actions', title: 'Sign out', icon: LogOut, keywords: 'logout log out', run: signOut }
 		);
 		for (const p of printers.list) {

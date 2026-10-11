@@ -17,16 +17,22 @@ export function trackVisualViewport(): () => void {
 	const vv = window.visualViewport;
 	if (!vv) return () => {};
 	const root = document.documentElement;
+	// The tallest the page has been, per orientation: Android (interactive-widget=resizes-content)
+	// shrinks the whole window for the keyboard, iOS only the visual viewport.
+	const tallest = { portrait: 0, landscape: 0 };
 	let frame = 0;
 	const update = () => {
 		cancelAnimationFrame(frame);
 		frame = requestAnimationFrame(() => {
-			// Only the keyboard shrinks the visual viewport by this much; pinch-zoom changes scale.
-			const keyboard = vv.scale <= 1.01 && window.innerHeight - vv.height > 120;
+			const o = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+			tallest[o] = Math.max(tallest[o], window.innerHeight);
+			const field = document.activeElement?.matches('input, textarea, select, [contenteditable]') ?? false;
+			// Pinch-zoom changes the scale, the keyboard doesn't.
+			const keyboard = field && vv.scale <= 1.01 && tallest[o] - vv.height > 120;
 			if (keyboard) {
 				root.style.setProperty('--app-h', `${Math.round(vv.height)}px`);
 				root.dataset.keyboard = '';
-				// iOS scrolls the (fixed) page up to reveal the field; undo it, the app is already resized.
+				// iOS scrolls the page up to reveal the field; undo it, the app is already resized.
 				if (window.scrollY) window.scrollTo(0, 0);
 			} else {
 				root.style.removeProperty('--app-h');
@@ -34,12 +40,16 @@ export function trackVisualViewport(): () => void {
 			}
 		});
 	};
+	window.addEventListener('focusin', update);
+	window.addEventListener('focusout', update);
 	vv.addEventListener('resize', update);
 	vv.addEventListener('scroll', update);
 	update();
 	return () => {
 		vv.removeEventListener('resize', update);
 		vv.removeEventListener('scroll', update);
+		window.removeEventListener('focusin', update);
+		window.removeEventListener('focusout', update);
 		cancelAnimationFrame(frame);
 	};
 }

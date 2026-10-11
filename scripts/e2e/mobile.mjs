@@ -342,6 +342,19 @@ async function main() {
 	await page.getByRole('button', { name: 'Line filters' }).tap();
 	await page.getByRole('dialog', { name: 'Line filters' }).waitFor();
 
+	log('terminal while printing: the keyboard pushes the job bar aside, the prompt stays above it');
+	await page.goto(`${APP}${P(mk4.id, 'terminal')}`);
+	await page.getByTestId('job-bar').waitFor();
+	await page.getByTestId('terminal-input').tap();
+	// What Android does when the keyboard opens (interactive-widget=resizes-content); iOS shrinks only
+	// the visual viewport, which takes the same path in trackVisualViewport.
+	await page.setViewportSize({ width: 390, height: 480 });
+	await waitFor(async () => (await page.evaluate(() => 'keyboard' in document.documentElement.dataset)) && !(await page.getByTestId('job-bar').isVisible()), 'the job bar stepping aside for the keyboard', { tries: 20, every: 200 });
+	await tappable(page.getByTestId('terminal-input'), 'G-code prompt above the keyboard');
+	await page.getByTestId('terminal-input').blur();
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.getByTestId('job-bar').waitFor();
+
 	log('history and library: lists and sheets');
 	await page.goto(`${APP}/history`);
 	await page.getByTestId('history-list').waitFor();

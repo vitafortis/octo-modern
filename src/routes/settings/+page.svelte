@@ -281,7 +281,7 @@
 						<input
 							id="bk-file"
 							bind:this={fileInput}
-							class="input py-1.5 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-2.5 file:py-0.5 file:text-xs file:font-medium file:text-foreground"
+							class="input py-1.5 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-2.5 file:py-0.5 file:text-xs file:font-medium file:text-foreground touch:file:mr-2 touch:file:h-8 touch:file:bg-accent touch:file:px-3 touch:file:text-sm"
 							type="file"
 							accept=".ocmbackup,application/json"
 							onchange={(e) => ((restoreFile = e.currentTarget.files?.[0] ?? null), (preview = null))}
