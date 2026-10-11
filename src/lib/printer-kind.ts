@@ -31,6 +31,8 @@ export interface KindFeatures {
 	selectWithoutPrint: boolean;
 	/** OctoPrint's bundled timelapse. */
 	timelapse: boolean;
+	/** Bed meshes from OctoPrint's Bed Visualizer plugin. */
+	bedMesh: boolean;
 	/** OctoPrint's GCODE scripts in custom controls. */
 	gcodeScripts: boolean;
 	/** Needs an API key (Moonraker may run on a trusted network without one). */
@@ -38,8 +40,8 @@ export interface KindFeatures {
 }
 
 export const FEATURES: Record<PrinterKind, KindFeatures> = {
-	octoprint: { serialConnection: true, firmwareRestart: false, sdCard: true, selectWithoutPrint: true, timelapse: true, gcodeScripts: true, keyRequired: true },
-	moonraker: { serialConnection: false, firmwareRestart: true, sdCard: false, selectWithoutPrint: false, timelapse: false, gcodeScripts: false, keyRequired: false }
+	octoprint: { serialConnection: true, firmwareRestart: false, sdCard: true, selectWithoutPrint: true, timelapse: true, bedMesh: true, gcodeScripts: true, keyRequired: true },
+	moonraker: { serialConnection: false, firmwareRestart: true, sdCard: false, selectWithoutPrint: false, timelapse: false, bedMesh: false, gcodeScripts: false, keyRequired: false }
 };
 
 export function kindOf(p: Pick<Printer, 'kind'> | null | undefined): PrinterKind {
@@ -55,6 +57,7 @@ export function hiddenTabs(p: Pick<Printer, 'kind'> | null | undefined): Set<str
 	const f = features(p);
 	const out = new Set<string>();
 	if (!f.timelapse) out.add('timelapse');
+	if (!f.bedMesh) out.add('bed');
 	return out;
 }
 

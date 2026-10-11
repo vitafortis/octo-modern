@@ -9,7 +9,8 @@
 
 export type QueueSourceKind = 'library' | 'printer' | 'upload';
 
-export type QueueJobStatus = 'queued' | 'starting' | 'printing' | 'failed' | 'done';
+/** `held`: kept back (not enough filament on the printer that would take it); see `error`. */
+export type QueueJobStatus = 'queued' | 'starting' | 'printing' | 'held' | 'failed' | 'done';
 
 export interface QueueRun {
 	id: number;
@@ -109,9 +110,10 @@ export const STATUS_LABEL: Record<QueueJobStatus, string> = {
 	queued: 'Queued',
 	starting: 'Starting',
 	printing: 'Printing',
+	held: 'Held',
 	failed: 'Failed',
 	done: 'Done'
 };
 
 /** Whether the job still has copies to print. */
-export const isPending = (j: Pick<QueueJob, 'status'>) => j.status === 'queued' || j.status === 'starting' || j.status === 'printing';
+export const isPending = (j: Pick<QueueJob, 'status'>) => j.status === 'queued' || j.status === 'starting' || j.status === 'printing' || j.status === 'held';

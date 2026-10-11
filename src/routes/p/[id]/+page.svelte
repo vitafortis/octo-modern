@@ -5,7 +5,7 @@
 	import StateBadge from '#lib/components/printer/StateBadge.svelte';
 	import ConnectionControls from '#lib/components/printer/ConnectionControls.svelte';
 	import PowerButtons from '#lib/components/power/PowerButtons.svelte';
-	import { TABS as ALL_TABS } from '#lib/components/printer/tabs.ts';
+	import { tabsFor } from '#lib/components/printer/tabs.ts';
 	import { hiddenTabs, SERVER_LABEL } from '#lib/printer-kind.ts';
 	import { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { emergencyStop, jobCommand } from '#lib/client/actions.ts';
@@ -23,8 +23,6 @@
 	// The store copy reflects edits made in the dialog without a reload.
 	const printer = $derived(printers.list.find((p) => p.id === data.printer.id) ?? data.printer);
 	const canControl = $derived(data.canControl);
-	// Klipper printers have no OctoPrint-only tabs (timelapse).
-	const TABS = $derived(ALL_TABS.filter((t) => !hiddenTabs(printer).has(t.id)));
 	const klipper = $derived(printer.kind === 'moonraker');
 
 	// One live connection per printer page; a new one when navigating to another printer.
@@ -33,6 +31,8 @@
 	// The queue's "bed is clear" prompt for this printer.
 	$effect(() => pollQueue());
 
+	// Tabs whose plugin is missing, and OctoPrint-only tabs on Klipper printers (timelapse, bed mesh), stay hidden.
+	const TABS = $derived(tabsFor(data.features).filter((t) => !hiddenTabs(printer).has(t.id)));
 	const tab = $derived(TABS.find((t) => t.id === page.url.searchParams.get('tab')) ?? TABS[0]);
 	function openTab(id: string) {
 		const url = new URL(page.url.href);

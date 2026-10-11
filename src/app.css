@@ -56,6 +56,10 @@
 	--series-2: #1c7ed6;
 	--series-3: #2f9e44;
 	--series-4: #ae3ec9;
+	/* Bed mesh: a diverging scale, low (below the mean) → mid → high. */
+	--mesh-low: oklch(56% 0.15 250);
+	--mesh-mid: oklch(97% 0.008 292);
+	--mesh-high: oklch(62% 0.18 38);
 	color-scheme: light;
 }
 
@@ -100,6 +104,9 @@
 	--series-2: #339af0;
 	--series-3: #2f9e44;
 	--series-4: #cc5de8;
+	--mesh-low: oklch(64% 0.14 245);
+	--mesh-mid: oklch(27% 0.014 292);
+	--mesh-high: oklch(70% 0.16 42);
 	color-scheme: dark;
 }
 

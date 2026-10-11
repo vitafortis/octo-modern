@@ -344,6 +344,61 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 		`)
 	],
 	[
+		'stats-001',
+		(h) =>
+			h.exec(`
+			-- Stats page (history/report.ts): a covering index, so aggregating a time range reads
+			-- the index alone instead of each row (rows carry the thumbnail BLOBs).
+			CREATE INDEX IF NOT EXISTS prints_stats ON prints(started_at, printer_id, result, duration_s, filament_mm, filament_g, material, cost_filament, cost_energy, ended_at, reason);
+		`)
+	],
+	[
+		'bedmesh-001',
+		(h) =>
+			h.exec(`
+			-- Bed meshes from the Bed Visualizer plugin, one row per distinct mesh (see bedmesh.ts).
+			CREATE TABLE IF NOT EXISTS bed_meshes (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				printer_id TEXT NOT NULL REFERENCES printers(id) ON DELETE CASCADE,
+				created_at TEXT NOT NULL,
+				last_seen_at TEXT NOT NULL,
+				plugin_timestamp TEXT,
+				source TEXT NOT NULL,
+				hash TEXT NOT NULL,
+				rows INTEGER NOT NULL,
+				cols INTEGER NOT NULL,
+				mesh TEXT NOT NULL,
+				min REAL NOT NULL,
+				max REAL NOT NULL,
+				mean REAL NOT NULL,
+				flatness REAL NOT NULL,
+				change REAL,
+				drift INTEGER NOT NULL DEFAULT 0
+			);
+			CREATE INDEX IF NOT EXISTS bed_meshes_printer ON bed_meshes(printer_id, id DESC);
+		`)
+	],
+	[
+		'push-001',
+		(h) =>
+			h.exec(`
+			-- Browser push subscriptions, one per device (see push/subscriptions.ts). The keys are
+			-- sealed in "secret", bound to the id. No foreign key: OCM_AUTH=disabled uses the user "open".
+			CREATE TABLE IF NOT EXISTS push_subscriptions (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL,
+				endpoint TEXT NOT NULL UNIQUE,
+				secret TEXT NOT NULL,
+				vapid_key TEXT NOT NULL,
+				label TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				last_sent_at TEXT,
+				last_error TEXT
+			);
+			CREATE INDEX IF NOT EXISTS push_subscriptions_user ON push_subscriptions(user_id);
+		`)
+	],
+	[
 		'printers-002-kind',
 		(h) =>
 			h.exec(`
@@ -443,7 +498,7 @@ export function updatePrinter(id: string, input: PrinterInput): Printer | undefi
 }
 
 /** Per-printer settings kept in kv (failure detection, history import); removed with the printer. */
-const PRINTER_KV_KEYS = (id: string) => [`detect:printer:${id}`, `detect:baseline:${id}`, `history:imported:${id}`];
+const PRINTER_KV_KEYS = (id: string) => [`detect:printer:${id}`, `detect:baseline:${id}`, `history:imported:${id}`, `bedmesh:plugin:${id}`, `bedmesh:drift:${id}`];
 
 export function deletePrinter(id: string): boolean {
 	const removed = Number(db().prepare('DELETE FROM printers WHERE id = ?').run(id).changes) > 0;
@@ -567,6 +622,7 @@ export function touchUserLogin(id: string) {
 }
 
 export function deleteUser(id: string): boolean {
+	db().prepare('DELETE FROM push_subscriptions WHERE user_id = ?').run(id);
 	return Number(db().prepare('DELETE FROM users WHERE id = ?').run(id).changes) > 0;
 }
 

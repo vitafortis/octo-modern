@@ -221,7 +221,7 @@ test('control info: macros as buttons, a profile from the Klipper config, Mainsa
 });
 
 test('kind features: Klipper hides OctoPrint-only things, needs no key', () => {
-	assert.deepEqual([...hiddenTabs({ kind: 'moonraker' })], ['timelapse']);
+	assert.deepEqual([...hiddenTabs({ kind: 'moonraker' })], ['timelapse', 'bed']);
 	assert.deepEqual([...hiddenTabs({ kind: 'octoprint' })], []);
 	assert.equal(features({ kind: 'moonraker' }).selectWithoutPrint, false);
 	assert.ok(canReach({ kind: 'moonraker', hasApiKey: false }));
@@ -450,6 +450,12 @@ test('stored Klipper printer: backend, manager polling, OctoPrint-only features 
 		assert.equal(p.hasApiKey, false);
 		assert.equal(backendFor(p).kind, 'moonraker');
 		assert.throws(() => octoprintClient(p, 'Timelapse'), /isn’t available for Klipper/);
+		const bedmesh = await import('../src/lib/server/bedmesh.ts');
+		const before = m.calls.length;
+		assert.equal((await bedmesh.detectPlugin(p.id)).installed, false, 'Bed Visualizer is OctoPrint-only');
+		assert.equal(await bedmesh.pluginInstalled(p.id), false);
+		assert.equal(m.calls.length, before, 'Moonraker isn’t asked about an OctoPrint plugin');
+		assert.throws(() => octoprintClient(p, 'Bed mesh'), (e: { status?: number; code?: string }) => e.status === 400 && e.code === 'NOT_SUPPORTED');
 		await printers.poll(p.id);
 		assert.equal(printers.snapshot(p.id)?.state, 'operational');
 		assert.equal(store.getPrinter(p.id)?.octoprintVersion, 'Klipper v0.12.0 · Moonraker v0.9.3');

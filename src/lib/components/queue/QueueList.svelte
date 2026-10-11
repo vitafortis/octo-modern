@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { ChevronDown, ChevronUp, CircleAlert, FileCode2, GripVertical, HardDrive, LibraryBig, LoaderCircle, RotateCcw, Trash2, Upload } from '@lucide/svelte';
+	import { ChevronDown, ChevronUp, CircleAlert, FileCode2, GripVertical, HardDrive, LibraryBig, LoaderCircle, Play, RefreshCw, RotateCcw, Trash2, Upload } from '@lucide/svelte';
 	import ActionMenu from '../ActionMenu.svelte';
 	import { bytes, ago } from '#lib/client/format.ts';
-	import { patchJob, removeJob, reorderJobs, queue } from '#lib/client/queue.svelte.ts';
+	import { patchJob, releaseJob, removeJob, reorderJobs, queue } from '#lib/client/queue.svelte.ts';
 	import { isAdmin, printers, session } from '#lib/client/state.svelte.ts';
 	import { STATUS_LABEL, type QueueJob } from '#lib/queue.ts';
 
@@ -27,7 +27,7 @@
 		return p ? !!p.access?.control : isAdmin();
 	}
 
-	const pending = $derived(jobs.filter((j) => j.status === 'queued' || j.status === 'starting' || j.status === 'printing'));
+	const pending = $derived(jobs.filter((j) => j.status === 'queued' || j.status === 'starting' || j.status === 'printing' || j.status === 'held'));
 	const finished = $derived(jobs.filter((j) => j.status === 'failed' || j.status === 'done'));
 
 	// --- reordering ------------------------------------------------------------------------------
@@ -36,7 +36,7 @@
 
 	/** The full pending order with `id` moved before `before` (or to the end). */
 	function reordered(id: string, before: string | null): string[] {
-		const all = queue.jobs.filter((j) => j.status === 'queued' || j.status === 'starting' || j.status === 'printing').map((j) => j.id);
+		const all = queue.jobs.filter((j) => j.status === 'queued' || j.status === 'starting' || j.status === 'printing' || j.status === 'held').map((j) => j.id);
 		const rest = all.filter((x) => x !== id);
 		const i = before ? rest.indexOf(before) : rest.length;
 		rest.splice(i === -1 ? rest.length : i, 0, id);
@@ -71,7 +71,7 @@
 		await patchJob(j.id, { copies: n });
 	}
 
-	const tone: Record<QueueJob['status'], string> = { queued: '', starting: 'badge-primary', printing: 'badge-primary', failed: 'badge-danger', done: 'badge-success' };
+	const tone: Record<QueueJob['status'], string> = { queued: '', starting: 'badge-primary', printing: 'badge-primary', held: 'badge-warning', failed: 'badge-danger', done: 'badge-success' };
 </script>
 
 {#snippet row(j: QueueJob, index: number, inPending: boolean)}
@@ -118,7 +118,13 @@
 				{#if j.createdBy}<span class="hidden sm:inline">· {j.createdBy}</span>{/if}
 				<span class="hidden sm:inline">· {ago(j.createdAt)}</span>
 			</p>
-			{#if j.error}<p class="mt-1 flex items-start gap-1 text-[0.6875rem] text-danger"><CircleAlert class="mt-px size-3 shrink-0" />{j.error}</p>{/if}
+			{#if j.error}<p class="mt-1 flex items-start gap-1 text-[0.6875rem] {j.status === 'held' ? 'text-warning' : 'text-danger'}" data-testid={j.status === 'held' ? 'queue-held-reason' : undefined}><CircleAlert class="mt-px size-3 shrink-0" />{j.error}</p>{/if}
+			{#if manage && j.status === 'held'}
+				<div class="mt-2 flex flex-wrap gap-2">
+					<button class="btn btn-secondary btn-sm touch:h-11" onclick={() => releaseJob(j)}><RefreshCw />Check again</button>
+					<button class="btn btn-ghost btn-sm touch:h-11" onclick={() => releaseJob(j, true)}><Play />Print anyway</button>
+				</div>
+			{/if}
 			{#if j.runs.length}
 				{@const r = j.runs[0]}
 				<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">

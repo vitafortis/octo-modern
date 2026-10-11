@@ -3,7 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, Disc3, Wrench, BellRing, Cctv } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, Disc3, Wrench, BellRing, Cctv, ChartColumn } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -53,6 +53,7 @@
 		{ href: '/library', label: 'Library', icon: LibraryBig },
 		{ href: '/cameras', label: 'Cameras', icon: Cctv },
 		{ href: '/history', label: 'History', icon: History },
+		{ href: '/stats', label: 'Stats', icon: ChartColumn },
 		{ href: '/filament', label: 'Filament', icon: Disc3 },
 		{ href: '/maintenance', label: 'Maintenance', icon: Wrench, badge: data.maintenanceOverdue },
 		...(isAdmin()
@@ -317,11 +318,12 @@
 				{/if}
 			</div>
 		</header>
-		<aside class="hidden shrink-0 lg:flex flex-col border-r border-border bg-surface transition-[width] duration-200 {collapsed ? 'w-14' : 'w-64'}">
+		<!-- Tablets in landscape as a home-screen app: clear of the status bar and the home indicator. -->
+		<aside class="hidden shrink-0 lg:flex flex-col border-r border-border bg-surface pt-safe pb-[env(safe-area-inset-bottom)] transition-[width] duration-200 {collapsed ? 'w-14' : 'w-64'}">
 			{@render sidebar(collapsed, false)}
 		</aside>
 
-		<main class="relative min-w-0 flex-1 overflow-hidden">
+		<main class="relative min-w-0 flex-1 overflow-hidden lg:pt-safe">
 			{@render children()}
 		</main>
 	</div>

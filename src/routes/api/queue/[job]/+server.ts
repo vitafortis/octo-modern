@@ -6,14 +6,16 @@ import { getPrinter } from '#lib/server/store.ts';
 import { getSource } from '#lib/server/library/sources.ts';
 import { sourceAllowsPrinter } from '#lib/server/library/service.ts';
 import { dispatcher } from '#lib/server/queue/dispatcher.ts';
-import { move, moveToEnd, transition, updateJob, type JobPatch } from '#lib/server/queue/store.ts';
+import { move, moveToEnd, setFilamentOverride, transition, updateJob, type JobPatch } from '#lib/server/queue/store.ts';
 import { parseTarget, removeJob, requireJob } from '#lib/server/queue/service.ts';
 import { clampCopies } from '#lib/queue.ts';
 import type { RequestHandler } from './$types';
 
 /**
- * Changes a job: `{ copies?, printerId?, tags?, move?: -1|1, requeue?: true }`.
- * `requeue` puts a failed (or finished) job back at the end of the queue.
+ * Changes a job: `{ copies?, printerId?, tags?, move?: -1|1, requeue?: true, release?: true, printAnyway?: true }`.
+ * `requeue` puts a failed (or finished) job back at the end of the queue. `release`
+ * puts a job held for filament back in its place to be checked again; with
+ * `printAnyway` its next start skips the filament check.
  */
 export const PATCH: RequestHandler = handler(async ({ locals, params, request }) => {
 	const job = requireJob(locals.user, params.job, true);
@@ -28,6 +30,12 @@ export const PATCH: RequestHandler = handler(async ({ locals, params, request })
 		transition(job.id, ['failed', 'done'], { status: 'queued', error: null, finishedAt: null, done: job.status === 'done' ? 0 : job.done });
 		moveToEnd(job.id);
 		what.push('requeued');
+	}
+	if (b.release === true) {
+		if (job.status !== 'held') throw new BadRequest('Only held jobs can be released');
+		if (b.printAnyway === true) setFilamentOverride(job.id, true);
+		transition(job.id, 'held', { status: 'queued', error: null });
+		what.push(b.printAnyway === true ? 'released (print anyway, filament check skipped)' : 'released (check again)');
 	}
 	const patch: JobPatch = {};
 	if (b.copies !== undefined) {

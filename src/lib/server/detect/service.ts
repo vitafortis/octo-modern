@@ -12,8 +12,11 @@
  * - Failure (score ⅔): once per print, the printer's action: nothing, notify, or pause
  *   (OctoPrint's pause, audited as "octo·modern detector") and notify.
  *
- * State lives in memory per printer (the long-term baseline is persisted), so a
- * restart mid-print starts the print's score afresh, like a new print would.
+ * State lives in memory per printer and is saved after every frame (runstate.ts, with
+ * the long-term baseline kept separately): after a restart mid-print the score,
+ * alerts already sent, a pause already done and a false-alarm mark carry on for the
+ * same print. A different print (another file, a restart of the file, a new history
+ * entry) discards the saved state and starts afresh.
  */
 import { addAudit, getApiKey, listPrinters } from '../store.ts';
 import { printers } from '../octoprint/manager.ts';
@@ -28,6 +31,8 @@ import { predict, type MlApiConfig } from './obico.ts';
 import { annotateJpeg, isJpeg, jpegSize } from './annotate.ts';
 import { loadBaseline, mlConfig, printerSettings, saveBaseline } from './settings.ts';
 import { notifyFailure, type FailureInfo } from './notify.ts';
+import { clearSavedRun, loadSavedRun, resumable, saveRun, type SavedRun } from './runstate.ts';
+import { openPrints } from '../history/store.ts';
 import type { DetectEvent, DetectLevel, DetectPoint, DetectStatus, PrinterDetectSettings } from '#lib/detect.ts';
 import type { Printer } from '#lib/types.ts';
 
@@ -39,6 +44,8 @@ const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 
 interface Run {
 	path: string;
+	/** The print history entry of this print, once the tracker has one. */
+	printId: number | null;
 	file: string;
 	startedAt: number;
 	lastPrintTime: number | null;
@@ -61,10 +68,59 @@ interface Run {
 
 const G = globalThis as typeof globalThis & { __ocmDetectRuns?: Map<string, Run> };
 const runs: Map<string, Run> = (G.__ocmDetectRuns ??= new Map());
+/** Printers whose saved state this process has looked at (it's only read once, at startup). */
+const H = globalThis as typeof globalThis & { __ocmDetectLoaded?: Set<string> };
+const loaded: Set<string> = (H.__ocmDetectLoaded ??= new Set());
+
+const historyId = (printerId: string): number | null => {
+	try {
+		return openPrints(printerId)[0]?.id ?? null;
+	} catch {
+		return null;
+	}
+};
+
+/** Saves the run (best effort: detection carries on in memory if the store fails). */
+function persist(printerId: string, run: Run) {
+	run.printId ??= historyId(printerId);
+	const { frame: _f, busy: _b, nextAt: _n, ended: _e, ...rest } = run;
+	try {
+		saveRun(printerId, { ...rest, savedAt: Date.now() });
+	} catch (err) {
+		console.warn(`[octo-modern] couldn’t save the failure detection state: ${(err as Error).message}`);
+	}
+}
+
+function forgetSaved(printerId: string) {
+	try {
+		clearSavedRun(printerId);
+	} catch {
+		// Nothing to do: a stale row is discarded when the next print doesn't match it.
+	}
+}
+
+/** The saved run of this print, if there is one from before a restart (read once). */
+function savedRun(printerId: string, cur: { path: string; printTime: number | null; startedAt: number }): Run | null {
+	if (loaded.has(printerId)) return null;
+	loaded.add(printerId);
+	let saved: SavedRun | null = null;
+	try {
+		saved = loadSavedRun(printerId);
+	} catch {
+		return null;
+	}
+	if (!saved) return null;
+	if (!resumable(saved, { ...cur, printId: historyId(printerId) })) {
+		forgetSaved(printerId);
+		return null;
+	}
+	return { ...newRun(saved.path, saved.file, saved.startedAt), ...saved, ended: false, frame: null, busy: false, nextAt: 0 };
+}
 
 function newRun(path: string, file: string, startedAt: number): Run {
 	return {
 		path,
+		printId: null,
 		file,
 		startedAt,
 		lastPrintTime: null,
@@ -96,12 +152,25 @@ function currentRun(id: string, now: number): Run | null {
 	const snap = printers.snapshot(id);
 	let run = runs.get(id) ?? null;
 	if (!snap || !jobActive(snap.state)) {
-		if (run && !run.ended && snap && snap.state !== 'unknown' && snap.state !== 'offline') run.ended = true;
+		if (snap && snap.state !== 'unknown' && snap.state !== 'offline') {
+			// Not printing (known): the print is over, so is any state saved for it.
+			if (run && !run.ended) {
+				run.ended = true;
+				forgetSaved(id);
+			} else if (!loaded.has(id)) {
+				loaded.add(id);
+				forgetSaved(id);
+			}
+		}
 		return null;
 	}
 	const f = snap.job?.file;
 	const path = f?.path ?? f?.name ?? '';
 	const printTime = snap.progress?.printTime ?? null;
+	if (!run) {
+		run = savedRun(id, { path, printTime, startedAt: printTime != null ? now - printTime * 1000 : now });
+		if (run) runs.set(id, run);
+	}
 	const restarted = !!run && printTime != null && run.lastPrintTime != null && printTime + 60 < run.lastPrintTime;
 	if (!run || run.ended || run.path !== path || restarted) {
 		run = newRun(path, f?.display ?? f?.name ?? 'print', printTime != null ? now - printTime * 1000 : now);
@@ -173,6 +242,7 @@ async function analyse(p: Printer, run: Run, s: PrinterDetectSettings, cfg: MlAp
 		const msg = (err as Error).message;
 		if (run.error !== msg) event(run, 'error', msg);
 		run.error = msg;
+		if (runs.get(p.id) === run && !run.ended) persist(p.id, run);
 		return;
 	}
 	if (runs.get(p.id) !== run || run.ended || run.dismissed) return;
@@ -199,7 +269,10 @@ async function analyse(p: Printer, run: Run, s: PrinterDetectSettings, cfg: MlAp
 				}))
 			: []
 	};
+	// Saved before reacting too, so a restart mid-alert doesn't lose the score.
+	persist(p.id, run);
 	await react(p, run, s, a.level, a.score, now);
+	if (runs.get(p.id) === run && !run.ended) persist(p.id, run);
 }
 
 async function react(p: Printer, run: Run, s: PrinterDetectSettings, level: DetectLevel, score: number, now: number) {
@@ -250,6 +323,7 @@ export function dismiss(printerId: string, by: string): DetectStatus {
 	if (!run.dismissed) {
 		run.dismissed = { by, at: Date.now() };
 		event(run, 'dismissed', `Marked as a false alarm by ${by}; detection is off until this print ends`);
+		persist(printerId, run);
 	}
 	return status(printerId);
 }
@@ -293,8 +367,18 @@ export function status(printerId: string, now = Date.now()): DetectStatus {
 	};
 }
 
-/** Drops in-memory state (printer deleted, tests). */
-export function forgetRun(printerId?: string) {
-	if (printerId) runs.delete(printerId);
-	else runs.clear();
+/**
+ * Drops in-memory state, as a restart would (tests); with `saved`, the saved state
+ * too (printer deleted).
+ */
+export function forgetRun(printerId?: string, opts: { saved?: boolean } = {}) {
+	if (printerId) {
+		runs.delete(printerId);
+		loaded.delete(printerId);
+		if (opts.saved) forgetSaved(printerId);
+	} else {
+		if (opts.saved) for (const id of runs.keys()) forgetSaved(id);
+		runs.clear();
+		loaded.clear();
+	}
 }

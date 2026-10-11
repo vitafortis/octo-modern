@@ -12,6 +12,11 @@
  * - State lives in the store (queue_jobs, queue_printers), so a restart picks up where
  *   it left off: running prints are still tracked by the history tracker, and a job
  *   that was being transferred when the app stopped is sorted out on the next tick.
+ * - Before a job starts, the same filament check as a manual start (spools/check.ts):
+ *   when an active Spoolman spool on the printer holds less than the file needs, the
+ *   job is held (status `held`, the reason in its `error`) and a `spool.low`
+ *   notification goes out. "Check again" requeues it; "Print anyway" requeues it
+ *   with the check skipped for its next start.
  */
 import { printers } from '../octoprint/manager.ts';
 import { backendFor } from '../backend/index.ts';
@@ -24,10 +29,14 @@ import { currentState, refreshSoon } from '../control.ts';
 import { getPrinter, getUser, listPrinters } from '../store.ts';
 import { getSource } from '../library/sources.ts';
 import { power } from '../power/service.ts';
-import { sourceAllowsPrinter, withDriver } from '../library/service.ts';
+import { fileMeta, readMetaFrom, sourceAllowsPrinter, withDriver } from '../library/service.ts';
 import { startSend } from '../library/send.ts';
 import { printerFileSize, stagedPath, stagedSize, uploadFileToPrinter } from './files.ts';
-import { finishRun, getJob, getQueuePrinter, insertRun, isPaused, listJobs, setAwaitingClear, setHeld, transition, type StoredJob, type StoredQueuePrinter } from './store.ts';
+import { filamentOverride, finishRun, getJob, getQueuePrinter, insertRun, isPaused, listJobs, setAwaitingClear, setFilamentOverride, setHeld, transition, type StoredJob, type StoredQueuePrinter } from './store.ts';
+import { filamentWarning, needForFile, needFromMeta, wantsFilamentCheck } from '../spools/check.ts';
+import type { PrinterBackend } from '../backend/types.ts';
+import type { FilamentNeed } from '#lib/spools.ts';
+import { open } from 'node:fs/promises';
 import { jobActive, type PrinterState } from '#lib/printer.ts';
 import { tagsMatch, type QueuePrinter } from '#lib/queue.ts';
 import { baseName } from '#lib/library.ts';
@@ -123,9 +132,46 @@ const SEND_TIMEOUT_MS = 60 * 60_000;
 type Locals = { user: User | null; ip?: string };
 
 
-/** A queue event through notify() (with a webcam snapshot); tests replace `dispatcher.notify`. Never throws. */
-export async function notifyQueueEvent(event: 'queue.bed_clear_needed', o: { title: string; message: string; printer: { id: string; name: string } }): Promise<void> {
-	await notify({ kind: event, printerId: o.printer.id, printerName: o.printer.name, title: o.title, message: o.message, link: `/p/${encodeURIComponent(o.printer.id)}?tab=queue`, dedupeKey: o.message });
+/**
+ * A queue event through notify() (with a webcam snapshot, except for filament); tests
+ * replace `dispatcher.notify`. `spool.low`: a job was held for lack of filament.
+ */
+export async function notifyQueueEvent(event: 'queue.bed_clear_needed' | 'spool.low', o: { title: string; message: string; printer: { id: string; name: string } }): Promise<void> {
+	const link = event === 'spool.low' ? '/queue' : `/p/${encodeURIComponent(o.printer.id)}?tab=queue`;
+	await notify({ kind: event, printerId: o.printer.id, printerName: o.printer.name, title: o.title, message: o.message, link, dedupeKey: o.message, ...(event === 'spool.low' ? { snapshot: false } : {}) });
+}
+
+/** Reads a byte range of a local file. */
+async function readRange(file: string, start: number, end: number): Promise<Buffer> {
+	const fh = await open(file, 'r');
+	try {
+		const buf = Buffer.alloc(end - start + 1);
+		const { bytesRead } = await fh.read(buf, 0, buf.length, start);
+		return buf.subarray(0, bytesRead);
+	} finally {
+		await fh.close();
+	}
+}
+
+/**
+ * Filament a queued job's file needs, from where it lives: OctoPrint's analysis (a
+ * printer's own file), the library's slicer metadata, or the uploaded file's header.
+ * Null when unknown (then nothing is held).
+ */
+export async function jobFilamentNeed(job: Pick<StoredJob, 'id' | 'source' | 'sourceId' | 'path'>, backend: PrinterBackend): Promise<FilamentNeed | null> {
+	try {
+		if (job.source === 'printer') return await needForFile(backend, 'local', job.path);
+		if (job.source === 'library') {
+			const src = job.sourceId ? getSource(job.sourceId) : undefined;
+			return src ? needFromMeta((await fileMeta(src, job.path)).meta) : null;
+		}
+		const size = await stagedSize(job.id);
+		if (!size) return null;
+		const file = stagedPath(job.id);
+		return needFromMeta((await readMetaFrom((start, end) => readRange(file, start, end), size)).meta);
+	} catch {
+		return null;
+	}
 }
 
 class Dispatcher {
@@ -303,6 +349,14 @@ class Dispatcher {
 				transition(job.id, 'starting', { status: 'queued', activePrinterId: null });
 				return;
 			}
+			// The same filament check as starting a print by hand; "Print anyway" skips it once.
+			if (!filamentOverride(job.id) && wantsFilamentCheck(printer.id)) {
+				const warning = await filamentWarning(printer.id, await jobFilamentNeed(job, backend));
+				if (warning) {
+					await this.holdForFilament(job, printer, warning);
+					return;
+				}
+			}
 			insertRun(job.id, printer);
 			let path: string;
 			if (job.source === 'printer') {
@@ -343,6 +397,7 @@ class Dispatcher {
 				audit(locals, 'job.start', { printer, detail: path });
 			}
 			transition(job.id, 'starting', { status: 'printing', activePath: path });
+			setFilamentOverride(job.id, false);
 			audit(locals, 'queue.start', { printer, detail: `${job.name} (copy ${copy})` });
 			refreshSoon(printer.id);
 		} catch (err) {
@@ -352,6 +407,20 @@ class Dispatcher {
 		} finally {
 			this.inflight.delete(job.id);
 		}
+	}
+
+	/** Keeps a job back because the printer's spool won't last it, and says so. */
+	private async holdForFilament(job: StoredJob, printer: Printer, question: string) {
+		// The check's message asks "Start anyway?"; here nobody is there to answer.
+		const warning = question.replace(/\s*Start anyway\?$/, '');
+		const reason = `Not enough filament on ${printer.name}: ${warning}`;
+		if (!transition(job.id, 'starting', { status: 'held', activePrinterId: null, activePath: null, error: reason })) return;
+		audit({ user: null }, 'queue.hold', { printer, detail: `${job.name}: ${reason}`.slice(0, 480) });
+		await this.notify('spool.low', {
+			title: `Queue held: not enough filament on ${printer.name}`,
+			message: `${job.name} wasn’t started on ${printer.name}. ${warning} Load a fuller spool and choose “Check again”, or “Print anyway” in the queue.`,
+			printer: { id: printer.id, name: printer.name }
+		}).catch(() => {});
 	}
 
 	/** A print ended (history tracker): count or fail the queued job, and ask for the bed to be cleared. */

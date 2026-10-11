@@ -4,7 +4,8 @@
  * that need the printer running (the print queue, sending a file to print).
  *
  * One process-wide instance (`power`), fed by the printers' live state
- * (`printers.observe`) and a 5 s background job (jobs/power.ts).
+ * (`printers.observe`) and a 5 s background job (jobs/power.ts). A running auto
+ * power-off countdown is kept in the store (pending.ts) and resumed after a restart.
  */
 import { printers } from '../octoprint/manager.ts';
 import { backendFor } from '../backend/index.ts';
@@ -15,6 +16,7 @@ import { notify } from '../notify/index.ts';
 import { createAdapter, type PlugAdapter } from './adapters.ts';
 import { getPlug, listPlugs, type StoredPlug } from './config.ts';
 import { AutoOff, maxHotend } from './autooff.ts';
+import { clearPending, loadPending, pendingPrinterIds, savePending } from './pending.ts';
 import type { HttpDeps } from './http.ts';
 import { isConnected, jobActive, type LiveSnapshot, type PrinterState } from '#lib/printer.ts';
 import type { PlugReading, PowerInfo } from '#lib/power.ts';
@@ -42,6 +44,10 @@ interface Runtime {
 	/** What we last switched it to (HTTP plugs without a status URL can't tell). */
 	commanded: boolean | null;
 	autoOff: AutoOff;
+	/** `armedAt` of the countdown saved in the store (pending.ts); null: none saved. */
+	savedArmedAt: number | null;
+	/** An auto power-off is being carried out (its saved countdown stays until it's done). */
+	firing: boolean;
 	connect: PowerInfo['connect'];
 	/** Bumped to cancel a running auto-connect. */
 	connectRun: number;
@@ -112,10 +118,44 @@ export class PowerService {
 		if (cached !== undefined) return cached;
 		const plug = getPlug(printerId);
 		const rt: Runtime | null = plug
-			? { plug, adapter: createAdapter(plug.kind, plug.config, plug.secrets, this.deps), reading: null, readAt: null, error: null, reading$: null, commanded: null, autoOff: new AutoOff(), connect: null, connectRun: 0, busy: false }
+			? { plug, adapter: createAdapter(plug.kind, plug.config, plug.secrets, this.deps), reading: null, readAt: null, error: null, reading$: null, commanded: null, autoOff: new AutoOff(), savedArmedAt: null, firing: false, connect: null, connectRun: 0, busy: false }
 			: null;
 		this.cache.set(printerId, rt);
+		if (rt) this.resumePending(printerId, rt);
 		return rt;
+	}
+
+	/** Picks up a countdown saved before a restart (or before the plug's settings changed). */
+	private resumePending(printerId: string, rt: Runtime) {
+		let saved;
+		try {
+			saved = loadPending(printerId);
+		} catch {
+			return;
+		}
+		if (!saved) return;
+		if (saved.plugKind !== rt.plug.kind || !rt.plug.settings.autoOff.enabled) {
+			clearPending(printerId);
+			return;
+		}
+		rt.autoOff.restore(saved.armedAt);
+		rt.savedArmedAt = saved.armedAt;
+	}
+
+	/** Keeps the saved countdown in step with the state machine. */
+	private syncPending(printerId: string, rt: Runtime) {
+		const armedAt = rt.autoOff.armedAt;
+		if (armedAt === rt.savedArmedAt) return;
+		try {
+			if (armedAt == null) clearPending(printerId);
+			else {
+				const s = rt.plug.settings.autoOff;
+				savePending({ printerId, plugKind: rt.plug.kind, plugLabel: rt.plug.label, armedAt, offAt: armedAt + s.idleMinutes * 60_000, idleMinutes: s.idleMinutes, hotendC: s.hotendC, waitForQueue: s.waitForQueue, savedAt: Date.now() });
+			}
+			rt.savedArmedAt = armedAt;
+		} catch (err) {
+			console.warn(`[octo-modern] couldn’t save the auto power-off countdown: ${errMsg(err)}`);
+		}
 	}
 
 	has(printerId: string): boolean {
@@ -201,6 +241,7 @@ export class PowerService {
 		await this.read(printer.id).catch(() => {});
 		const cancelled = rt.autoOff.cancel(on ? 'Powered on' : 'Powered off');
 		if (cancelled && !on) rt.connectRun++;
+		this.syncPending(printer.id, rt);
 		audit(locals, action, { printer, detail });
 		const who = locals.user ? (locals.user.name ?? locals.user.email) : 'octo·modern';
 		// No snapshot: the camera may well be on the same plug.
@@ -302,6 +343,7 @@ export class PowerService {
 		const rt = this.runtime(printerId);
 		const printer = getPrinter(printerId);
 		if (!rt || !printer || !rt.autoOff.cancel('Kept on')) return false;
+		this.syncPending(printerId, rt);
 		audit(locals, 'power.keep_on', { printer, detail: 'auto power-off cancelled' });
 		return true;
 	}
@@ -397,14 +439,23 @@ export class PowerService {
 		if (!rt) return;
 		const s0 = rt.plug.settings.autoOff;
 		const holdReason = rt.autoOff.armedAt != null && s0.waitForQueue ? this.holdReason(printerId) : null;
+		const resumed = rt.autoOff.resumed;
 		const ev = rt.autoOff.observe({ now, state: snap.state, hotendC: maxHotend(snap.temps), plugOn: rt.reading?.on ?? null, holdReason }, s0);
+		// A fired countdown stays saved until the plug is off (a restart in between re-checks it).
+		if (ev?.type !== 'fire' && !rt.firing) this.syncPending(printerId, rt);
 		if (!ev) return;
 		const printer = getPrinter(printerId);
 		if (!printer) return;
 		const s = rt.plug.settings.autoOff;
 		if (ev.type === 'armed') audit(SYSTEM, 'power.auto_off.armed', { printer, detail: `off after ${s.idleMinutes} min idle and the hotend below ${s.hotendC} °C` });
-		else if (ev.type === 'cancelled') audit(SYSTEM, 'power.auto_off.cancelled', { printer, detail: ev.reason });
-		else if (ev.type === 'fire') void this.autoPowerOff(printer);
+		else if (ev.type === 'cancelled') audit(SYSTEM, 'power.auto_off.cancelled', { printer, detail: resumed ? `${ev.reason} (countdown resumed after a restart)` : ev.reason });
+		else if (ev.type === 'fire') {
+			rt.firing = true;
+			void this.autoPowerOff(printer, resumed).finally(() => {
+				rt.firing = false;
+				this.syncPending(printerId, rt);
+			});
+		}
 	}
 
 	private holdReason(printerId: string): string | null {
@@ -424,19 +475,24 @@ export class PowerService {
 		return !!this.runtime(printerId)?.plug.settings.autoOn;
 	}
 
-	private async autoPowerOff(printer: Printer) {
-		// Ask OctoPrint itself: a print may have just started.
+	private async autoPowerOff(printer: Printer, resumed = false) {
 		try {
-			if (jobActive(await currentState(printer.id, backendFor(printer)))) {
-				audit(SYSTEM, 'power.auto_off.cancelled', { printer, detail: 'A new print started' });
-				return;
+			// Ask the printer itself: a print may have just started.
+			try {
+				if (jobActive(await currentState(printer.id, backendFor(printer)))) {
+					audit(SYSTEM, 'power.auto_off.cancelled', { printer, detail: 'A new print started' });
+					return;
+				}
+			} catch {}
+			const s = this.runtime(printer.id)?.plug.settings.autoOff;
+			try {
+				const detail = s ? `idle ${s.idleMinutes} min, hotend below ${s.hotendC} °C${resumed ? ' (countdown resumed after a restart)' : ''}` : undefined;
+				await this.powerOff(printer.id, SYSTEM, { action: 'power.auto_off', detail });
+			} catch (err) {
+				console.warn(`[octo-modern] auto power-off of ${printer.name} failed: ${errMsg(err)}`);
 			}
-		} catch {}
-		const s = this.runtime(printer.id)?.plug.settings.autoOff;
-		try {
-			await this.powerOff(printer.id, SYSTEM, { action: 'power.auto_off', detail: s ? `idle ${s.idleMinutes} min, hotend below ${s.hotendC} °C` : undefined });
-		} catch (err) {
-			console.warn(`[octo-modern] auto power-off of ${printer.name} failed: ${errMsg(err)}`);
+		} finally {
+			if (!this.cache.get(printer.id)) clearPending(printer.id);
 		}
 	}
 
@@ -449,6 +505,8 @@ export class PowerService {
 			const rt = this.runtime(p.printerId);
 			if (rt && rt.plug.updatedAt !== p.updatedAt) this.invalidate(p.printerId);
 		}
+		// Saved countdowns of printers that no longer have a plug.
+		for (const id of pendingPrinterIds()) if (!ids.has(id)) clearPending(id);
 		await Promise.all(plugs.map((p) => this.refresh(p.printerId)));
 		for (const p of plugs) {
 			const snap = printers.snapshot(p.printerId);

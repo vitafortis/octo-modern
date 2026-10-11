@@ -26,7 +26,8 @@ export const EVENT_KINDS = [
 	'maintenance.due',
 	'failure.suspected',
 	'power.on',
-	'power.off'
+	'power.off',
+	'bed.drift'
 ] as const;
 
 export type EventKind = (typeof EVENT_KINDS)[number];
@@ -58,6 +59,7 @@ export const EVENT_INFO: Record<AnyKind, EventInfo> = {
 	'failure.suspected': { label: 'Failure suspected', group: 'Other features', severity: 'error', hint: 'Failure detection: a warning or a failure, with the annotated frame' },
 	'power.on': { label: 'Power on', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched on' },
 	'power.off': { label: 'Power off', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched off' },
+	'bed.drift': { label: 'Bed mesh drift', group: 'Other features', severity: 'warning', hint: 'A new bed mesh is less flat, or moved from the reference, beyond the limits set in the Bed tab' },
 	test: { label: 'Test', group: 'Other features', severity: 'info', hint: 'Send test' }
 };
 
@@ -66,7 +68,7 @@ export const isCritical = (severity: Severity) => severity === 'error';
 
 // --- channel types ------------------------------------------------------------
 
-export type ChannelType = 'ntfy' | 'discord' | 'slack' | 'telegram' | 'pushover' | 'gotify' | 'matrix' | 'email' | 'homeassistant' | 'webhook';
+export type ChannelType = 'ntfy' | 'discord' | 'slack' | 'telegram' | 'pushover' | 'gotify' | 'matrix' | 'email' | 'homeassistant' | 'webhook' | 'push';
 
 export interface FieldDef {
 	key: string;
@@ -200,6 +202,27 @@ export const CHANNEL_TYPES: ChannelTypeInfo[] = [
 			secret('webhookId', 'Webhook ID', { half: true, placeholder: 'for a webhook trigger', help: 'Receives the same JSON as a generic webhook.' }),
 			{ key: 'service', label: 'Notify service', kind: 'text', half: true, placeholder: 'mobile_app_my_phone', help: 'notify.<service>; needs a token.' },
 			secret('token', 'Long-lived access token', { placeholder: 'for the notify service', help: 'Your profile → Security → Long-lived access tokens.' })
+		]
+	},
+	{
+		// Browser push (Web Push): delivered to the devices people enabled on their Account page.
+		type: 'push',
+		label: 'Browser push',
+		blurb: 'To the phones and computers people turned notifications on for',
+		images: 'link',
+		fields: [
+			{
+				key: 'audience',
+				label: 'Who gets it',
+				kind: 'select',
+				default: 'all',
+				options: [
+					{ value: 'all', label: 'Everyone who can see the printer' },
+					{ value: 'control', label: 'Operators and admins who can see it' },
+					{ value: 'admin', label: 'Admins only' }
+				],
+				help: 'Each person enables it per device (My account → Browser push). People only get printers they have access to.'
+			}
 		]
 	},
 	{
