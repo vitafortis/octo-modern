@@ -6,7 +6,7 @@
 import type { Role } from '#lib/types.ts';
 
 /** Pages only admins can open. */
-export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit', '/discover', '/library/sources'];
+export const ADMIN_PAGES = ['/settings', '/users', '/integrations', '/audit', '/discover', '/library/sources', '/notifications'];
 
 /** API calls only admins may make: users, settings, integrations, audit, backups, discovery, and adding/editing servers. */
 export function adminOnlyApi(method: string, path: string): boolean {

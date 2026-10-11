@@ -82,6 +82,8 @@ async function fileInfo(printer: Printer, origin: string, path: string): Promise
 
 /** Called with each finished print (after its outcome is settled), e.g. for notifications. */
 export type EndedListener = (record: PrintRecord, printer: Printer | undefined) => void | Promise<void>;
+/** Called when a print starts, pauses or resumes (with its history entry), e.g. for notifications. */
+export type ChangeListener = (type: 'start' | 'pause' | 'resume', record: PrintRecord, printer: Printer | undefined, at: number) => void | Promise<void>;
 
 class HistoryTracker {
 	private detectors = new Map<string, PrintDetector>();
@@ -92,6 +94,12 @@ class HistoryTracker {
 	private chains = new Map<string, Promise<void>>();
 	private stop: (() => void) | null = null;
 	readonly ended = new Set<EndedListener>();
+	readonly changes = new Set<ChangeListener>();
+
+	private async changed(type: 'start' | 'pause' | 'resume', rowId: number, printer: Printer | undefined, at: number) {
+		const record = getPrint(rowId);
+		if (record) for (const fn of this.changes) await Promise.resolve(fn(type, record, printer, at)).catch((err) => console.error('[octo-modern] print-change listener failed', err));
+	}
 
 	/** Starts listening to every printer's live state. Idempotent. */
 	start() {
@@ -201,12 +209,16 @@ class HistoryTracker {
 					if (!who) setTimeout(() => this.attribute(rowId), 3_000).unref?.();
 				}
 				this.hold(id);
+				if (rowId != null) await this.changed('start', rowId, printer, a.startedAt);
 				return;
 			}
 			case 'pause':
 			case 'resume': {
 				const rowId = this.rows.get(id);
-				if (rowId != null) updatePrint(rowId, { result: a.type === 'pause' ? 'paused' : 'printing' });
+				if (rowId != null) {
+					updatePrint(rowId, { result: a.type === 'pause' ? 'paused' : 'printing' });
+					await this.changed(a.type, rowId, printer, a.at);
+				}
 				return;
 			}
 			case 'end': {

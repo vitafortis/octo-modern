@@ -1,21 +1,27 @@
 import { json } from '@sveltejs/kit';
 import { BadRequest, body, handler } from '#lib/server/http.ts';
 import { audit } from '#lib/server/permissions.ts';
-import { listChannels, saveChannels } from '#lib/server/history/notify.ts';
+import { generalOf, listChannels, load, saveSettings, SettingsError } from '#lib/server/notify/settings.ts';
+import { bridge } from '#lib/server/notify/bridge.ts';
 import type { RequestHandler } from './$types';
 
-/** Print notification channels (admins; secrets come back as hints only). */
-export const GET: RequestHandler = handler(() => json({ channels: listChannels() }));
+/** Notification settings (admins): channels (secrets as hints only), rules and the general options. */
+export const GET: RequestHandler = handler(({ locals }) => {
+	const s = load();
+	return json({ general: generalOf(s), channels: listChannels(), rules: s.rules, seenUrl: locals.origin ?? null, envOrigin: process.env.ORIGIN ?? null });
+});
 
-/** Replaces the channels: `{ channels: [{ id?, kind, name, enabled, on: [...], config, secrets }] }`; empty secrets keep the stored ones. */
+/** Saves the general options and/or `rules` (channels have their own routes). */
 export const PUT: RequestHandler = handler(async ({ locals, request }) => {
 	const b = await body(request);
-	let channels;
+	let s;
 	try {
-		channels = saveChannels(b.channels, locals.origin ?? null);
+		s = saveSettings(b);
 	} catch (err) {
-		throw new BadRequest((err as Error).message);
+		if (err instanceof SettingsError) throw new BadRequest(err.message);
+		throw err;
 	}
-	audit(locals, 'settings.notifications', { detail: channels.map((c) => `${c.name} (${c.kind})`).join(', ') || 'none' });
-	return json({ channels });
+	bridge.invalidate();
+	audit(locals, 'settings.notifications', { detail: `${s.rules.length} rules${'rules' in b ? '' : ' (options)'}` });
+	return json({ general: generalOf(s), channels: listChannels(), rules: s.rules });
 });

@@ -178,6 +178,34 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 			CREATE INDEX IF NOT EXISTS prints_time ON prints(started_at DESC);
 			CREATE INDEX IF NOT EXISTS prints_printer ON prints(printer_id, started_at DESC);
 		`)
+	],
+	[
+		'notify-001',
+		(h) =>
+			h.exec(`
+			-- Notification deliveries, newest kept (see notify/log.ts).
+			CREATE TABLE IF NOT EXISTS notify_log (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				at TEXT NOT NULL,
+				channel_id TEXT NOT NULL,
+				channel_name TEXT NOT NULL,
+				channel_type TEXT NOT NULL,
+				kind TEXT NOT NULL,
+				printer_name TEXT,
+				title TEXT NOT NULL,
+				status TEXT NOT NULL,
+				error TEXT,
+				ms INTEGER,
+				image INTEGER NOT NULL DEFAULT 0
+			);
+			-- Snapshots shared by unguessable link with channels that show images by URL (see notify/media.ts).
+			CREATE TABLE IF NOT EXISTS notify_media (
+				token_hash TEXT PRIMARY KEY,
+				data BLOB NOT NULL,
+				type TEXT NOT NULL,
+				expires_at INTEGER NOT NULL
+			);
+		`)
 	]
 ];
 

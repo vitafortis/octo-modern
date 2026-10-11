@@ -62,7 +62,8 @@ test('store export restores on a fresh install with a different master key', () 
 		execFileSync(process.execPath, ['--no-warnings', '--experimental-strip-types', helper, role, mkdtempSync(join(tmpdir(), `ocm-backup-${role}-`)), key, file], {
 			encoding: 'utf8'
 		});
-	run('export', 'master-key-one');
+	const exported = JSON.parse(run('export', 'master-key-one'));
+	assert.equal(exported.thumbnailsWithoutImages, false, 'pictures only when asked for');
 	const out = JSON.parse(run('import', 'master-key-two'));
 
 	assert.deepEqual(out.preview.printers.map((p: { status: string }) => p.status), ['new', 'new']);
@@ -85,4 +86,22 @@ test('store export restores on a fresh install with a different master key', () 
 	assert.equal(out.sso.clientSecret, 'sso-secret-value');
 	assert.equal(out.sso.defaultRole, 'operator');
 	assert.equal(out.localLogin, true);
+
+	// Notifications: secrets re-sealed with the new key, rules still point at their printer and channel.
+	assert.deepEqual(out.notify.channels, [
+		{ name: 'Team chat', type: 'telegram', config: { chatId: '-1001' }, quiet: { enabled: true, start: '22:00', end: '07:00', days: [], allowCritical: true }, secrets: { botToken: '123:telegram-secret' } }
+	]);
+	assert.deepEqual(out.notify.rules, [{ name: 'MK4 failures', printers: [out.notify.mk4Id], events: ['print.failed'], channels: ['Team chat'] }]);
+	assert.equal(out.notify.publicUrl, 'https://octo.example');
+	assert.deepEqual(out.notify.progressPercents, [50]);
+
+	// History: merged (the entry already here kept), pictures restored, an open print closed, users remapped.
+	assert.deepEqual(out.history.previewed, { total: 2, added: 2, images: true }, 'previewed before the local entry was added');
+	assert.deepEqual(out.history.result, { added: 1, skipped: 1 });
+	assert.deepEqual(out.history.again, { added: 0, skipped: 2 }, 'restoring twice adds nothing');
+	assert.deepEqual(out.history.rows.map((r: { file: string; result: string; reason: string | null }) => [r.file, r.result, r.reason]), [
+		['gear.gcode', 'failed', 'lost track'],
+		['benchy.gcode', 'success', null]
+	]);
+	assert.deepEqual(out.history.userIds, [out.operator.id], 'the backup’s user id mapped to the local operator');
 });

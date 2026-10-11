@@ -3,6 +3,8 @@ import { decrypt, encrypt } from './crypto.ts';
 import { BackupError } from './backup.ts';
 import { deleteKv, getApiKey, getKv, setKv, sqlite } from './store.ts';
 import { isRole, type Role } from '#lib/types.ts';
+import { checkPortable, exportSettings, importSettings, load as loadNotify, type PortableSettings } from './notify/settings.ts';
+import { checkHistory, exportHistory, importHistoryRows, previewHistory, type BackupHistory } from './history/backup.ts';
 
 /**
  * What goes into a backup and how it merges back in. The audit log, sessions and API
@@ -14,7 +16,18 @@ export interface BackupInclude {
 	printers: boolean;
 	users: boolean;
 	settings: boolean;
+	/** Notification channels (with their secrets), rules and options. */
+	notifications: boolean;
+	/** The print history (can be large). */
+	history: boolean;
 }
+
+/** Export-only: put the history's pictures in too (bigger file). */
+export interface SnapshotOptions {
+	historyImages?: boolean;
+}
+
+export const NO_CATEGORIES: BackupInclude = { printers: false, users: false, settings: false, notifications: false, history: false };
 
 export interface BackupPrinter {
 	id: string;
@@ -54,6 +67,8 @@ export interface BackupPayload {
 	users?: BackupUser[];
 	grants?: { userId: string; printerId: string }[];
 	settings?: BackupSettings;
+	notifications?: PortableSettings;
+	history?: BackupHistory;
 }
 
 type Row = Record<string, unknown>;
@@ -65,9 +80,11 @@ export function appVersion(): string {
 
 // --- export ------------------------------------------------------------------
 
-export function snapshot(include: BackupInclude): BackupPayload {
+export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): BackupPayload {
 	const h = sqlite();
 	const payload: BackupPayload = { include };
+	if (include.notifications) payload.notifications = exportSettings();
+	if (include.history) payload.history = exportHistory(!!opts.historyImages);
 	if (include.printers) {
 		payload.printers = (h.prepare('SELECT * FROM printers ORDER BY sort, name COLLATE NOCASE').all() as Row[]).map((r) => ({
 			id: r.id as string,
@@ -111,6 +128,8 @@ export function summarizeInclude(p: BackupPayload): string {
 	if (p.printers) parts.push(`${p.printers.length} printers`);
 	if (p.users) parts.push(`${p.users.length} users`, `${p.grants?.length ?? 0} grants`);
 	if (p.settings) parts.push(`settings${p.settings.sso ? ' (SSO)' : ''}`);
+	if (p.notifications) parts.push(`${p.notifications.channels.length} notification channels`);
+	if (p.history) parts.push(`${p.history.prints.length} history entries${p.history.images ? ' with pictures' : ''}`);
 	return parts.join(', ') || 'nothing';
 }
 
@@ -125,7 +144,7 @@ function str(v: unknown, what: string): string {
 export function validatePayload(raw: unknown): BackupPayload {
 	if (!raw || typeof raw !== 'object') throw new BackupError('Damaged backup: no payload');
 	const p = raw as BackupPayload;
-	const inc = p.include ?? { printers: !!p.printers, users: !!p.users, settings: !!p.settings };
+	const inc: Partial<BackupInclude> = p.include ?? { printers: !!p.printers, users: !!p.users, settings: !!p.settings };
 	if (p.printers !== undefined) {
 		if (!Array.isArray(p.printers)) throw new BackupError('Damaged backup: printers');
 		for (const s of p.printers) {
@@ -147,7 +166,16 @@ export function validatePayload(raw: unknown): BackupPayload {
 	}
 	if (p.grants !== undefined && !Array.isArray(p.grants)) throw new BackupError('Damaged backup: grants');
 	if (p.settings !== undefined && (typeof p.settings !== 'object' || !p.settings)) throw new BackupError('Damaged backup: settings');
-	return { ...p, include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings } };
+	try {
+		if (p.notifications !== undefined) checkPortable(p.notifications);
+		if (p.history !== undefined) checkHistory(p.history);
+	} catch (err) {
+		throw new BackupError(`Damaged backup: ${(err as Error).message}`);
+	}
+	return {
+		...p,
+		include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings, notifications: !!inc.notifications && !!p.notifications, history: !!inc.history && !!p.history }
+	};
 }
 
 // --- preview -------------------------------------------------------------------
@@ -162,6 +190,8 @@ export interface RestorePreview {
 	users: { email: string; name: string | null; role: Role; status: 'new' | 'update' | 'self' }[];
 	grants: number;
 	settings: { label: string; detail: string; status: ChangeStatus }[];
+	notifications: { channels: { name: string; type: string; status: 'new' | 'update' }[]; rules: number; replaces: number } | null;
+	history: { total: number; added: number; images: boolean } | null;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -179,8 +209,20 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 			return { email: u.email, name: u.name, role: u.role, status: !existing ? 'new' : existing.id === actorId ? 'self' : 'update' };
 		}),
 		grants: p.grants?.length ?? 0,
-		settings: []
+		settings: [],
+		notifications: null,
+		history: null
 	};
+	if (p.notifications) {
+		const here = loadNotify();
+		const ids = new Set(here.channels.map((c) => c.id));
+		preview.notifications = {
+			channels: p.notifications.channels.map((c) => ({ name: c.name, type: c.type, status: ids.has(c.id) ? 'update' : 'new' })),
+			rules: p.notifications.rules.length,
+			replaces: here.channels.length
+		};
+	}
+	if (p.history) preview.history = { ...previewHistory(p.history), images: !!p.history.images };
 	if (p.settings) {
 		const s = p.settings;
 		const status = (incoming: unknown, current: unknown): ChangeStatus =>
@@ -207,6 +249,8 @@ export interface RestoreResult {
 	users: { added: number; updated: number; skipped: number };
 	grants: number;
 	settings: boolean;
+	notifications: boolean;
+	history: { added: number; skipped: number };
 	/** Printers whose live connections should be rebuilt. */
 	changedPrinterIds: string[];
 }
@@ -218,7 +262,15 @@ export interface RestoreResult {
  */
 export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: string | null): RestoreResult {
 	const h = sqlite();
-	const result: RestoreResult = { printers: { added: 0, updated: 0 }, users: { added: 0, updated: 0, skipped: 0 }, grants: 0, settings: false, changedPrinterIds: [] };
+	const result: RestoreResult = {
+		printers: { added: 0, updated: 0 },
+		users: { added: 0, updated: 0, skipped: 0 },
+		grants: 0,
+		settings: false,
+		notifications: false,
+		history: { added: 0, skipped: 0 },
+		changedPrinterIds: []
+	};
 	const now = new Date().toISOString();
 	h.exec('BEGIN IMMEDIATE');
 	try {
@@ -312,6 +364,16 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 			else deleteKv('local-login-disabled');
 			result.settings = true;
 		}
+
+		if (choice.notifications && p.notifications) {
+			// Replaced as a whole, secrets re-sealed with this install's key.
+			importSettings(p.notifications);
+			result.notifications = true;
+		}
+		if (choice.history && p.history) {
+			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
+			result.history = importHistoryRows(p.history, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
+		}
 		h.exec('COMMIT');
 	} catch (err) {
 		h.exec('ROLLBACK');
@@ -326,5 +388,7 @@ export function summarizeResult(r: RestoreResult): string {
 	if (r.users.added || r.users.updated || r.users.skipped) parts.push(`users +${r.users.added} ~${r.users.updated} (kept ${r.users.skipped})`);
 	if (r.grants) parts.push(`${r.grants} grants`);
 	if (r.settings) parts.push('settings replaced');
+	if (r.notifications) parts.push('notifications replaced');
+	if (r.history.added || r.history.skipped) parts.push(`history +${r.history.added} (had ${r.history.skipped})`);
 	return parts.join('; ') || 'nothing changed';
 }

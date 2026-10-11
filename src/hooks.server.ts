@@ -13,7 +13,8 @@ export const init: ServerInit = () => {
 	startJobs();
 };
 
-const PUBLIC = ['/login', '/setup', '/auth/oidc/', '/api/auth/', '/api/health'];
+// /api/notify/media/: snapshots shared by unguessable, expiring link with notification channels.
+const PUBLIC = ['/login', '/setup', '/auth/oidc/', '/api/auth/', '/api/health', '/api/notify/media/'];
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const { pathname } = event.url;
