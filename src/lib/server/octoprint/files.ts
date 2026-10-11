@@ -79,3 +79,34 @@ export function isGcodeName(name: string): boolean {
 export function validFolderName(name: string): boolean {
 	return !!name.trim() && name.length <= 120 && !/[/\\]/.test(name) && name !== '.' && name !== '..';
 }
+
+/**
+ * The parts of one OctoPrint file entry (/api/files/<origin>/<path>) the history, queue
+ * and filament checks use: analysis, slicer thumbnail and the last print's record.
+ */
+export function parseFileDetails(raw: unknown): import('../backend/types.ts').FileDetails {
+	const r = isObj(raw) ? raw : {};
+	const analysis = isObj(r.gcodeAnalysis) ? r.gcodeAnalysis : null;
+	let filamentMm: number | null = null;
+	const perTool: Record<number, number> = {};
+	if (analysis && isObj(analysis.filament)) {
+		for (const [k, f] of Object.entries(analysis.filament)) {
+			const len = isObj(f) ? num(f.length) : null;
+			if (len == null) continue;
+			filamentMm = (filamentMm ?? 0) + len;
+			const m = /^tool(\d+)$/.exec(k);
+			if (m && len > 0) perTool[Number(m[1])] = len;
+		}
+	}
+	const prints = isObj(r.prints) ? r.prints : null;
+	const l = prints && isObj(prints.last) ? prints.last : null;
+	const date = l ? num(l.date) : null;
+	return {
+		size: num(r.size),
+		filamentMm,
+		perTool,
+		estimatedS: analysis ? num(analysis.estimatedPrintTime) : null,
+		thumbnail: safeThumbnail(r.thumbnail),
+		last: l && date != null && typeof l.success === 'boolean' ? { date: date * 1000, success: l.success, printTime: num(l.printTime) } : null
+	};
+}

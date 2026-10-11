@@ -9,9 +9,7 @@ import { mkdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { config } from '../config.ts';
-import { encodePath, type OctoPrintClient } from '../octoprint/client.ts';
-import { streamRequest } from '../octoprint/transport.ts';
-import { httpError, toOctoPrintError } from '../octoprint/errors.ts';
+import type { PrinterBackend } from '../backend/types.ts';
 import { multipartParts } from '../library/send.ts';
 import { pullStream } from '../library/drivers.ts';
 import { baseName, joinPath } from '#lib/library.ts';
@@ -52,23 +50,17 @@ export async function cleanTempUploads() {
 	for (const n of names) if (n.startsWith('.upload-')) await rm(join(dir, n), { force: true }).catch(() => {});
 }
 
-/** OctoPrint's record of a local file: its size, or null when it isn't there. */
-export async function octoprintFileSize(client: OctoPrintClient, path: string): Promise<number | null> {
-	const res = await client.request('GET', `/api/files/local/${encodePath(path)}`, { allow: [404] });
-	if (res.status === 404) {
-		await res.body?.cancel().catch(() => {});
-		return null;
-	}
-	const j = (await res.json().catch(() => null)) as { size?: unknown } | null;
-	return typeof j?.size === 'number' ? j.size : -1;
+/** The printer's record of a local file: its size, or null when it isn't there. */
+export function printerFileSize(backend: PrinterBackend, path: string): Promise<number | null> {
+	return backend.fileSize(path);
 }
 
 /**
- * Streams a local file into OctoPrint's local storage as `folder/name`, optionally
+ * Streams a local file into the printer's storage as `folder/name`, optionally
  * selecting and printing it. Resolves with the stored path and whether it prints.
  */
 export async function uploadFileToPrinter(
-	client: OctoPrintClient,
+	backend: PrinterBackend,
 	opts: { file: string; name: string; folder?: string; select?: boolean; print?: boolean; signal?: AbortSignal }
 ): Promise<{ path: string; printing: boolean; selected: boolean }> {
 	const size = (await stat(opts.file)).size;
@@ -80,25 +72,20 @@ export async function uploadFileToPrinter(
 		for await (const chunk of stream) yield chunk as Buffer;
 		yield tail;
 	}
-	const q = new URLSearchParams();
-	if (opts.folder) q.set('path', opts.folder);
-	if (opts.select || opts.print) q.set('select', 'true');
-	if (opts.print) q.set('print', 'true');
-	let res: { status: number; text: string };
 	try {
-		res = await streamRequest(client.url(`/api/files/local${q.size ? `?${q}` : ''}`), {
-			method: 'POST',
-			headers: { 'X-Api-Key': client.target.apiKey, accept: 'application/json', 'content-type': contentType, 'content-length': String(head.length + size + tail.length) },
+		const r = await backend.upload({
 			body: pullStream(body()),
-			verifyTls: client.target.verifyTls,
+			contentType,
+			length: head.length + size + tail.length,
+			folder: opts.folder,
+			select: opts.select,
+			print: opts.print,
 			signal: opts.signal,
 			timeoutMs: 5 * 60_000
 		});
+		return { path: r.path ?? joinPath(opts.folder ?? '', name), printing: r.printing, selected: r.selected };
 	} catch (err) {
 		stream.destroy();
-		throw toOctoPrintError(err, client.host);
+		throw err;
 	}
-	if (res.status < 200 || res.status >= 300) throw httpError(res.status, '/api/files/local', res.text);
-	const r = (JSON.parse(res.text || '{}') ?? {}) as { effectivePrint?: boolean; effectiveSelect?: boolean; files?: { local?: { path?: string } } };
-	return { path: r.files?.local?.path ?? joinPath(opts.folder ?? '', name), printing: !!r.effectivePrint, selected: !!r.effectiveSelect };
 }

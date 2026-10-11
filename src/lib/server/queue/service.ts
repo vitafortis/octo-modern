@@ -6,13 +6,15 @@ import { rename, rm } from 'node:fs/promises';
 import { BadRequest, Forbidden, NotFound } from '../http.ts';
 import { audit, canControl, canSee, requireControl, visiblePrinters } from '../permissions.ts';
 import { roleAllows } from '../access.ts';
-import { clientFor, printers } from '../octoprint/manager.ts';
+import { printers } from '../octoprint/manager.ts';
+import { backendFor } from '../backend/index.ts';
+import { canReach } from '#lib/printer-kind.ts';
 import { getPrinter } from '../store.ts';
 import { getSource } from '../library/sources.ts';
 import { relPath, requireSource, sourceAllowsPrinter, withDriver } from '../library/service.ts';
 import { LibraryError } from '../library/drivers.ts';
 import { dispatcher } from './dispatcher.ts';
-import { ensureStagingDir, octoprintFileSize, removeStaged, stagedPath } from './files.ts';
+import { ensureStagingDir, printerFileSize, removeStaged, stagedPath } from './files.ts';
 import { deleteJob, getJob, insertJob, isPaused, listJobs, type StoredJob } from './store.ts';
 import { clampCopies, parseTags, type QueueJob, type QueueState } from '#lib/queue.ts';
 import { baseName, isPrintable } from '#lib/library.ts';
@@ -97,7 +99,7 @@ export async function addPrinterFileJob(user: User | null, b: Record<string, unk
 	const printer = requireControl(user, b.printerId);
 	const path = relPath(b.path);
 	if (!path) throw new BadRequest('"path" is required');
-	const size = await octoprintFileSize(clientFor(printer), path);
+	const size = await printerFileSize(backendFor(printer), path);
 	if (size == null) throw new NotFound(`${printer.name} has no file ${path}`);
 	// A printer's own file can only print there.
 	const job = insertJob({ name: baseName(path), source: 'printer', sourceId: printer.id, path, size: size >= 0 ? size : null, printerId: printer.id, tags: [], copies: t.copies, createdById: user!.id, createdBy: label(user) });
@@ -144,7 +146,7 @@ export async function confirmBedClear(locals: { user: User | null; ip?: string }
 	if (!printer) return { ok: false, message: 'Printer not found' };
 	// Ask OctoPrint (the live snapshot can trail by a poll), and count a queued job still running.
 	let state = printers.snapshot(printerId)?.state;
-	if (printer.hasApiKey) state = await currentState(printerId, clientFor(printer)).catch(() => state);
+	if (canReach(printer)) state = await currentState(printerId, backendFor(printer)).catch(() => state);
 	const running = listJobs().some((j) => j.activePrinterId === printerId && (j.status === 'printing' || j.status === 'starting'));
 	if ((state && jobActive(state)) || running) return { ok: false, message: `${printer.name} is printing; confirm the bed once the print is done and removed` };
 	dispatcher.bedCleared(printerId);

@@ -3,18 +3,21 @@ import { body, handler, NotFound, parsePrinterInput } from '#lib/server/http.ts'
 import { deletePrinter, getPrinter, updatePrinter } from '#lib/server/store.ts';
 import { audit, requirePrinter, withAccess } from '#lib/server/permissions.ts';
 import { printers } from '#lib/server/octoprint/manager.ts';
+import { KIND_LABEL } from '#lib/printer-kind.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = handler(({ params, locals }) => json(withAccess(locals.user, requirePrinter(locals.user, params.id))));
 
-/** Edits a server (admins). Omit `apiKey` to keep the stored one. */
+/** Edits a server (admins). Omit `apiKey` to keep the stored one, `kind` to keep the type. */
 export const PUT: RequestHandler = handler(async ({ params, request, locals }) => {
 	const before = getPrinter(params.id);
 	if (!before) throw new NotFound('Printer not found');
-	const input = parsePrinterInput(await body(request));
+	const b = await body(request);
+	const input = parsePrinterInput({ ...b, kind: b.kind === 'auto' ? undefined : b.kind });
 	const printer = updatePrinter(params.id, input)!;
 	const changes = [
 		before.name !== printer.name && `name ${printer.name}`,
+		before.kind !== printer.kind && `type ${KIND_LABEL[printer.kind]}`,
 		before.baseUrl !== printer.baseUrl && `URL ${printer.baseUrl}`,
 		input.apiKey !== undefined && 'API key replaced',
 		before.verifyTls !== printer.verifyTls && `verify TLS ${printer.verifyTls ? 'on' : 'off'}`,

@@ -7,7 +7,7 @@
 import { MAX_BYTES, shrinkJpeg } from './jpeg.ts';
 import { cameraFor, cameraHeaders } from '../octoprint/webcam.ts';
 import { httpFetch } from '../octoprint/transport.ts';
-import { clientFor } from '../octoprint/manager.ts';
+import { backendFor } from '../backend/index.ts';
 import { getApiKey } from '../store.ts';
 import type { Printer } from '#lib/types.ts';
 
@@ -27,7 +27,10 @@ export async function captureThumbnail(printer: Printer, slicerThumbnail: string
 	}
 	if (!slicerThumbnail) return null;
 	try {
-		const res = await clientFor(printer).request('GET', `/${slicerThumbnail}`, { headers: { accept: 'image/*' }, timeoutMs: 8_000 });
+		const backend = backendFor(printer);
+		const src = backend.thumbnailSource(slicerThumbnail);
+		if (!src) return null;
+		const res = await backend.thumbnail(src, { timeoutMs: 8_000 });
 		const type = (res.headers.get('content-type') ?? '').split(';')[0];
 		const data = new Uint8Array(await res.arrayBuffer());
 		if (type === 'image/jpeg') {

@@ -5,10 +5,13 @@
  *   date, outcome and print time of a file's *last* print (plus success/failure
  *   counts, which can't be dated and aren't imported). OctoPrint counts a cancel as a
  *   failure, so these come in as "failed" with reason `octoprint-stats`.
+ * Klipper printers: Moonraker's own job history (`server.history.list`), which records
+ * every print with its outcome, duration and filament used.
  * Imports are idempotent (keyed by their source) and skip prints octo·modern already
  * recorded live.
  */
 import { clientFor } from '../octoprint/manager.ts';
+import { moonrakerBackend } from '../backend/index.ts';
 import { getKv, setKv } from '../store.ts';
 import { endedBetween, insertPrint } from './store.ts';
 import type { PrintResult } from '#lib/history.ts';
@@ -135,17 +138,68 @@ export function printsFromPrintJobHistory(raw: unknown): ImportedPrint[] {
 	return out;
 }
 
+const MOONRAKER_RESULT: Record<string, PrintResult> = { completed: 'success', cancelled: 'cancelled' };
+
+/** Jobs from Moonraker's `server.history.list` (`start_time`/`end_time` in epoch seconds). */
+export function printsFromMoonrakerHistory(jobs: unknown): ImportedPrint[] {
+	if (!Array.isArray(jobs)) return [];
+	const out: ImportedPrint[] = [];
+	for (const j of jobs) {
+		if (!isObj(j)) continue;
+		const status = str(j.status);
+		const path = str(j.filename);
+		const start = num(j.start_time);
+		if (!status || status === 'in_progress' || !path || start == null) continue;
+		const end = num(j.end_time);
+		const meta = isObj(j.metadata) ? j.metadata : {};
+		const result = MOONRAKER_RESULT[status] ?? 'failed';
+		out.push({
+			key: `moonraker:${str(j.job_id) ?? `${path}@${start}`}`,
+			file: path.split('/').pop() ?? path,
+			path,
+			origin: 'local',
+			startedAt: Math.round(start * 1000),
+			endedAt: end != null ? Math.round(end * 1000) : null,
+			durationS: num(j.total_duration) ?? num(j.print_duration),
+			result,
+			reason: result === 'failed' ? status : null,
+			filamentMm: num(j.filament_used),
+			estimatedS: num(meta.estimated_time),
+			user: str(j.user),
+			notes: null
+		});
+	}
+	return out;
+}
+
+async function moonrakerPrints(printer: Printer): Promise<ImportedPrint[]> {
+	const backend = moonrakerBackend(printer);
+	const out: ImportedPrint[] = [];
+	for (let start = 0; start < 2_000; start += 200) {
+		const page = await backend.historyPage(start, 200);
+		const jobs = Array.isArray(page?.jobs) ? page.jobs : [];
+		out.push(...printsFromMoonrakerHistory(jobs));
+		if (jobs.length < 200) break;
+	}
+	return out;
+}
+
 export interface ImportResult {
 	imported: number;
 	skipped: number;
 	sources: string[];
 }
 
-/** Imports one printer's history from OctoPrint. Throws only if OctoPrint can't be reached at all. */
+/** Imports one printer's history from OctoPrint or Moonraker. Throws only if the server can't be reached at all. */
 export async function importHistory(printer: Printer): Promise<ImportResult> {
-	const client = clientFor(printer);
 	const found: ImportedPrint[] = [];
 	const sources: string[] = [];
+	if (printer.kind === 'moonraker') {
+		found.push(...(await moonrakerPrints(printer)));
+		if (found.length) sources.push('Moonraker job history');
+		return record(printer, found, sources);
+	}
+	const client = clientFor(printer);
 	try {
 		const q = new URLSearchParams({ from: '0', to: '100000', sortColumn: 'printStartDateTime', sortOrder: 'desc', filterName: 'all', startDate: '', endDate: '' });
 		const res = await client.request('GET', `/plugin/PrintJobHistory/loadPrintJobHistoryByQuery?${q}`, { allow: [400, 403, 404, 405, 500], timeoutMs: 20_000 });
@@ -161,7 +215,10 @@ export async function importHistory(printer: Printer): Promise<ImportResult> {
 	if (stats.length) sources.push('file statistics');
 	// PrintJobHistory already covers the files' last prints.
 	if (!found.length) found.push(...stats);
+	return record(printer, found, sources);
+}
 
+function record(printer: Printer, found: ImportedPrint[], sources: string[]): ImportResult {
 	let imported = 0;
 	let skipped = 0;
 	for (const p of found) {

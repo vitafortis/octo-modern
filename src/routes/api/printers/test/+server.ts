@@ -1,13 +1,16 @@
 import { json } from '@sveltejs/kit';
 import { BadRequest, body, handler } from '#lib/server/http.ts';
 import { normalizeBaseUrl } from '#lib/server/octoprint/client.ts';
-import { testServer } from '#lib/server/octoprint/probe.ts';
+import { testPrinter } from '#lib/server/backend/probe.ts';
 import { getApiKey, getPrinter } from '#lib/server/store.ts';
+import { isPrinterKind } from '#lib/types.ts';
 import type { RequestHandler } from './$types';
 
 /**
- * Tests a server form before saving (admins): `{ baseUrl, apiKey, verifyTls }`, or
- * `{ id, baseUrl, verifyTls }` to test edited settings with the stored key.
+ * Tests a server form before saving (admins): `{ baseUrl, apiKey, verifyTls, kind? }`, or
+ * `{ id, baseUrl, verifyTls }` to test edited settings with the stored key. `kind` is
+ * `octoprint`, `moonraker` or `auto` (the default: probes Moonraker, then OctoPrint); the
+ * result says which answered. Moonraker may need no key.
  */
 export const POST: RequestHandler = handler(async ({ request }) => {
 	const b = await body(request);
@@ -18,7 +21,8 @@ export const POST: RequestHandler = handler(async ({ request }) => {
 		throw new BadRequest((err as Error).message);
 	}
 	let apiKey = typeof b.apiKey === 'string' ? b.apiKey.trim() : '';
-	if (!apiKey && typeof b.id === 'string' && getPrinter(b.id)) apiKey = getApiKey(b.id) ?? '';
-	if (!apiKey) throw new BadRequest('Paste an API key to test with');
-	return json(await testServer({ baseUrl, apiKey, verifyTls: b.verifyTls !== false }));
+	if (!apiKey && b.apiKey === undefined && typeof b.id === 'string' && getPrinter(b.id)) apiKey = getApiKey(b.id) ?? '';
+	const kind = isPrinterKind(b.kind) ? b.kind : 'auto';
+	if (!apiKey && kind === 'octoprint') throw new BadRequest('Paste an API key to test with');
+	return json(await testPrinter({ baseUrl, apiKey, verifyTls: b.verifyTls !== false, kind }));
 });

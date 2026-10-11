@@ -8,9 +8,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { audit } from '../permissions.ts';
 import { refreshSoon } from '../control.ts';
-import { encodePath, type OctoPrintClient } from '../octoprint/client.ts';
-import { streamRequest } from '../octoprint/transport.ts';
-import { httpError, toOctoPrintError } from '../octoprint/errors.ts';
+import { toOctoPrintError } from '../octoprint/errors.ts';
+import type { PrinterBackend } from '../backend/types.ts';
 import { bytesLabel } from '../octoprint/files-util.ts';
 import { LibraryError, pullStream, toLibraryError } from './drivers.ts';
 import { openRead, withDriver } from './service.ts';
@@ -58,11 +57,9 @@ export function abortSend(user: User | null, id: string): boolean {
 	return true;
 }
 
-/** Whether OctoPrint already has a file at `path` in local storage. */
-export async function octoprintHas(client: OctoPrintClient, path: string): Promise<boolean> {
-	const res = await client.request('GET', `/api/files/local/${encodePath(path)}`, { allow: [404] });
-	await res.body?.cancel().catch(() => {});
-	return res.status === 200;
+/** Whether the printer already has a file at `path` in local storage. */
+export async function printerHas(backend: PrinterBackend, path: string): Promise<boolean> {
+	return (await backend.fileSize(path)) != null;
 }
 
 /** A clean OctoPrint folder ('' = top level). */
@@ -76,9 +73,9 @@ export function cleanFolder(raw: unknown): string {
  */
 export async function startSend(
 	locals: Locals,
-	opts: { src: LibrarySource; path: string; printer: Printer; client: OctoPrintClient; folder: string; print: boolean }
+	opts: { src: LibrarySource; path: string; printer: Printer; backend: PrinterBackend; folder: string; print: boolean }
 ): Promise<LibrarySend> {
-	const { src, printer, client, folder, print } = opts;
+	const { src, printer, backend, folder, print } = opts;
 	const path = cleanRelPath(opts.path);
 	const st = await withDriver(src, (d) => d.stat(path));
 	if (st.type !== 'file') throw new LibraryError('Not a file', { status: 400, code: 'NOT_A_FILE' });
@@ -125,35 +122,28 @@ export async function startSend(
 		yield tail;
 	}
 
-	const q = new URLSearchParams();
-	if (folder) q.set('path', folder);
-	if (print) {
-		q.set('select', 'true');
-		q.set('print', 'true');
-	}
-	const url = client.url(`/api/files/local${q.size ? `?${q}` : ''}`);
 	const where = `${src.name}: ${path} → ${printer.name}${folder ? ` /${folder}` : ''}`;
 
 	void (async () => {
 		try {
-			let res: { status: number; text: string };
+			let result: Awaited<ReturnType<PrinterBackend['upload']>>;
 			try {
-				res = await streamRequest(url, {
-					method: 'POST',
-					headers: { 'X-Api-Key': client.target.apiKey, accept: 'application/json', 'content-type': contentType, 'content-length': String(head.length + size + tail.length) },
+				result = await backend.upload({
 					body: pullStream(body()),
-					verifyTls: client.target.verifyTls,
+					contentType,
+					length: head.length + size + tail.length,
+					folder,
+					select: print,
+					print,
 					signal: abort.signal,
 					timeoutMs: 5 * 60_000
 				});
 			} catch (err) {
 				if (abort.signal.aborted) throw new LibraryError('Cancelled', { code: 'ABORTED' });
-				throw err instanceof LibraryError ? err : toOctoPrintError(err, client.host);
+				throw err instanceof LibraryError ? err : toOctoPrintError(err, backend.host);
 			}
-			if (res.status < 200 || res.status >= 300) throw httpError(res.status, '/api/files/local', res.text);
-			const result = (JSON.parse(res.text || '{}') ?? {}) as { effectivePrint?: boolean; files?: { local?: { path?: string } } };
-			send.storedPath = result.files?.local?.path ?? joinPath(folder, name);
-			send.printing = !!result.effectivePrint;
+			send.storedPath = result.path ?? joinPath(folder, name);
+			send.printing = result.printing;
 			send.sent = size;
 			send.state = 'done';
 			audit(locals, 'library.send', {
@@ -182,9 +172,9 @@ export async function startSend(
  */
 export async function saveToLibrary(
 	locals: Locals,
-	opts: { src: LibrarySource; printer: Printer; client: OctoPrintClient; octoPath: string; folder: string; overwrite: boolean; signal?: AbortSignal }
+	opts: { src: LibrarySource; printer: Printer; backend: PrinterBackend; octoPath: string; folder: string; overwrite: boolean; signal?: AbortSignal }
 ): Promise<{ path: string; size: number } | { exists: string }> {
-	const { src, printer, client } = opts;
+	const { src, printer, backend } = opts;
 	if (!src.writable) throw new LibraryError('This library source is read-only', { status: 403, code: 'READ_ONLY', hint: 'An admin can allow writing in the source’s settings.' });
 	const octoPath = cleanRelPath(opts.octoPath);
 	const dest = joinPath(cleanRelPath(opts.folder), baseName(octoPath));
@@ -200,12 +190,16 @@ export async function saveToLibrary(
 	}
 	let res: Response;
 	try {
-		res = await client.request('GET', `/downloads/files/local/${encodePath(octoPath)}`, { timeoutMs: 60 * 60_000, signal: opts.signal, headers: { accept: '*/*' } });
+		res = await backend.download(octoPath, { timeoutMs: 60 * 60_000, signal: opts.signal });
 	} catch (err) {
-		throw toOctoPrintError(err, client.host);
+		throw toOctoPrintError(err, backend.host);
+	}
+	if (!res.ok) {
+		await res.body?.cancel().catch(() => {});
+		throw new LibraryError(res.status === 404 ? `${octoPath} isn’t on the printer` : `The printer answered HTTP ${res.status}`, { status: res.status === 404 ? 404 : 502, code: res.status === 404 ? 'NOT_FOUND' : 'BAD_RESPONSE' });
 	}
 	const size = Number(res.headers.get('content-length'));
-	if (!res.body || !Number.isFinite(size)) throw new LibraryError('OctoPrint didn’t say how big the file is', { code: 'NO_LENGTH' });
+	if (!res.body || !Number.isFinite(size)) throw new LibraryError('The printer didn’t say how big the file is', { code: 'NO_LENGTH' });
 	await withDriver(src, (d) => d.write(dest, Readable.fromWeb(res.body as import('node:stream/web').ReadableStream), size));
 	audit(locals, 'library.save', { printer, detail: `${printer.name}: ${octoPath} → ${src.name}: ${dest} (${bytesLabel(size)})` });
 	return { path: dest, size };

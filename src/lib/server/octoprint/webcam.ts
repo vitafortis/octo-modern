@@ -1,14 +1,15 @@
 /**
- * Webcams of a printer: the admin's override URL, or the cameras OctoPrint's settings
- * report (`webcam.webcams` on OctoPrint ≥1.9, one per webcam plugin camera; the legacy
- * `webcam.streamUrl` / `snapshotUrl` before that). Relative URLs such as
+ * Webcams of a printer: the admin's override URL, or the cameras the server reports:
+ * Klipper's from Moonraker's `server.webcams.list` (see moonraker/parse.ts), OctoPrint's
+ * from its settings (`webcam.webcams` on OctoPrint ≥1.9, one per webcam plugin camera;
+ * the legacy `webcam.streamUrl` / `snapshotUrl` before that). Relative URLs such as
  * `/webcam/?action=stream` resolve against the OctoPrint base URL.
  *
  * MJPEG streams and snapshots are proxied through octo·modern, so the browser never
  * needs to reach the camera or OctoPrint. HLS and WebRTC streams can't be relayed as
  * a plain image; the UI offers a link to open them directly instead.
  */
-import { clientFor } from './manager.ts';
+import { backendFor } from '../backend/index.ts';
 import type { Printer } from '#lib/types.ts';
 
 export type StreamKind = 'mjpeg' | 'hls' | 'webrtc';
@@ -136,7 +137,7 @@ export async function cameras(printer: Printer): Promise<Camera[]> {
 	const key = printer.updatedAt;
 	const hit = cache.get(printer.id);
 	if (hit && hit.key === key && Date.now() - hit.at < TTL_MS) return hit.cams;
-	const cams = printer.webcamUrl ? camerasFromOverride(printer.webcamUrl, printer.baseUrl) : camerasFromSettings(await clientFor(printer).settings(), printer.baseUrl);
+	const cams = printer.webcamUrl ? camerasFromOverride(printer.webcamUrl, printer.baseUrl) : await backendFor(printer).cameras(printer.baseUrl);
 	cache.set(printer.id, { at: Date.now(), key, cams });
 	return cams;
 }

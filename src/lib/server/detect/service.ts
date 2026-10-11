@@ -16,7 +16,8 @@
  * restart mid-print starts the print's score afresh, like a new print would.
  */
 import { addAudit, getApiKey, listPrinters } from '../store.ts';
-import { clientFor, printers } from '../octoprint/manager.ts';
+import { printers } from '../octoprint/manager.ts';
+import { backendFor } from '../backend/index.ts';
 import { cameraFor, cameraHeaders } from '../octoprint/webcam.ts';
 import { httpFetch } from '../octoprint/transport.ts';
 import { refreshSoon } from '../control.ts';
@@ -216,7 +217,7 @@ async function react(p: Printer, run: Run, s: PrinterDetectSettings, level: Dete
 			run.warned = true;
 			let action: FailureInfo['action'] = 'paused';
 			try {
-				await clientFor(p).jobCommand('pause', 'pause');
+				await backendFor(p).jobCommand('pause');
 				addAudit({ userId: null, userEmail: DETECTOR, action: 'job.pause', printerId: p.id, printerName: p.name, detail: `${run.file}: failure score ${pct(score)}`, ip: null });
 				event(run, 'paused', `Paused the print at failure score ${pct(score)}`, now);
 				refreshSoon(p.id);

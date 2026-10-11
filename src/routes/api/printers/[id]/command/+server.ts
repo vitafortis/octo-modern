@@ -12,18 +12,18 @@ import type { RequestHandler } from './$types';
  * other commands flagged dangerous in #lib/terminal/gcodes.ts (M999, M500, M502, M997, …).
  */
 export const POST: RequestHandler = handler(async ({ params, locals, request }) => {
-	const { printer, client } = controlTarget(locals.user, params.id);
+	const { printer, backend } = controlTarget(locals.user, params.id);
 	const b = await body(request);
 	const commands = parseCommands(b.commands);
 	const estop = commands.some(isEmergencyStop);
-	const state = await currentState(printer.id, client);
+	const state = await currentState(printer.id, backend);
 	if (b.confirm !== true) {
 		if (estop) return confirmRequired('M112 is an emergency stop: the printer halts immediately and needs a reset. Send confirm: true to send it.');
 		const danger = commands.map(dangerReason).find(Boolean);
 		if (danger) return confirmRequired(`${danger} Send confirm: true to send it.`);
 		if (jobActive(state)) return confirmRequired('A print is running; G-code sent now is mixed into it. Send confirm: true to send anyway.');
 	}
-	await client.sendCommands(commands);
+	await backend.sendCommands(commands);
 	audit(locals, estop ? 'printer.emergency_stop' : 'gcode.send', {
 		printer,
 		detail: `${commands.join(' · ').slice(0, 480)}${jobActive(state) ? ` (while ${state})` : ''}`

@@ -129,6 +129,8 @@ export type TestResult =
 			/** Permissions octo·modern uses that the key lacks. */
 			missing: string[];
 			latencyMs: number;
+			/** Things worth knowing that don't fail the test (e.g. Klipper is shut down). */
+			notes?: string[];
 	  }
 	| { ok: false; error: ProblemInfo };
 

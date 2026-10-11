@@ -5,37 +5,37 @@
  */
 import { json } from '@sveltejs/kit';
 import { BadRequest } from './http.ts';
-import { clientFor, printers } from './octoprint/manager.ts';
+import { printers } from './octoprint/manager.ts';
 import { requireControl, requirePrinter } from './permissions.ts';
-import type { OctoPrintClient } from './octoprint/client.ts';
+import { backendFor, type PrinterBackend } from './backend/index.ts';
 import type { Printer, User } from '#lib/types.ts';
 import type { PrinterState } from '#lib/printer.ts';
-import { parseJobResponse } from './octoprint/parse.ts';
 
 export interface Target {
 	printer: Printer;
-	client: OctoPrintClient;
+	/** OctoPrint or Moonraker, behind one interface. */
+	backend: PrinterBackend;
 }
 
-/** For actions: the printer (if the user may control it) and its client. */
+/** For actions: the printer (if the user may control it) and its backend. */
 export function controlTarget(user: User | null, id: string): Target {
 	const printer = requireControl(user, id);
-	return { printer, client: clientFor(printer) };
+	return { printer, backend: backendFor(printer) };
 }
 
-/** For reads: the printer (if the user may see it) and its client. */
+/** For reads: the printer (if the user may see it) and its backend. */
 export function viewTarget(user: User | null, id: string): Target {
 	const printer = requirePrinter(user, id);
-	return { printer, client: clientFor(printer) };
+	return { printer, backend: backendFor(printer) };
 }
 
 /**
  * The printer's state right now, for safety rules like "confirm while printing".
- * Asks OctoPrint directly: the live snapshot can trail it by a second or two.
+ * Asks the server directly: the live snapshot can trail it by a second or two.
  */
-export async function currentState(id: string, client: OctoPrintClient): Promise<PrinterState> {
+export async function currentState(id: string, backend: PrinterBackend): Promise<PrinterState> {
 	try {
-		const state = parseJobResponse(await client.job()).state?.state;
+		const state = (await backend.status()).state;
 		if (state && state !== 'unknown') return state;
 	} catch {
 		// Fall back to what we last saw.

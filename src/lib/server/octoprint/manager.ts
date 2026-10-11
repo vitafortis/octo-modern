@@ -15,8 +15,10 @@ import { OctoPrintError, toOctoPrintError } from './errors.ts';
 import { LiveModel, type LiveEvent, type LiveListener } from './model.ts';
 import { PushSession, type PushStatus } from './push.ts';
 import { openWebSocket } from './transport.ts';
+import { moonrakerFor, websocketUrl } from '../moonraker/client.ts';
+import { MoonrakerFeed, MoonrakerSession, pollMoonraker } from '../moonraker/live.ts';
 import type { LiveSnapshot } from '#lib/printer.ts';
-import type { Printer } from '#lib/types.ts';
+import type { Printer, PrinterKind } from '#lib/types.ts';
 
 const FAST_POLL_MS = 2_000;
 const LINGER_MS = 60_000;
@@ -33,12 +35,21 @@ export function clientFor(printer: Printer | string): OctoPrintClient {
 	return new OctoPrintClient({ baseUrl: p.baseUrl, apiKey, verifyTls: p.verifyTls }, config.requestTimeoutMs);
 }
 
+/** A Moonraker client for a stored Klipper printer (no key is fine: trusted clients). */
+function moonrakerClientFor(p: Printer) {
+	return moonrakerFor(p, getApiKey(p.id) ?? '', config.requestTimeoutMs);
+}
+
 class Entry {
 	readonly id: string;
+	readonly kind: PrinterKind;
 	readonly model: LiveModel;
 	/** Signature of the stored settings this entry was built for; an edit rebuilds it. */
 	readonly version: string;
-	push: PushSession | null = null;
+	/** OctoPrint's SockJS push session, or Moonraker's JSON-RPC websocket. */
+	push: PushSession | MoonrakerSession | null = null;
+	/** Klipper printers: the status both the websocket and polling feed. */
+	feed: MoonrakerFeed | null = null;
 	pushStatus: PushStatus = 'idle';
 	watchers = 0;
 	lingerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -47,14 +58,25 @@ class Entry {
 	lastPollAt = 0;
 	versionCheckedAt = 0;
 
-	constructor(id: string, version: string) {
+	constructor(id: string, version: string, kind: PrinterKind = 'octoprint') {
 		this.id = id;
 		this.version = version;
+		this.kind = kind;
 		this.model = new LiveModel(id, config.tempHistoryMinutes);
+		if (kind === 'moonraker') {
+			this.feed = new MoonrakerFeed(this.model, async (path) => {
+				const p = getPrinter(id);
+				if (!p) return null;
+				const c = moonrakerClientFor(p);
+				const res = await c.request('GET', `/server/files/metadata?filename=${encodeURIComponent(path)}`, { allow: [400, 404], timeoutMs: 6_000 });
+				if (!res.ok) return void (await res.body?.cancel().catch(() => {}));
+				return ((await res.json()) as { result?: unknown })?.result ?? null;
+			});
+		}
 	}
 }
 
-const signature = (p: Printer) => `${p.baseUrl}|${p.verifyTls}|${p.updatedAt}`;
+const signature = (p: Printer) => `${p.kind}|${p.baseUrl}|${p.verifyTls}|${p.updatedAt}`;
 
 export type LiveObserver = (printerId: string, e: LiveEvent) => void;
 
@@ -85,7 +107,7 @@ class PrinterManager {
 			carried = { watchers: existing.watchers, listeners: existing.model };
 			this.teardown(existing);
 		}
-		const e = new Entry(id, signature(printer));
+		const e = new Entry(id, signature(printer), printer.kind);
 		e.model.observer = (ev) => {
 			for (const fn of this.observers) fn(id, ev);
 		};
@@ -121,6 +143,11 @@ class PrinterManager {
 
 	model(id: string): LiveModel | undefined {
 		return this.entry(id)?.model;
+	}
+
+	/** The Klipper status feed of a Moonraker printer (to log what octo·modern sends). */
+	feed(id: string): MoonrakerFeed | null {
+		return this.entries.get(id)?.feed ?? null;
 	}
 
 	pushState(id: string): PushStatus {
@@ -173,6 +200,7 @@ class PrinterManager {
 
 	private startPush(e: Entry) {
 		if (e.push) return;
+		if (e.feed) return this.startMoonraker(e, e.feed);
 		let client: OctoPrintClient;
 		try {
 			client = clientFor(e.id);
@@ -199,6 +227,31 @@ class PrinterManager {
 					this.startFastPoll(e);
 					if (status === 'waiting' && info.attempt >= 3 && info.attempt % 5 === 3) {
 						console.warn(`[octo-modern] push for printer ${e.id} still failing (${(info.error as Error)?.message ?? info.error}); polling instead`);
+					}
+				}
+			}
+		});
+		e.push.start();
+	}
+
+	/** Klipper: Moonraker's websocket, with a one-shot token when an API key is set. */
+	private startMoonraker(e: Entry, feed: MoonrakerFeed) {
+		const p = getPrinter(e.id);
+		if (!p) return;
+		const client = moonrakerClientFor(p);
+		e.push = new MoonrakerSession({
+			url: async () => websocketUrl(client.target.baseUrl, client.target.apiKey ? await client.oneshotToken() : null),
+			createSocket: (url) => openWebSocket(url, client.target.verifyTls),
+			feed,
+			onStatus: (status, info) => {
+				e.pushStatus = status;
+				if (status === 'open') {
+					this.stopFastPoll(e);
+					touchPrinter(e.id, feed.version);
+				} else if (status === 'waiting' || status === 'connecting') {
+					this.startFastPoll(e);
+					if (status === 'waiting' && info.attempt >= 3 && info.attempt % 5 === 3) {
+						console.warn(`[octo-modern] Moonraker websocket for printer ${e.id} still failing (${(info.error as Error)?.message ?? info.error}); polling instead`);
 					}
 				}
 			}
@@ -235,6 +288,17 @@ class PrinterManager {
 		if (e.polling) return e.polling;
 		e.polling = (async () => {
 			try {
+				if (e.feed) {
+					// The websocket delivers every change already.
+					if (e.push?.open) return;
+					const p = getPrinter(id);
+					if (!p) return;
+					const needInfo = Date.now() - e.versionCheckedAt > VERSION_TTL_MS;
+					await pollMoonraker(moonrakerClientFor(p), e.feed, { refreshInfo: needInfo });
+					if (needInfo) e.versionCheckedAt = Date.now();
+					touchPrinter(id, e.feed.version);
+					return;
+				}
 				const client = clientFor(id);
 				const needVersion = Date.now() - e.versionCheckedAt > VERSION_TTL_MS || !e.model.snapshot.version;
 				const [printer, job, version] = await Promise.all([
