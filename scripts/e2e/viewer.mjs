@@ -385,7 +385,7 @@ async function main() {
 	const expected = locate(tp, fp).layer + 1;
 	assert.ok(Math.abs(expected - l1) <= 2, `browser shows layer ${l1}, OctoPrint's filepos says ${expected}`);
 	assert.ok(await dark.locator('[data-testid=gcode-nozzle]').count(), 'nozzle marker');
-	assert.equal(await layerText(dark).then((t) => Number(t.match(/Layer (\d+)/)[1])), l1, 'the slider follows the print');
+	await waitFor(async () => Number((await layerText(dark)).match(/Layer (\d+)/)[1]) === (await printingLayer()), 'the slider to follow the print', { tries: 10 });
 	const l2 = await waitFor(async () => {
 		const l = await printingLayer();
 		return l > l1 ? l : null;
