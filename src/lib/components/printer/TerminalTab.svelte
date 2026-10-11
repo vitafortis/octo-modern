@@ -7,8 +7,17 @@
 	import { completeGcode, gcodeInfo, uppercaseLine, type GcodeInfo } from '#lib/terminal/gcodes.ts';
 	import { isConnected } from '#lib/printer.ts';
 	import type { TabProps } from './tabs.ts';
+	import ActionMenu from '../ActionMenu.svelte';
+	import { phone } from '#lib/client/viewport.svelte.ts';
 
 	let { printer, live, canControl }: TabProps = $props();
+
+	// Phones: the filters fold into a popover and Copy / Clear / Emergency stop into a menu.
+	let filtersOpen = $state(false);
+	let filtersBox = $state<HTMLElement>();
+	function onwindowclick(e: MouseEvent) {
+		if (filtersOpen && filtersBox && !filtersBox.contains(e.target as Node)) filtersOpen = false;
+	}
 
 	const ROW = 20;
 	const OVERSCAN = 12;
@@ -250,28 +259,55 @@
 	}
 </script>
 
-<div class="card flex h-[calc(100dvh-10.5rem)] min-h-[28rem] flex-col overflow-hidden" data-testid="terminal-tab">
+<svelte:window onclick={onwindowclick} />
+
+{#snippet filterChips()}
+	{#each FILTERS as f (f.id)}
+		{@const on = hidden.includes(f.id)}
+		<button
+			class="h-6 rounded-md border px-2 text-[11px] transition-colors touch:h-10 touch:px-3 touch:text-[13px] {on ? 'border-primary/40 bg-primary-soft text-primary' : 'border-border text-muted-foreground hover:text-foreground'}"
+			aria-pressed={on}
+			title="{on ? 'Hidden' : 'Shown'}: {f.hint}"
+			data-filter={f.id}
+			onclick={() => toggleFilter(f.id)}>{f.label}</button
+		>
+	{/each}
+{/snippet}
+
+<!-- Fills the space under the tabs; on phones down to the keyboard when it's up. -->
+<div class="card flex min-h-[16rem] flex-1 flex-col overflow-hidden short:min-h-[11rem] lg:min-h-[28rem]" data-testid="terminal-tab">
 	<!-- Toolbar -->
-	<div class="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-		<div class="relative">
+	<div class="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 max-sm:px-2">
+		<div class="relative max-sm:min-w-0 max-sm:flex-1">
 			<Search class="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-			<input class="input h-7 w-52 pr-7 pl-8 text-xs" placeholder="Search the log" aria-label="Search the log" bind:value={query} />
+			<input class="input h-7 w-52 pr-7 pl-8 text-xs max-sm:w-full" placeholder="Search the log" aria-label="Search the log" bind:value={query} />
 			{#if query}
-				<button class="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground" aria-label="Clear search" onclick={() => (query = '')}><X class="size-3.5" /></button>
+				<button class="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground touch:p-2" aria-label="Clear search" onclick={() => (query = '')}><X class="size-3.5" /></button>
 			{/if}
 		</div>
+		{#if phone.current}
+			<div class="relative" bind:this={filtersBox}>
+				<button class="btn btn-secondary btn-sm {hidden.length ? 'text-primary' : ''}" aria-expanded={filtersOpen} aria-label="Line filters" onclick={() => (filtersOpen = !filtersOpen)}><Filter />{hidden.length || ''}</button>
+				{#if filtersOpen}
+					<div class="card absolute top-full right-0 z-30 mt-1.5 w-[min(18rem,calc(100vw-2rem))] p-3 shadow-surface-lg" role="dialog" aria-label="Line filters">
+						<p class="mb-2 text-xs font-medium">Hide these lines</p>
+						<div class="flex flex-wrap gap-1.5" role="group" aria-label="Hide lines">{@render filterChips()}</div>
+						<p class="mt-2.5 font-mono text-[11px] text-muted-foreground tabular-nums">{rows.length}{rows.length !== total ? ` / ${total}` : ''} lines shown</p>
+					</div>
+				{/if}
+			</div>
+			<ActionMenu
+				title="Terminal"
+				actions={[
+					{ label: copied ? 'Copied' : 'Copy the lines shown', icon: Copy, disabled: !rows.length, onclick: copy },
+					{ label: 'Clear the view', icon: Eraser, hint: 'OctoPrint keeps its log', disabled: !rows.length, onclick: clearView },
+					{ label: 'Emergency stop', icon: OctagonX, danger: true, hidden: !canControl, disabled: !connected, hint: 'M112 — asks first', onclick: () => emergencyStop(printer.id, printer.name) }
+				]}
+			/>
+		{:else}
 		<div class="flex flex-wrap items-center gap-1" role="group" aria-label="Hide lines">
 			<span class="mr-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Filter class="size-3" />Hide</span>
-			{#each FILTERS as f (f.id)}
-				{@const on = hidden.includes(f.id)}
-				<button
-					class="h-6 rounded-md border px-2 text-[11px] transition-colors {on ? 'border-primary/40 bg-primary-soft text-primary' : 'border-border text-muted-foreground hover:text-foreground'}"
-					aria-pressed={on}
-					title="{on ? 'Hidden' : 'Shown'}: {f.hint}"
-					data-filter={f.id}
-					onclick={() => toggleFilter(f.id)}>{f.label}</button
-				>
-			{/each}
+			{@render filterChips()}
 		</div>
 		<div class="ml-auto flex items-center gap-1">
 			<span class="mr-1 font-mono text-[11px] text-muted-foreground tabular-nums" data-testid="line-count">{rows.length}{rows.length !== total ? ` / ${total}` : ''} lines</span>
@@ -281,6 +317,7 @@
 				<button class="btn btn-danger btn-sm ml-1" disabled={!connected} title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Emergency stop</button>
 			{/if}
 		</div>
+		{/if}
 	</div>
 
 	<!-- Log (virtualized: only the rows in view are rendered) -->
@@ -311,7 +348,7 @@
 	<!-- Prompt -->
 	{#if canControl}
 		<form
-			class="relative border-t border-border px-3 py-2.5"
+			class="relative border-t border-border px-3 py-2.5 max-sm:px-2 max-sm:py-2"
 			onsubmit={(e) => {
 				e.preventDefault();
 				void send();
@@ -323,7 +360,7 @@
 						<li role="option" aria-selected={i === sel}>
 							<button
 								type="button"
-								class="flex w-full items-center gap-3 rounded-md px-2 py-1 text-left text-xs {i === sel ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60'}"
+								class="flex w-full items-center gap-3 rounded-md px-2 py-1 text-left text-xs touch:py-2.5 touch:text-[13px] {i === sel ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/60'}"
 								onmousedown={(e) => e.preventDefault()}
 								onclick={() => accept(g)}
 							>
@@ -333,17 +370,17 @@
 							</button>
 						</li>
 					{/each}
-					<li class="px-2 pt-1 pb-0.5 text-[10px] text-muted-foreground/80"><kbd class="kbd">Tab</kbd> complete · <kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> choose · <kbd class="kbd">Esc</kbd> close</li>
+					<li class="kbd-hint px-2 pt-1 pb-0.5 text-[10px] text-muted-foreground/80"><kbd class="kbd">Tab</kbd> complete · <kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> choose · <kbd class="kbd">Esc</kbd> close</li>
 				</ul>
 			{/if}
 			<div class="flex items-end gap-2">
-				<span class="pb-2 font-mono text-xs text-primary select-none">&gt;</span>
+				<span class="pb-2 font-mono text-xs text-primary select-none max-sm:hidden">&gt;</span>
 				<textarea
 					bind:this={textarea}
 					bind:value={input}
 					class="input max-h-40 min-h-9 flex-1 resize-none py-2 font-mono text-xs leading-5"
 					rows={Math.min(6, Math.max(1, input.split('\n').length))}
-					placeholder={connected ? 'G-code, e.g. M105 · Shift+Enter for another line' : 'Connect the printer to send G-code'}
+					placeholder={connected ? (phone.current ? 'G-code, e.g. M105' : 'G-code, e.g. M105 · Shift+Enter for another line') : 'Connect the printer to send G-code'}
 					aria-label="G-code to send"
 					spellcheck="false"
 					autocomplete="off"
@@ -360,9 +397,9 @@
 					onfocus={() => (focused = true)}
 					onblur={() => (focused = false)}
 				></textarea>
-				<button class="btn btn-primary btn-sm h-9" disabled={!connected || !lineCount || sending}><SendHorizontal />Send{lineCount > 1 ? ` ${lineCount}` : ''}</button>
+				<button class="btn btn-primary btn-sm h-9" disabled={!connected || !lineCount || sending} aria-label="Send"><SendHorizontal /><span class="max-sm:hidden">Send{lineCount > 1 ? ` ${lineCount}` : ''}</span></button>
 			</div>
-			<div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[11px] text-muted-foreground">
+			<div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[11px] text-muted-foreground max-sm:pl-0">
 				<button
 					type="button"
 					class="flex items-center gap-1 rounded px-1 transition-colors {uppercase ? 'text-primary' : 'hover:text-foreground'}"
@@ -375,7 +412,7 @@
 						{#if currentInfo.danger}<TriangleAlert class="size-3" />{/if}<span class="font-mono text-foreground">{currentInfo.code}</span>{currentInfo.danger ?? currentInfo.description}
 					</span>
 				{:else}
-					<span><kbd class="kbd">↵</kbd> send · <kbd class="kbd">⇧↵</kbd> new line · <kbd class="kbd">↑</kbd> history</span>
+					<span class="kbd-hint"><kbd class="kbd">↵</kbd> send · <kbd class="kbd">⇧↵</kbd> new line · <kbd class="kbd">↑</kbd> history</span>
 				{/if}
 				{#if live.snapshot.state === 'printing' || live.snapshot.state === 'paused'}
 					<span class="ml-auto text-warning">A print is running: you’ll be asked before anything is sent.</span>

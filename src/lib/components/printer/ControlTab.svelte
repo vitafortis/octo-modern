@@ -153,7 +153,7 @@
 {#snippet padButton(label: string, dir: Partial<Record<MoveAxis, Direction>>, Icon: typeof ArrowUp, cls = '')}
 	{@const fits = stepFits(step, profile, Object.keys(dir) as MoveAxis[])}
 	<button
-		class="grid size-12 place-items-center rounded-xl border border-border bg-background text-foreground shadow-surface transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 {cls}"
+		class="grid size-12 place-items-center max-sm:size-16 rounded-xl border border-border bg-background text-foreground shadow-surface transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40 {cls}"
 		aria-label={label}
 		title={fits ? `${label} ${fmtStep(step)} mm` : `${fmtStep(step)} mm is longer than this axis`}
 		disabled={!canMove || !fits}
@@ -213,8 +213,8 @@
 		>
 			<div class="flex items-center gap-2">
 				<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Move class="size-4 text-primary" />Move</h2>
-				<span class="text-[11px] {padFocused ? 'text-primary' : 'text-muted-foreground'}">{padFocused ? 'Keyboard active' : 'Click here to use the keyboard'}</span>
-				<div class="relative ml-auto">
+				<span class="text-[11px] touch:hidden {padFocused ? 'text-primary' : 'text-muted-foreground'}">{padFocused ? 'Keyboard active' : 'Click here to use the keyboard'}</span>
+				<div class="relative ml-auto touch:hidden">
 					<button class="btn btn-ghost btn-icon btn-sm" aria-label="Keyboard shortcuts" aria-expanded={showKeys} onclick={() => (showKeys = !showKeys)}><Keyboard /></button>
 					{#if showKeys}
 						<div class="card absolute top-full right-0 z-20 mt-1.5 w-60 p-3 shadow-surface-lg" role="dialog" aria-label="Keyboard shortcuts">
@@ -236,7 +236,7 @@
 				</div>
 			</div>
 
-			<div class="mt-4 flex flex-wrap items-start justify-center gap-8 sm:justify-start">
+			<div class="mt-4 flex flex-wrap items-start justify-center gap-x-5 gap-y-5 sm:justify-start sm:gap-8">
 				<!-- X/Y pad -->
 				<div>
 					<p class="mb-2 text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">X / Y</p>
@@ -246,7 +246,7 @@
 						<span></span>
 						{@render padButton('X− (left)', { x: -1 }, ArrowLeft)}
 						<button
-							class="grid size-12 place-items-center rounded-xl border border-border bg-surface text-muted-foreground transition-all hover:border-primary/50 hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+							class="grid size-12 place-items-center max-sm:size-16 rounded-xl border border-border bg-surface text-muted-foreground transition-all hover:border-primary/50 hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40"
 							aria-label="Home X and Y"
 							title="Home X and Y"
 							disabled={!canMove}
@@ -264,7 +264,7 @@
 					<div class="grid gap-1.5">
 						{@render padButton('Z+ (up)', { z: 1 }, ChevronsUp)}
 						<button
-							class="grid size-12 place-items-center rounded-xl border border-border bg-surface text-muted-foreground transition-all hover:border-primary/50 hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+							class="grid size-12 place-items-center max-sm:size-16 rounded-xl border border-border bg-surface text-muted-foreground transition-all hover:border-primary/50 hover:text-primary active:scale-95 disabled:pointer-events-none disabled:opacity-40"
 							aria-label="Home Z"
 							title="Home Z"
 							disabled={!canMove}
@@ -274,23 +274,22 @@
 					</div>
 				</div>
 				<!-- Step and homing -->
-				<div class="min-w-48 flex-1 space-y-4">
+				<div class="min-w-48 flex-1 space-y-4 max-sm:basis-full">
 					<div>
-						<p class="label">Step</p>
-						<div class="inline-flex rounded-lg border border-border bg-surface p-0.5" role="radiogroup" aria-label="Step size">
+						<p class="label">Step<span class="sm:hidden">{' '}(mm)</span></p>
+						<div class="inline-flex rounded-lg border border-border bg-surface p-0.5 max-sm:flex max-sm:w-full" role="radiogroup" aria-label="Step size">
 							{#each JOG_STEPS as n (n)}
 								<button
 									role="radio"
 									aria-checked={step === n}
-									class="h-7 min-w-12 rounded-md px-2 font-mono text-xs tabular-nums transition-colors {step === n ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+									class="h-7 min-w-12 rounded-md px-2 font-mono text-xs tabular-nums transition-colors max-sm:flex-1 touch:h-10 touch:text-sm {step === n ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 									disabled={!stepFits(n, profile, ['z']) && !stepFits(n, profile, ['x', 'y'])}
 									onclick={() => (step = n)}>{fmtStep(n)}</button
 								>
 							{/each}
 						</div>
-						<span class="ml-1 text-xs text-muted-foreground">mm</span>
 					</div>
-					<div class="flex flex-wrap gap-1.5">
+					<div class="flex flex-wrap gap-1.5 max-sm:[&>.btn]:flex-1">
 						<button class="btn btn-secondary btn-sm" disabled={!canMove} onclick={() => home(['x', 'y', 'z'])}><House />Home all</button>
 						<button class="btn btn-ghost btn-sm" disabled={!canMove} onclick={() => send({ action: 'motors_off' }, { done: 'Motors off' })} title="M18: the steppers stop holding; positions are lost until the next homing"><PowerOff />Motors off</button>
 					</div>
@@ -312,7 +311,7 @@
 							<button
 								role="radio"
 								aria-checked={activeTool === i}
-								class="h-7 rounded-md px-2.5 text-xs transition-colors {activeTool === i ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+								class="h-7 rounded-md px-2.5 text-xs transition-colors touch:h-10 {activeTool === i ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 								disabled={!canMove}
 								title="Select tool {i + 1} (T{i})"
 								onclick={() => selectTool(i)}>Tool {i + 1}</button
@@ -333,7 +332,7 @@
 					{/each}
 				</div>
 			</div>
-			<div class="mt-3 flex flex-wrap gap-1.5">
+			<div class="mt-3 flex flex-wrap gap-1.5 max-sm:[&>.btn]:flex-1">
 				<button class="btn btn-secondary btn-sm" disabled={!canMove} onclick={() => extrude(1)}><ArrowDownToLine />Extrude</button>
 				<button class="btn btn-secondary btn-sm" disabled={!canMove} onclick={() => extrude(-1)}><ArrowUpFromLine />Retract</button>
 			</div>
@@ -392,7 +391,7 @@
 				<input id="fan-speed" class="range" style="--fill:{fan}%" type="range" min="0" max="100" step="5" bind:value={fan} disabled={!canTune} />
 				<button class="btn btn-secondary btn-sm" disabled={!canTune} onclick={() => send({ action: 'fan', speed: fan }, { done: fan ? `Fan ${fan}%` : 'Fan off' })}>Set</button>
 			</div>
-			<div class="mt-3 flex gap-1.5">
+			<div class="mt-3 flex gap-1.5 max-sm:[&>.btn]:flex-1">
 				<button class="btn btn-secondary btn-sm" disabled={!canTune} onclick={() => ((fan = 100), send({ action: 'fan', speed: 100 }, { done: 'Fan on' }))}><Fan />On</button>
 				<button class="btn btn-ghost btn-sm" disabled={!canTune} onclick={() => ((fan = 0), send({ action: 'fan', speed: 0 }, { done: 'Fan off' }))}><PowerOff />Off</button>
 			</div>

@@ -210,7 +210,7 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="px-8 pb-16">
+	<div class="page-x pb-16">
 		<div class="mb-5 flex flex-wrap items-center gap-3">
 			<div class="inline-flex rounded-lg border border-border bg-surface p-0.5" role="tablist">
 				{#each [{ id: 'docker', label: 'Docker', icon: Container, count: dockerCount, busy: loading.docker }, { id: 'arcane', label: 'Arcane', icon: Boxes, count: arcaneCount, busy: loading.arcane }, { id: 'network', label: 'Network', icon: Radar, count: networkCount, busy: loading.mdns || loading.subnet }] as t (t.id)}

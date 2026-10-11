@@ -102,7 +102,7 @@
 			{/each}
 		</ol>
 
-		<div class="card p-7 shadow-surface-lg">
+		<div class="card p-7 shadow-surface-lg max-sm:p-5">
 			{#if step === 1}
 				<form onsubmit={createAdmin}>
 					<h2 class="flex items-center gap-2 text-[15px] font-semibold"><UserRound class="size-4 text-primary" />Create the admin account</h2>
@@ -117,7 +117,7 @@
 							<label class="label" for="s-email">Email</label>
 							<input id="s-email" class="input" type="email" autocomplete="email" required bind:value={email} />
 						</div>
-						<div class="grid grid-cols-2 gap-3">
+						<div class="grid gap-3 sm:grid-cols-2">
 							<div>
 								<label class="label" for="s-pw">Password</label>
 								<input id="s-pw" class="input" type="password" autocomplete="new-password" minlength="8" required bind:value={password} />

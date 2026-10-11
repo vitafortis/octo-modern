@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { LoaderCircle, Search } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import { listLayout } from '#lib/client/viewport.svelte.ts';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { ago } from '#lib/client/format.ts';
 	import { printers, toast } from '#lib/client/state.svelte.ts';
@@ -108,27 +109,47 @@
 <div class="h-full overflow-y-auto">
 	<PageHeader title="Audit log" description="Every printer action and change, and who made it." />
 
-	<div class="space-y-4 px-8 pb-10">
+	<div class="space-y-4 page-x pb-10">
 		<div class="flex flex-wrap items-center gap-2">
-			<select class="input h-9 w-44 text-xs" bind:value={filter.action}>
+			<select class="input h-9 w-44 text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 max-sm:basis-[40%]" bind:value={filter.action}>
 				{#each GROUPS as g (g.value)}<option value={g.value}>{g.label}</option>{/each}
 			</select>
-			<select class="input h-9 w-44 text-xs" bind:value={filter.user}>
+			<select class="input h-9 w-44 text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 max-sm:basis-[40%]" bind:value={filter.user}>
 				<option value="">Everyone</option>
 				{#each users as u (u.id)}<option value={u.id}>{u.name ?? u.email}</option>{/each}
 			</select>
-			<select class="input h-9 w-44 text-xs" bind:value={filter.printer}>
+			<select class="input h-9 w-44 text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 max-sm:basis-[40%]" bind:value={filter.printer}>
 				<option value="">All printers</option>
 				{#each printers.list as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
 			</select>
-			<div class="relative">
-				<Search class="absolute top-2.5 left-2.5 size-3.5 text-muted-foreground" />
-				<input class="input h-9 w-56 pl-8 text-xs" placeholder="Search…" bind:value={filter.q} />
+			<div class="relative max-sm:order-first max-sm:w-full">
+				<Search class="absolute top-2.5 left-2.5 size-3.5 text-muted-foreground touch:top-3.5 touch:size-4" />
+				<input class="input h-9 w-56 pl-8 text-xs max-sm:w-full touch:pl-9" aria-label="Search the audit log" placeholder="Search…" bind:value={filter.q} />
 			</div>
 			{#if loading}<LoaderCircle class="size-4 animate-spin text-muted-foreground" />{/if}
 		</div>
 
 		<div class="card overflow-hidden">
+			{#if listLayout.current}
+				<ul class="divide-y divide-border text-[13px]" data-testid="audit-list">
+					{#each events as e (e.id)}
+						<li class="space-y-1 px-3 py-2.5">
+							<div class="flex items-baseline gap-2">
+								<span class="min-w-0 flex-1 font-medium {tone(e.action)}">{ACTIONS[e.action] ?? e.action}</span>
+								<span class="shrink-0 text-xs text-muted-foreground" title={new Date(e.at).toLocaleString()}>{ago(e.at)}</span>
+							</div>
+							<p class="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+								<span class="min-w-0 [overflow-wrap:anywhere]">{e.userEmail ?? '—'}</span>
+								{#if e.printerName}<span>· {#if printers.list.some((p) => p.id === e.printerId)}<a class="hover:text-primary" href="/p/{e.printerId}">{e.printerName}</a>{:else}{e.printerName}{/if}</span>{/if}
+								{#if e.ip}<span class="font-mono">· {e.ip}</span>{/if}
+							</p>
+							{#if e.detail}<p class="font-mono text-[11px] [overflow-wrap:anywhere] text-muted-foreground">{e.detail}</p>{/if}
+						</li>
+					{:else}
+						<li class="px-4 py-10 text-center text-xs text-muted-foreground">{loading ? 'Loading…' : 'Nothing recorded yet.'}</li>
+					{/each}
+				</ul>
+			{:else}
 			<table class="w-full table-fixed text-left text-[13px]">
 				<thead class="border-b border-border bg-surface text-[11px] text-muted-foreground">
 					<tr>
@@ -160,6 +181,7 @@
 					{/each}
 				</tbody>
 			</table>
+			{/if}
 		</div>
 		{#if more && events.length}
 			<div class="text-center"><button class="btn btn-secondary btn-sm" disabled={loading} onclick={() => load(true)}>Load older</button></div>
