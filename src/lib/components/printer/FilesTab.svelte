@@ -354,7 +354,7 @@
 									{#if inUse && current !== key}<span class="badge badge-warning ml-1">in use</span>{/if}
 								</button>
 							</td>
-							X
+							<td class="hidden px-3 py-2 text-right font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums md:table-cell">{f.type === 'folder' ? '' : bytes(f.size)}</td>
 							<td class="hidden px-3 py-2 text-xs text-muted-foreground lg:table-cell" title={f.date ? new Date(f.date * 1000).toLocaleString() : ''}>{f.date ? ago(new Date(f.date * 1000).toISOString()) : ''}</td>
 							<td class="hidden px-3 py-2 text-right font-mono text-xs tabular-nums md:table-cell">{f.estimatedPrintTime != null ? formatDuration(f.estimatedPrintTime) : ''}</td>
 							<td class="hidden px-3 py-2 text-right font-mono text-xs tabular-nums lg:table-cell">{f.filamentMm != null ? `${(f.filamentMm / 1000).toFixed(2)} m` : ''}</td>
