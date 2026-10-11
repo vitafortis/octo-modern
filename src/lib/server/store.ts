@@ -180,6 +180,61 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 		`)
 	],
 	[
+		'queue-001',
+		(h) =>
+			h.exec(`
+			-- Print queue (see queue/store.ts). Jobs keep their order in "position".
+			CREATE TABLE IF NOT EXISTS queue_jobs (
+				id TEXT PRIMARY KEY,
+				position REAL NOT NULL,
+				name TEXT NOT NULL,
+				source_kind TEXT NOT NULL,
+				source_id TEXT,
+				source_path TEXT NOT NULL DEFAULT '',
+				size INTEGER,
+				printer_id TEXT,
+				tags TEXT NOT NULL DEFAULT '[]',
+				copies INTEGER NOT NULL DEFAULT 1,
+				done INTEGER NOT NULL DEFAULT 0,
+				status TEXT NOT NULL DEFAULT 'queued',
+				active_printer_id TEXT,
+				active_path TEXT,
+				error TEXT,
+				created_by TEXT,
+				created_by_label TEXT,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL,
+				finished_at TEXT
+			);
+			CREATE INDEX IF NOT EXISTS queue_jobs_order ON queue_jobs(position);
+			-- Each print of a queued job, linked to its print history entry.
+			CREATE TABLE IF NOT EXISTS queue_runs (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				job_id TEXT NOT NULL REFERENCES queue_jobs(id) ON DELETE CASCADE,
+				printer_id TEXT NOT NULL,
+				printer_name TEXT NOT NULL,
+				print_id INTEGER,
+				result TEXT NOT NULL DEFAULT 'printing',
+				reason TEXT,
+				started_at TEXT NOT NULL,
+				ended_at TEXT
+			);
+			CREATE INDEX IF NOT EXISTS queue_runs_job ON queue_runs(job_id, id DESC);
+			-- Per-printer queue state: tags, "awaiting bed clear", dispatch held.
+			CREATE TABLE IF NOT EXISTS queue_printers (
+				printer_id TEXT PRIMARY KEY REFERENCES printers(id) ON DELETE CASCADE,
+				tags TEXT NOT NULL DEFAULT '[]',
+				awaiting_clear INTEGER NOT NULL DEFAULT 1,
+				awaiting_since TEXT,
+				held INTEGER NOT NULL DEFAULT 0,
+				held_reason TEXT,
+				updated_at TEXT NOT NULL
+			);
+			-- Per-token options: a slicer upload key's destination, a status token's bed-clear permission.
+			ALTER TABLE api_tokens ADD COLUMN options TEXT;
+		`)
+	],
+	[
 		'power-001-plugs',
 		(h) =>
 			h.exec(`

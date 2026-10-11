@@ -34,6 +34,8 @@ export function controlApi(method: string, path: string): boolean {
 	if (method === 'GET' || method === 'HEAD') return false;
 	// Sending library files to printers (and cancelling sends).
 	if (/^\/api\/library\/(?!sources(\/|$))/.test(path)) return true;
+	// Changing the print queue (handlers check per printer too).
+	if (/^\/api\/queue(\/|$)/.test(path)) return true;
 	return /^\/api\/printers\/[^/]+\/.+/.test(path) && !path.startsWith('/api/printers/test');
 }
 

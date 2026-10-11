@@ -1,0 +1,50 @@
+# octo·modern + AI failure ("spaghetti") detection with Obico's ML model, self-hosted.
+#
+#   docker compose -f compose.yaml -f compose.detect.yaml up -d
+#
+# Then turn detection on per printer (its Failure detection tab). The two settings below
+# can also be made in Settings → Failure detection, which has a Test button.
+#
+# How they talk: octo·modern asks ml_api `GET /p/?img=<url>`, and ml_api downloads the
+# frame from that URL itself, so it must reach octo·modern too. Both are on the default
+# network of this project, so they use each other's service names. The frame URL is a
+# one-time link (30 s, single use) to one already-captured frame; nothing else in
+# octo·modern opens without signing in. ml_api gives up connecting after 0.1 s, so keep
+# them on the same host/network.
+#
+# ml_api is built from obico-server's source (there is no maintained prebuilt image:
+# thespaghettidetective/ml_api on Docker Hub was last pushed in 2022). The build
+# downloads ~200 MB of model weights (checksum-verified) and the image is large; the
+# model loads in 1–2 minutes on start. CPU is fine for a handful of printers at one
+# frame every 10 s. For an NVIDIA GPU see obico-server's docker-compose.override.yml.
+services:
+  octo-modern:
+    environment:
+      OCM_ML_API_URL: http://ml_api:3333
+      # octo·modern as ml_api sees it (the container port, not the published one).
+      OCM_DETECT_PUBLIC_URL: http://octo-modern:3000
+      # Must match ML_API_TOKEN below. Leave both unset to run ml_api without auth.
+      OCM_ML_API_TOKEN: ${ML_API_TOKEN:?set ML_API_TOKEN in .env, e.g. openssl rand -hex 32}
+    depends_on:
+      - ml_api
+
+  ml_api:
+    build:
+      # obico-server's ml_api directory, release branch.
+      context: https://github.com/TheSpaghettiDetective/obico-server.git#release:ml_api
+    container_name: octo-modern-ml-api
+    hostname: ml_api
+    restart: unless-stopped
+    environment:
+      # ml_api/auth.py: with this set, /p/ needs `Authorization: Bearer <token>`.
+      ML_API_TOKEN: ${ML_API_TOKEN}
+      FLASK_APP: server.py
+    # As in obico-server's docker-compose.yml: the model loads inside worker boot.
+    command: bash -c "gunicorn --bind 0.0.0.0:3333 --workers 1 --timeout 120 wsgi"
+    # No ports: only octo·modern talks to it. Publish 3333 only if something else must.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3333/hc/ || curl -fsS http://localhost:3333/hc/"]
+      start_period: 140s
+      interval: 30s
+      timeout: 10s
+      retries: 3

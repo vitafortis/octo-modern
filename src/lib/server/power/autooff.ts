@@ -17,6 +17,8 @@ export interface AutoOffObservation {
 	hotendC: number | null;
 	/** The plug's last known state. */
 	plugOn: boolean | null;
+	/** Why it mustn't go off yet even when due (e.g. queued jobs wait for the bed); null: nothing. */
+	holdReason?: string | null;
 }
 
 export type AutoOffEvent = { type: 'armed' } | { type: 'cancelled'; reason: string } | { type: 'fire' } | null;
@@ -36,6 +38,7 @@ export class AutoOff {
 	armedAt: number | null = null;
 	private prev: PrinterState | null = null;
 	private lastHotend: number | null = null;
+	private heldBy: string | null = null;
 
 	observe(o: AutoOffObservation, s: AutoOffSettings): AutoOffEvent {
 		const prev = this.prev;
@@ -47,7 +50,8 @@ export class AutoOff {
 			if (o.plugOn === false) return this.cancel('The plug is off');
 			const idleDone = o.now - this.armedAt >= s.idleMinutes * 60_000;
 			const cool = o.hotendC == null || o.hotendC < s.hotendC;
-			if (idleDone && cool) {
+			this.heldBy = idleDone && cool ? (o.holdReason ?? null) : null;
+			if (idleDone && cool && !this.heldBy) {
 				this.armedAt = null;
 				return { type: 'fire' };
 			}
@@ -63,12 +67,13 @@ export class AutoOff {
 	cancel(reason: string): AutoOffEvent {
 		if (this.armedAt == null) return null;
 		this.armedAt = null;
+		this.heldBy = null;
 		return { type: 'cancelled', reason };
 	}
 
 	countdown(s: AutoOffSettings): AutoOffCountdown | null {
 		if (this.armedAt == null) return null;
 		const offAt = this.armedAt + s.idleMinutes * 60_000;
-		return { since: this.armedAt, offAt, hotendC: this.lastHotend, targetC: s.hotendC, cooling: this.lastHotend != null && this.lastHotend >= s.hotendC };
+		return { since: this.armedAt, offAt, hotendC: this.lastHotend, targetC: s.hotendC, cooling: this.lastHotend != null && this.lastHotend >= s.hotendC, heldBy: this.heldBy };
 	}
 }

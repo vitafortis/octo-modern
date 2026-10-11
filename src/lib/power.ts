@@ -22,6 +22,8 @@ export interface AutoOffSettings {
 	hotendC: number;
 	/** …and the printer has been idle this long after the print ended (minutes). */
 	idleMinutes: number;
+	/** Stay on while print-queue jobs wait for this printer's bed to be cleared. */
+	waitForQueue: boolean;
 }
 
 export interface PowerSettings {
@@ -39,7 +41,7 @@ export interface PowerSettings {
 export const DEFAULT_POWER_SETTINGS: PowerSettings = {
 	autoConnect: true,
 	autoOn: false,
-	autoOff: { enabled: false, hotendC: 50, idleMinutes: 10 },
+	autoOff: { enabled: false, hotendC: 50, idleMinutes: 10, waitForQueue: true },
 	hotHotendC: 50,
 	hotBedC: 40
 };
@@ -56,6 +58,8 @@ export interface AutoOffCountdown {
 	targetC: number;
 	/** Still waiting for the hotend to cool down (the idle time may be up already). */
 	cooling: boolean;
+	/** Due, but held back (e.g. queued jobs wait for the bed to be cleared). */
+	heldBy: string | null;
 }
 
 export type ConnectPhase = 'waiting' | 'connecting' | 'connected' | 'failed';

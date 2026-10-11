@@ -128,6 +128,7 @@ export function countdownText(info: PowerInfo, now: number): string {
 	const c = info.countdown;
 	if (!c) return '';
 	const left = c.offAt - now;
+	if (c.heldBy) return `Due, held: ${c.heldBy}`;
 	if (c.cooling) return `Cooling ${c.hotendC != null ? `${Math.round(c.hotendC)}°` : ''} → ${c.targetC}°${left > 0 ? ` · off in ≥ ${formatCountdown(left)}` : ''}`;
 	return left > 0 ? `Off in ${formatCountdown(left)}` : 'Powering off…';
 }

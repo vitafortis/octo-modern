@@ -248,6 +248,10 @@
 						<label class="block"><span class="label">Hotend below (°C)</span><input class="input h-9 font-mono text-xs" type="number" min="20" max="150" bind:value={settings.autoOff.hotendC} name="hotendC" /></label>
 						<label class="block"><span class="label">Idle for (minutes)</span><input class="input h-9 font-mono text-xs" type="number" min="0" max="1440" bind:value={settings.autoOff.idleMinutes} name="idleMinutes" /></label>
 					</div>
+					<div class="flex items-start justify-between gap-3">
+						<div><p class="font-medium">Stay on for the print queue</p><p class="text-xs text-muted-foreground">Don’t switch off while queued jobs wait for this printer’s bed to be cleared.</p></div>
+						<Switch label="Stay on for the print queue" bind:checked={settings.autoOff.waitForQueue} />
+					</div>
 				{/if}
 			</div>
 

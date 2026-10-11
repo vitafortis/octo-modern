@@ -72,7 +72,8 @@ export function parseSettings(raw: unknown): PowerSettings {
 		autoOff: {
 			enabled: ao.enabled === true,
 			hotendC: int(ao.hotendC, 'Cool-down temperature', 20, 150, d.autoOff.hotendC),
-			idleMinutes: int(ao.idleMinutes, 'Idle minutes', 0, 1440, d.autoOff.idleMinutes)
+			idleMinutes: int(ao.idleMinutes, 'Idle minutes', 0, 1440, d.autoOff.idleMinutes),
+			waitForQueue: ao.waitForQueue === undefined ? d.autoOff.waitForQueue : ao.waitForQueue === true
 		},
 		hotHotendC: int(o.hotHotendC, 'Hot hotend temperature', 20, 300, d.hotHotendC),
 		hotBedC: int(o.hotBedC, 'Hot bed temperature', 20, 150, d.hotBedC)

@@ -13,6 +13,8 @@
 	import { editor, isAdmin, printers } from '#lib/client/state.svelte.ts';
 	import { isConnected, jobActive, progressPercent } from '#lib/printer.ts';
 	import { phone } from '#lib/client/viewport.svelte.ts';
+	import BedClearBanner from '#lib/components/queue/BedClearBanner.svelte';
+	import { pollQueue } from '#lib/client/queue.svelte.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -24,6 +26,8 @@
 	// One live connection per printer page; a new one when navigating to another printer.
 	const live = $derived(new LivePrinter(data.printer.id, data.snapshot ?? undefined));
 	$effect(() => live.connect());
+	// The queue's "bed is clear" prompt for this printer.
+	$effect(() => pollQueue());
 
 	const tab = $derived(TABS.find((t) => t.id === page.url.searchParams.get('tab')) ?? TABS[0]);
 	function openTab(id: string) {
@@ -118,6 +122,11 @@
 				{#if s.problem.hint}<p class="mt-0.5 text-xs text-muted-foreground">{s.problem.hint}</p>{/if}
 			</div>
 		</div>
+	{/if}
+
+	<!-- Print queue: waiting for someone to clear the bed (above the scrolling content, so it's in reach on phones). -->
+	{#if tab.id !== 'queue'}
+	<BedClearBanner class="mx-4 mt-3 sm:mx-6 lg:mx-8" printerId={printer.id} name={printer.name} state={s.state} {canControl} />
 	{/if}
 
 	<div class="page-x min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 lg:py-5 {tab.id === 'terminal' ? 'flex flex-col max-sm:py-2' : ''}">

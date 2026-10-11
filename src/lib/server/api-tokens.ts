@@ -1,19 +1,31 @@
 /**
- * Read-only API tokens for dashboards (Homepage, Glance, Uptime Kuma, Home Assistant).
+ * API tokens: read-only status tokens for dashboards (Homepage, Glance, Uptime Kuma,
+ * Home Assistant), and slicer upload keys (scope `upload`, see octoprint-compat.ts).
  *
  * A token is `ocm_` + 32 random bytes (base64url), shown once; only its SHA-256 is
- * stored. Tokens are never sessions: hooks.server.ts accepts them on the status routes
- * (`STATUS_ROUTE`) and nowhere else, and only for GET.
+ * stored. Tokens are never sessions: hooks.server.ts accepts status tokens on the status
+ * routes (`STATUS_ROUTE`, GET only; plus POST /api/status/<id>/bed-clear when the token
+ * allows it) and upload keys under /octoprint/api/ only.
  */
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { sha256 } from './crypto.ts';
 import { BadRequest } from './http.ts';
 import { sqlite } from './store.ts';
+import { parseTags, type UploadTarget } from '#lib/queue.ts';
+import { cleanRelPath } from '#lib/library.ts';
 import type { User } from '#lib/types.ts';
 
 export const TOKEN_PREFIX = 'ocm_';
 
-export type TokenScope = 'status';
+export type TokenScope = 'status' | 'upload';
+export const TOKEN_SCOPES: TokenScope[] = ['status', 'upload'];
+
+export interface TokenOptions {
+	/** Upload keys: where uploaded files go. */
+	upload?: UploadTarget;
+	/** Status tokens: may also confirm a printer's bed is clear (POST /api/status/<id>/bed-clear). */
+	bedClear?: boolean;
+}
 
 export interface ApiToken {
 	id: string;
@@ -22,6 +34,7 @@ export interface ApiToken {
 	prefix: string;
 	scope: TokenScope;
 	includeAddresses: boolean;
+	options: TokenOptions;
 	expiresAt: string | null;
 	createdBy: string | null;
 	createdAt: string;
@@ -35,6 +48,7 @@ export interface TokenPrincipal {
 	name: string;
 	scope: TokenScope;
 	includeAddresses: boolean;
+	options: TokenOptions;
 }
 
 /** The only paths a token opens: GET /api/status, /api/status/<id>, /api/status/badge/<id>.svg. */
@@ -49,8 +63,18 @@ export function tokenAllowed(method: string, path: string): boolean {
 	return (method === 'GET' || method === 'HEAD') && isStatusRoute(path);
 }
 
-export function generateToken(): string {
-	return TOKEN_PREFIX + randomBytes(32).toString('base64url');
+/** POST /api/status/<printer id>/bed-clear: status tokens with `bedClear` only. */
+export const BED_CLEAR_ROUTE = /^\/api\/status\/([^/]+)\/bed-clear\/?$/;
+
+/**
+ * A new token. `alnum` avoids `-` and `_` in the random part, for slicers whose API key
+ * field only takes letters and digits (they may also leave out the `ocm_` prefix).
+ */
+export function generateToken(alnum = false): string {
+	for (;;) {
+		const t = randomBytes(32).toString('base64url');
+		if (!alnum || /^[A-Za-z0-9]+$/.test(t)) return TOKEN_PREFIX + t;
+	}
 }
 
 export const hashToken = (token: string) => sha256(token);
@@ -77,6 +101,16 @@ export function looksLikeToken(token: string): boolean {
 
 type Row = Record<string, unknown>;
 
+function parseOptions(raw: unknown): TokenOptions {
+	if (typeof raw !== 'string' || !raw) return {};
+	try {
+		const o = JSON.parse(raw) as TokenOptions;
+		return o && typeof o === 'object' ? o : {};
+	} catch {
+		return {};
+	}
+}
+
 function toToken(r: Row): ApiToken {
 	return {
 		id: r.id as string,
@@ -84,6 +118,7 @@ function toToken(r: Row): ApiToken {
 		prefix: r.prefix as string,
 		scope: r.scope as TokenScope,
 		includeAddresses: r.include_addresses === 1,
+		options: parseOptions(r.options),
 		expiresAt: (r.expires_at as string) ?? null,
 		createdBy: (r.created_by_email as string) ?? null,
 		createdAt: r.created_at as string,
@@ -105,6 +140,37 @@ export interface TokenInput {
 	name: string;
 	expiresAt: string | null;
 	includeAddresses: boolean;
+	scope?: TokenScope;
+	options?: TokenOptions;
+}
+
+/** The shape of an upload key's destination (whether the source/printer exists is checked by the route). */
+export function parseUploadTarget(raw: unknown): UploadTarget {
+	if (!raw || typeof raw !== 'object') throw new BadRequest('Choose where uploads go');
+	const o = raw as Record<string, unknown>;
+	const id = (v: unknown, what: string) => {
+		if (typeof v !== 'string' || !v) throw new BadRequest(`Choose a ${what}`);
+		return v;
+	};
+	switch (o.kind) {
+		case 'library': {
+			let folder: string;
+			try {
+				folder = cleanRelPath(typeof o.folder === 'string' ? o.folder : '');
+			} catch (err) {
+				throw new BadRequest(`Folder: ${(err as Error).message}`);
+			}
+			return { kind: 'library', sourceId: id(o.sourceId, 'library source'), folder };
+		}
+		case 'queue': {
+			const printerId = typeof o.printerId === 'string' && o.printerId ? o.printerId : null;
+			return { kind: 'queue', printerId, tags: printerId ? [] : parseTags(o.tags) };
+		}
+		case 'printer':
+			return { kind: 'printer', printerId: id(o.printerId, 'printer'), allowPrint: o.allowPrint === true };
+		default:
+			throw new BadRequest('Uploads go to the library, the queue or a printer');
+	}
 }
 
 export function parseTokenInput(body: unknown, now = Date.now()): TokenInput {
@@ -119,19 +185,23 @@ export function parseTokenInput(body: unknown, now = Date.now()): TokenInput {
 		if (!Number.isFinite(days) || days < 1 || days > 3650) throw new BadRequest('"expiresInDays" must be 1–3650');
 		expiresAt = new Date(now + Math.round(days) * 86_400_000).toISOString();
 	}
-	return { name, expiresAt, includeAddresses: b.includeAddresses === true };
+	const scope: TokenScope = b.scope === 'upload' ? 'upload' : 'status';
+	const options: TokenOptions = scope === 'upload' ? { upload: parseUploadTarget(b.upload) } : b.bedClear === true ? { bedClear: true } : {};
+	return { name, expiresAt, includeAddresses: scope === 'status' && b.includeAddresses === true, scope, options };
 }
 
 /** Creates a token and returns it in full — the only time it's ever available. */
 export function createToken(input: TokenInput, by: Pick<User, 'id' | 'email'> | null): { token: string; record: ApiToken } {
-	const token = generateToken();
+	const scope = input.scope ?? 'status';
+	const token = generateToken(scope === 'upload');
 	const id = randomUUID();
+	const options = input.options && Object.keys(input.options).length ? JSON.stringify(input.options) : null;
 	sqlite()
 		.prepare(
-			`INSERT INTO api_tokens (id, name, token_hash, prefix, scope, include_addresses, expires_at, created_by, created_by_email, created_at)
-			 VALUES (?, ?, ?, ?, 'status', ?, ?, ?, ?, ?)`
+			`INSERT INTO api_tokens (id, name, token_hash, prefix, scope, include_addresses, options, expires_at, created_by, created_by_email, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
-		.run(id, input.name, hashToken(token), token.slice(0, TOKEN_PREFIX.length + 6), input.includeAddresses ? 1 : 0, input.expiresAt, by?.id ?? null, by?.email ?? null, new Date().toISOString());
+		.run(id, input.name, hashToken(token), token.slice(0, TOKEN_PREFIX.length + 6), scope, input.includeAddresses ? 1 : 0, options, input.expiresAt, by?.id ?? null, by?.email ?? null, new Date().toISOString());
 	return { token, record: getToken(id)! };
 }
 
@@ -177,6 +247,54 @@ export function authorizeStatusRequest(req: { method: string; path: string; head
 	return { ok: true, principal };
 }
 
+/**
+ * Decides POST /api/status/<id>/bed-clear: a status token that allows confirming the
+ * bed. Bad tokens are throttled like on the status routes.
+ */
+export function authorizeBedClearRequest(req: { method: string; headers: Headers; url: URL; ip?: string }): StatusAuth {
+	if (req.method !== 'POST') return { ok: false, status: 405, message: 'Use POST' };
+	const key = req.ip ?? 'unknown';
+	if (tooManyFailures(key)) return { ok: false, status: 429, message: 'Too many invalid tokens; try again later' };
+	const token = presentedToken(req.headers, req.url);
+	if (!token) return { ok: false, status: 401, message: 'API token required (Authorization: Bearer ocm_…)' };
+	const principal = verifyToken(token, 'status', req.ip);
+	if (!principal) {
+		failures.get(key)!.push(Date.now());
+		return { ok: false, status: 401, message: 'Invalid, expired or revoked API token' };
+	}
+	if (!principal.options.bedClear) return { ok: false, status: 403, message: 'This token may not confirm the bed is clear' };
+	return { ok: true, principal };
+}
+
+/** The key a slicer sends: `X-Api-Key` (OctoPrint's header), `Authorization: Bearer`, or `?apikey=`. */
+export function presentedUploadKey(headers: Headers, url: URL): string | null {
+	const k = headers.get('x-api-key')?.trim();
+	if (k) return k;
+	const auth = headers.get('authorization');
+	const m = auth ? /^Bearer\s+(\S+)\s*$/i.exec(auth) : null;
+	if (m) return m[1];
+	return url.searchParams.get('apikey') || null;
+}
+
+/**
+ * Decides a request to the OctoPrint-compatible API (/octoprint/api/…): an upload key,
+ * with or without its `ocm_` prefix (some slicers only take letters and digits).
+ * OctoPrint answers a missing key with 401 and a wrong one with 403; so does this.
+ */
+export function authorizeUploadRequest(req: { headers: Headers; url: URL; ip?: string }): StatusAuth {
+	const key = req.ip ?? 'unknown';
+	if (tooManyFailures(key)) return { ok: false, status: 429, message: 'Too many invalid API keys; try again later' };
+	const raw = presentedUploadKey(req.headers, req.url);
+	if (!raw) return { ok: false, status: 401, message: 'API key required (X-Api-Key)' };
+	const token = raw.startsWith(TOKEN_PREFIX) ? raw : TOKEN_PREFIX + raw;
+	const principal = verifyToken(token, 'upload', req.ip);
+	if (!principal || !principal.options.upload) {
+		failures.get(key)!.push(Date.now());
+		return { ok: false, status: 403, message: 'Invalid API key' };
+	}
+	return { ok: true, principal };
+}
+
 const lastTouched = new Map<string, number>();
 
 /**
@@ -196,5 +314,5 @@ export function verifyToken(token: string, scope: TokenScope, ip?: string): Toke
 		lastTouched.set(t.id, now);
 		sqlite().prepare('UPDATE api_tokens SET last_used_at = ?, last_used_ip = ? WHERE id = ?').run(new Date(now).toISOString(), ip ?? null, t.id);
 	}
-	return { id: t.id, name: t.name, scope: t.scope, includeAddresses: t.includeAddresses };
+	return { id: t.id, name: t.name, scope: t.scope, includeAddresses: t.includeAddresses, options: t.options };
 }

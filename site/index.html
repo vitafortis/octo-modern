@@ -244,6 +244,13 @@
 							</div>
 						</article>
 						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/></svg></span>
+							<div>
+								<h3>AI failure detection</h3>
+								<p>Your own Obico ML container watches each print. A smoothed failure score warns you with the annotated frame and can pause a print that has turned to spaghetti.</p>
+							</div>
+						</article>
+						<article class="card feature">
 							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span>
 							<div>
 								<h3>Timelapses &amp; notifications</h3>
@@ -255,6 +262,20 @@
 							<div>
 								<h3>Smart plug power</h3>
 								<p>Shelly, Tasmota, Home Assistant or any HTTP switch: power on (and connect), see the watts, and turn off by itself once a print is done and the hotend has cooled. Asks twice before cutting a running print.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></span>
+							<div>
+								<h3>Print queue</h3>
+								<p>One queue for every printer: jobs for a specific printer or any printer with the right tags, copies, drag to reorder. The next job starts once someone confirms the bed is clear.</p>
+							</div>
+						</article>
+						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
+							<div>
+								<h3>Upload from your slicer</h3>
+								<p>PrusaSlicer, OrcaSlicer and Cura see octo·modern as an OctoPrint server. Each upload key sends files to the queue, a NAS folder or one printer.</p>
 							</div>
 						</article>
 					</div>
@@ -277,6 +298,10 @@
 						<a class="shot" href="screenshots/printer.png" data-caption="Dashboard: live webcam, job and temperatures">
 							<span class="thumb"><img src="screenshots/printer.png" width="1440" height="900" loading="lazy" decoding="async" alt="Printer dashboard with webcam, job progress and temperature chart" /></span>
 							<span class="cap">Dashboard<small>Webcam, job, temperatures</small></span>
+						</a>
+						<a class="shot" href="screenshots/queue.png" data-caption="Queue: jobs for any printer, copies, tags and the bed-clear check">
+							<span class="thumb"><img src="screenshots/queue.png" width="1440" height="900" loading="lazy" decoding="async" alt="Print queue with two printers, one waiting for its bed to be cleared, and five jobs" /></span>
+							<span class="cap">Queue<small>Every printer, one list</small></span>
 						</a>
 						<a class="shot" href="screenshots/files.png" data-caption="Files: upload, print, delete">
 							<span class="thumb"><img src="screenshots/files.png" width="1440" height="900" loading="lazy" decoding="async" alt="Files tab listing G-code with print times and upload dates" /></span>
@@ -313,6 +338,10 @@
 						<a class="shot" href="screenshots/timelapse-player.png" data-caption="Timelapses play in the browser with seeking">
 							<span class="thumb"><img src="screenshots/timelapse-player.png" width="1440" height="900" loading="lazy" decoding="async" alt="Timelapse player showing a rendered print timelapse" /></span>
 							<span class="cap">Timelapses<small>Watch in the browser</small></span>
+						</a>
+						<a class="shot" href="screenshots/detection.png" data-caption="Failure detection: the score over the print, the last frame with boxes, paused by the detector">
+							<span class="thumb"><img src="screenshots/detection.png" width="1440" height="900" loading="lazy" decoding="async" alt="Failure detection tab with a webcam frame of a spaghetti print outlined in red and a rising failure score" /></span>
+							<span class="cap">Failure detection<small>Spaghetti, caught</small></span>
 						</a>
 						<a class="shot" href="screenshots/discover.png" data-caption="Discover: OctoPrint in Docker, Arcane and on the network">
 							<span class="thumb"><img src="screenshots/discover.png" width="1440" height="900" loading="lazy" decoding="async" alt="Discover page listing OctoPrint containers with their serial devices" /></span>

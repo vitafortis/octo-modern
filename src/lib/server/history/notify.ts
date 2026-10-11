@@ -13,13 +13,18 @@ import type { PrintRecord } from '#lib/history.ts';
 export type ChannelKind = 'ntfy' | 'discord' | 'webhook';
 export const CHANNEL_KINDS: ChannelKind[] = ['ntfy', 'discord', 'webhook'];
 export type EndResult = 'success' | 'failed' | 'cancelled';
+/** Print queue events (see queue/dispatcher.ts); channels subscribe to them like to print results. */
+export type QueueEventKind = 'queue.bed_clear_needed';
+export const QUEUE_EVENTS: QueueEventKind[] = ['queue.bed_clear_needed'];
+
+/** What a channel can subscribe to: print outcomes, failure detection (detect/notify.ts) and queue events. */
 /** Smart plug events (power/service.ts). */
 export type PowerEvent = 'power.on' | 'power.off';
 export const POWER_EVENTS: PowerEvent[] = ['power.on', 'power.off'];
-export type ChannelEvent = EndResult | PowerEvent;
+export type NotifyOn = EndResult | 'failure.suspected' | QueueEventKind | PowerEvent;
 
 export interface PrintNotification {
-	event: EndResult | PowerEvent | 'test';
+	event: NotifyOn | 'test';
 	title: string;
 	message: string;
 	printer: { id: string; name: string } | null;
@@ -35,8 +40,8 @@ export interface OutgoingRequest {
 	body: string;
 }
 
-const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'power.on': 'Power on', 'power.off': 'Power off' };
-const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'power.on': 0x22c55e, 'power.off': 0x64748b };
+const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'failure.suspected': 'Failure suspected', 'queue.bed_clear_needed': 'Bed clear needed', 'power.on': 'Power on', 'power.off': 'Power off' };
+export const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'failure.suspected': 0xf97316, 'queue.bed_clear_needed': 0x8b5cf6, 'power.on': 0x22c55e, 'power.off': 0x64748b };
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
 
 /** The notification for a finished print. */
@@ -80,7 +85,7 @@ export function buildRequest(kind: ChannelKind, config: Record<string, string>, 
 					title: n.title,
 					message: n.message,
 					priority: n.event === 'failed' ? 4 : 3,
-					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : n.event.startsWith('power.') ? 'electric_plug' : 'bell', 'octo-modern'],
+					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : n.event === 'queue.bed_clear_needed' ? 'broom' : n.event.startsWith('power.') ? 'electric_plug' : 'bell', 'octo-modern'],
 					...(n.url ? { click: n.url } : {})
 				})
 			};
@@ -149,7 +154,7 @@ interface StoredChannel {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: ChannelEvent[];
+	on: NotifyOn[];
 	config: Record<string, string>;
 	sealed: string | null;
 	lastError: string | null;
@@ -168,7 +173,7 @@ export interface ChannelInfo {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: ChannelEvent[];
+	on: NotifyOn[];
 	config: Record<string, string>;
 	secrets: Record<string, string>;
 	lastError: string | null;
@@ -185,7 +190,7 @@ export function listChannels(): ChannelInfo[] {
 	});
 }
 
-const RESULTS: ChannelEvent[] = ['success', 'failed', 'cancelled', ...POWER_EVENTS];
+const RESULTS: NotifyOn[] = ['success', 'failed', 'cancelled', 'failure.suspected'];
 
 /**
  * Replaces the channel list. A secret field left out (or empty) keeps the stored value
@@ -216,7 +221,7 @@ export function saveChannels(raw: unknown, publicUrl: string | null): ChannelInf
 			if (!config.topic) throw new Error(`${name}: an ntfy topic is required`);
 			if (config.server && !/^https?:\/\//i.test(config.server)) throw new Error(`${name}: the ntfy server must be an http(s) URL`);
 		} else if (!/^https?:\/\//i.test(secrets.url ?? '')) throw new Error(`${name}: a webhook URL (http or https) is required`);
-		const on: ChannelEvent[] = Array.isArray(o.on) ? RESULTS.filter((x) => (o.on as unknown[]).includes(x)) : ['failed'];
+		const on = Array.isArray(o.on) ? [...RESULTS, ...QUEUE_EVENTS, ...POWER_EVENTS].filter((x) => (o.on as unknown[]).includes(x)) : ['failed' as const];
 		return {
 			id,
 			kind,
@@ -233,7 +238,7 @@ export function saveChannels(raw: unknown, publicUrl: string | null): ChannelInf
 	return listChannels();
 }
 
-function record(id: string, error: string | null) {
+export function record(id: string, error: string | null) {
 	const s = load();
 	const c = s.channels.find((x) => x.id === id);
 	if (!c) return;
@@ -279,6 +284,43 @@ export async function notifyPower(event: PowerEvent, printer: { id: string; name
 
 async function notifyChannels(targets: StoredChannel[], n: PrintNotification): Promise<void> {
 	if (!targets.length) return;
+	await Promise.all(
+		targets.map(async (c) => {
+			try {
+				await deliver(c.kind, c.config, secretsOf(c), n);
+				record(c.id, null);
+			} catch (err) {
+				record(c.id, (err as Error).message);
+				console.warn(`[octo-modern] notification via ${c.name} failed: ${(err as Error).message}`);
+			}
+		})
+	);
+}
+
+/** Enabled channels subscribed to `on`, with their secrets (server-only; for detect/notify.ts). */
+export function subscribedChannels(on: NotifyOn): { id: string; kind: ChannelKind; name: string; config: Record<string, string>; secrets: Record<string, string> }[] {
+	return load()
+		.channels.filter((c) => c.enabled && c.on.includes(on))
+		.map((c) => ({ id: c.id, kind: c.kind, name: c.name, config: c.config, secrets: secretsOf(c) }));
+}
+
+/**
+ * Notifies every enabled channel subscribed to a queue event (e.g. a printer waiting
+ * for someone to clear its bed). Never throws.
+ */
+export async function notifyQueueEvent(event: QueueEventKind, opts: { title: string; message: string; printer: { id: string; name: string } }): Promise<void> {
+	const s = load();
+	const targets = s.channels.filter((c) => c.enabled && c.on.includes(event));
+	if (!targets.length) return;
+	const n: PrintNotification = {
+		event,
+		title: opts.title,
+		message: opts.message,
+		printer: opts.printer,
+		print: null,
+		at: new Date().toISOString(),
+		url: s.publicUrl ? `${trimSlash(s.publicUrl)}/p/${encodeURIComponent(opts.printer.id)}?tab=queue` : null
+	};
 	await Promise.all(
 		targets.map(async (c) => {
 			try {

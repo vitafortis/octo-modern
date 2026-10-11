@@ -174,7 +174,7 @@ test('config: validation, secrets kept/cleared, sealed at rest, no credentials i
 
 	const first = cfg.parsePlugInput({ kind: 'shelly', config: { url: '10.0.0.9', channel: '1' }, secrets: { username: 'admin', password: 'pw-1' }, settings: { autoOff: { enabled: true } } });
 	assert.deepEqual(first.config, { url: 'http://10.0.0.9', channel: 1, generation: 'auto' });
-	assert.deepEqual(first.settings.autoOff, { enabled: true, hotendC: 50, idleMinutes: 10 }, 'defaults: below 50 °C and 10 minutes');
+	assert.deepEqual(first.settings.autoOff, { enabled: true, hotendC: 50, idleMinutes: 10, waitForQueue: true }, 'defaults: below 50 °C, 10 minutes, stay on for the queue');
 	assert.equal(first.settings.autoConnect, true);
 	const kept = cfg.parsePlugInput({ kind: 'shelly', config: { url: '10.0.0.9' }, secrets: { password: '' } }, first);
 	assert.equal(kept.secrets.password, 'pw-1', 'an empty secret keeps the stored one');

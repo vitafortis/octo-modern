@@ -81,6 +81,11 @@ export class PowerService {
 	private cache = new Map<string, Runtime | null>();
 	private ensuring = new Map<string, Promise<EnsureResult>>();
 	private stopObserve: (() => void) | null = null;
+	/**
+	 * Reasons to hold back an auto power-off that is due, registered by other features
+	 * (the print queue: jobs waiting for the bed to be cleared). Each returns a reason or null.
+	 */
+	readonly keepOnChecks = new Set<(printerId: string) => string | null>();
 
 	/** Starts following the printers' live state (auto power-off). Safe to call repeatedly. */
 	start() {
@@ -380,7 +385,9 @@ export class PowerService {
 	observe(printerId: string, snap: LiveSnapshot, now = Date.now()) {
 		const rt = this.runtime(printerId);
 		if (!rt) return;
-		const ev = rt.autoOff.observe({ now, state: snap.state, hotendC: maxHotend(snap.temps), plugOn: rt.reading?.on ?? null }, rt.plug.settings.autoOff);
+		const s0 = rt.plug.settings.autoOff;
+		const holdReason = rt.autoOff.armedAt != null && s0.waitForQueue ? this.holdReason(printerId) : null;
+		const ev = rt.autoOff.observe({ now, state: snap.state, hotendC: maxHotend(snap.temps), plugOn: rt.reading?.on ?? null, holdReason }, s0);
 		if (!ev) return;
 		const printer = getPrinter(printerId);
 		if (!printer) return;
@@ -388,6 +395,23 @@ export class PowerService {
 		if (ev.type === 'armed') audit(SYSTEM, 'power.auto_off.armed', { printer, detail: `off after ${s.idleMinutes} min idle and the hotend below ${s.hotendC} °C` });
 		else if (ev.type === 'cancelled') audit(SYSTEM, 'power.auto_off.cancelled', { printer, detail: ev.reason });
 		else if (ev.type === 'fire') void this.autoPowerOff(printer);
+	}
+
+	private holdReason(printerId: string): string | null {
+		for (const check of this.keepOnChecks) {
+			try {
+				const r = check(printerId);
+				if (r) return r;
+			} catch (err) {
+				console.error('[octo-modern] keep-on check failed', err);
+			}
+		}
+		return null;
+	}
+
+	/** Auto power-on is set up for this printer. */
+	autoOnEnabled(printerId: string): boolean {
+		return !!this.runtime(printerId)?.plug.settings.autoOn;
 	}
 
 	private async autoPowerOff(printer: Printer) {
