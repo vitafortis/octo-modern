@@ -17,8 +17,9 @@
 
 ## Features
 
-- **Every printer in one place**: add any number of OctoPrint servers. The sidebar shows each one's state (ready, printing, paused, error, unreachable) and progress; the overview shows the current file, progress, time left, ETA, temperatures and a webcam snapshot per printer. With a single printer, octo·modern opens straight to it.
+- **Every printer in one place**: add any number of OctoPrint servers and Klipper printers (through Moonraker, the API Mainsail and Fluidd use). The sidebar shows each one's state (ready, printing, paused, error, unreachable) and progress; the overview shows the current file, progress, time left, ETA, temperatures and a webcam snapshot per printer. With a single printer, octo·modern opens straight to it.
 - **Live, without hammering OctoPrint**: while you watch a printer, octo·modern keeps one push connection to OctoPrint (its SockJS websocket) and fans updates out to every browser over Server-Sent Events. Printers nobody is watching get a light status poll. If the websocket can't connect (a proxy without websocket support, say), it polls instead and keeps retrying with backoff.
+- **Klipper (Moonraker)**: Klipper printers sit next to OctoPrint ones: live status over Moonraker's websocket, jobs, files with slicer thumbnails and estimates, temperatures, jog/home/extrude, macros as buttons, the terminal, webcams, history (with Klipper's own job history imported), the queue, failure detection, smart plugs and spools. The add-printer dialog detects which one answers. See [Klipper printers](#klipper-printers-moonraker) for what works and what doesn't.
 - **Temperatures**: a live chart of actual and target temperatures per hotend, bed and chamber (5, 15 or 30 minutes), set targets directly or from OctoPrint's temperature presets, and turn everything off at once.
 - **Jobs**: print, pause, resume, restart and cancel. Cancelling always asks first, from the dashboard, the printer header or the overview card.
 - **Files**: browse OctoPrint's storage and the SD card with folders, sizes, upload dates, estimated print time, filament and the last print's outcome (and slicer thumbnails, if a thumbnail plugin provides them). Search and sort, drag and drop G-code to upload with progress, "print after upload", print or load any file, create folders, and delete (with confirmation). Uploads stream through octo·modern to OctoPrint without being held in memory, so files of hundreds of megabytes are fine.
@@ -88,7 +89,41 @@ You need two things from each OctoPrint:
 
 **Test connection** shows OctoPrint's version, which user the key belongs to, and any permission the key lacks. Self-signed certificate on your LAN? Turn off **Verify TLS certificate** for that server.
 
+**Klipper printer?** Pick **Klipper** (or leave **Auto-detect**) and enter Moonraker's URL: `http://<host>:7125`, or the Mainsail/Fluidd address, which proxies the same API. The API key is optional; see [Klipper printers](#klipper-printers-moonraker).
+
 Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and **Discover** (in the sidebar) does the rest. You approve the key in OctoPrint instead of copying it.
+
+## Klipper printers (Moonraker)
+
+octo·modern talks to Klipper through [Moonraker](https://moonraker.readthedocs.io/), the API server behind Mainsail and Fluidd. Add one with **Add printer → Klipper** (or **Auto-detect**, which asks `/server/info` first; Moonraker also imitates OctoPrint's `/api/version` for slicers, so the order matters), or find it in **Discover**: Moonraker announces itself over mDNS as `_moonraker._tcp`.
+
+- **URL**: Moonraker's own port, `http://<host>:7125`, or the Mainsail/Fluidd host (`http://voron.lan`), which proxies `/server`, `/printer` and `/websocket` to it.
+- **API key, optional**: Moonraker trusts clients on the networks listed under `[authorization] trusted_clients` in `moonraker.conf`. Add octo·modern's address (or the Docker network) there and leave the key empty, or paste Moonraker's API key (Mainsail: **Settings → Authorization**; or `GET /access/api_key` from a trusted machine). With a key, the websocket authenticates with a one-shot token.
+- **Live**: one JSON-RPC websocket per watched printer (`printer.objects.subscribe` on `print_stats`, `virtual_sdcard`, `display_status`, `webhooks`, `toolhead`, `gcode_move`, `fan`, every extruder, the bed and a chamber heater, fan or sensor), reconnecting with backoff and polled over HTTP meanwhile; printers nobody watches are polled like OctoPrint ones. Heaters keep OctoPrint's names: `extruder` → hotend (`tool0`), `extruder1` → `tool1`, `heater_bed` → bed, anything named *chamber* → chamber.
+- **Emergency stop** uses `printer.emergency_stop`; Klipper then shows as *shutdown* with its message, and **Firmware restart** in the header brings it back (also after a smart plug switches the printer on).
+
+| Feature | OctoPrint | Klipper (Moonraker) |
+| --- | --- | --- |
+| Live status, temperatures, progress, ETA | ✓ | ✓ (slicer estimate when the file has one) |
+| Start / pause / resume / cancel | ✓ | ✓ (printing a file starts it; *restart* reprints the last file) |
+| Load a file without printing | ✓ | – (Klipper has no selected file) |
+| Files: list, upload, delete, folders, thumbnails | ✓ (local and SD card) | ✓ (`gcodes` folder; thumbnails from slicer metadata) |
+| G-code preview | ✓ | ✓ |
+| Jog, home, extrude, fan, feed/flow rate, set temperatures | ✓ | ✓ (sent as G-code scripts) |
+| Custom controls | OctoPrint's `controls` | Klipper macros (`gcode_macro`, `_hidden` ones left out) |
+| Temperature presets | OctoPrint settings | Mainsail's presets (from Moonraker's database) |
+| Terminal | ✓ | ✓ (G-code responses; commands octo·modern sends) |
+| Emergency stop | M112 | `printer.emergency_stop` |
+| Connect / disconnect (serial port, baud rate, profile) | ✓ | – (Firmware restart / Klipper restart instead) |
+| Webcams | OctoPrint settings | `server.webcams.list` (Mainsail/Fluidd cameras) |
+| Print history, import of earlier prints | ✓ (PrintJobHistory, file statistics) | ✓ (Moonraker's job history) |
+| Queue, failure detection, notifications, smart plugs, spools, maintenance | ✓ | ✓ |
+| Library send, slicer uploads to a printer | ✓ | ✓ |
+| Timelapses | OctoPrint's timelapse | – (tab hidden; moonraker-timelapse isn't supported) |
+| Bed mesh / bed visualizer | plugin | – |
+| Discover | Docker, Arcane, mDNS, subnet scan | mDNS (`_moonraker._tcp`), subnet scan (add port 7125) |
+
+Relative webcam URLs (`/webcam/?action=stream`) are resolved against the Mainsail/Fluidd host, so with `:7125` in the printer's URL they go to port 80 of the same host. Klipper's `print_stats` changes become the same print events OctoPrint sends (started, paused, done, cancelled, failed), so history, notifications and the queue behave the same for both.
 
 ## Discover
 
@@ -142,7 +177,7 @@ In Arcane, open **Settings → API Keys** and create a key with only read permis
 
 ### mDNS needs the LAN
 
-OctoPi announces itself over mDNS (`_octoprint._tcp.local`, with its version and model). octo·modern sends a plain DNS-SD query, no Avahi or extra packages needed, but multicast only reaches one network segment: inside Docker's default bridge network, nothing answers. To use it, run octo·modern with `network_mode: host`, or attach it to a macvlan/ipvlan network on your LAN. On a bridge network, use the subnet scan instead. (OctoPi advertises OctoPrint's own port 5000, which only listens on the Pi itself; Discover also tries 80 and 443, where OctoPi's proxy serves it.)
+OctoPi announces itself over mDNS (`_octoprint._tcp.local`, with its version and model), and Klipper's Moonraker as `_moonraker._tcp.local` (when its `[zeroconf]` component is enabled); Discover asks for both. octo·modern sends a plain DNS-SD query, no Avahi or extra packages needed, but multicast only reaches one network segment: inside Docker's default bridge network, nothing answers. To use it, run octo·modern with `network_mode: host`, or attach it to a macvlan/ipvlan network on your LAN. On a bridge network, use the subnet scan instead. (OctoPi advertises OctoPrint's own port 5000, which only listens on the Pi itself; Discover also tries 80 and 443, where OctoPi's proxy serves it.)
 
 ### Subnet scan
 
@@ -541,6 +576,10 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **Webcam**, relayed through octo·modern | **Cancel** always asks first |
 | ![Light theme](docs/screenshots/printer-light.png) | ![Overview, light](docs/screenshots/overview-light.png) |
 | **Light theme** | **Overview**, light |
+| ![Klipper printer](docs/screenshots/dashboard-klipper.png) | ![Add a printer: type picker](docs/screenshots/add-printer-klipper.png) |
+| **Klipper** printer through Moonraker | **Add printer**: OctoPrint, Klipper or auto-detect |
+| ![Klipper controls](docs/screenshots/control-klipper.png) | ![Klipper, light](docs/screenshots/dashboard-klipper-light.png) |
+| **Klipper controls**: macros, build volume from the config | **Klipper**, light |
 | ![Users](docs/screenshots/users.png) | ![Audit log](docs/screenshots/audit.png) |
 | **Users**: admins, operators, viewers | **Audit log** |
 | ![Library](docs/screenshots/library-light.png) | ![Send to printer](docs/screenshots/library-send.png) |
@@ -650,9 +689,12 @@ pnpm e2e:library                      # the Library against OctoPrint, SFTP, Sam
 pnpm e2e:history                      # print history, notifications and timelapses end to end
 pnpm e2e:notify                       # notifications: every channel type against local mocks, a real virtual printer
 pnpm e2e:mobile                       # phones: no sideways scrolling at 360/390/430 px, thumb-sized controls
+pnpm e2e:klipper                      # Klipper printers against a mock Moonraker (no Docker; ports :5560–:5564)
 ```
 
 `scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:notify` (app `:3200`, OctoPrint `:3201`, camera `:3202`, mock services `:3204` HTTP and `:3205` SMTP) sets up one channel of every type against `scripts/e2e/mock-notify.mjs` (nothing real is contacted), sends tests including failing ones, prints on a virtual printer and checks the started, 50 %, finished (with snapshots: attachments, the shared link), still-hot, paused-by-M0, paused-by-the-operator and cancelled-by messages, offline and back by stopping the container, quiet hours, the delivery log and a backup round trip, then writes the `notifications*.png` screenshots. `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. `pnpm e2e:power` (ports `:3230`–`:3236`) needs no Docker: it runs two mock OctoPrint servers powered by a mock Shelly Gen2 (Digest login) and a mock Tasmota, and checks plug setup and tests (admins only, sealed passwords), power-on with auto-connect, the hot and printing confirmations (in Chromium too), auto power-on for a print, the auto power-off countdown with Keep on and cancelling, the webhooks, the audit log and a 390 px phone, then writes the `power*.png` screenshots. The adapters are unit-tested against the same mocks (`scripts/e2e/mock-plugs.mjs`); nothing contacts a real device. `pnpm e2e:viewer` (app `:3250`, OctoPrint `:3251`–`:3252`, camera `:3253`) writes synthetic slicer-flavoured G-code (`node scripts/gcode-samples.mjs <dir> [--big MB]`: PrusaSlicer, Cura, OrcaSlicer with arcs, and comment-free files) plus a ~100 MB file (`E2E_BIG_MB`), checks the download routes (ranges, traversal, sign-in, no key in responses), previews printer and library files as a viewer (layers, legend, slider, keyboard, orbit, the 2D layer view), times the big file, follows a live print on a virtual printer and cross-checks the layer against OctoPrint's `filepos`, then checks the camera wall: live streams vs. snapshots, streams closing while the tab is hidden and while one camera is full screen, kiosk mode (whole window, cursor hiding, wake lock, rotation, bookmarkable URL) and one column at 390 px; it writes the `gcode-*.png`, `cameras*.png`, `mobile-gcode-preview.png` and `mobile-cameras.png` screenshots. It runs the full Chromium build so WebGL uses the real GPU (`E2E_SOFTWARE_GL=1` for SwiftShader). Measured on an Apple M4 with the 101 MB file (3.57 million moves, 784 layers): downloaded and parsed in about 0.6 s from a folder library and 0.9–1.4 s through OctoPrint (it runs on the same machine, in Docker), kept as 1.6 million points (39 MB JS heap); a full frame of 1.6 million segments draws within a 60 Hz frame, and orbiting stays at 60 fps. With a phone's budget (390 px touch emulation) it loads in about 0.6 s as 0.96 million points and 22 MB of heap. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.
+
+`pnpm e2e:klipper` needs no Docker: `scripts/e2e/mock-moonraker.mjs` simulates Klipper behind Moonraker (HTTP API and the JSON-RPC websocket, heaters, prints that progress, pause/resume/cancel, emergency stop and firmware restart, files with slicer metadata and thumbnails, webcams, job history, Mainsail presets). It tests auto-detection, a keyed Moonraker, mDNS discovery of `_moonraker._tcp`, adds a printer through the type picker in Chromium, checks live status over the websocket, prints from the Files tab, pauses, resumes and cancels from the header, the history entry and the imported job history, controls and macros, emergency stop and firmware restart, then writes the `*-klipper*.png` screenshots. Ports `:5560`–`:5564` (`E2E_PORT_BASE` moves them); the node tests use the same mock on `:5550`–`:5554`.
 
 `pnpm e2e:discover` starts three OctoPrint servers on `:5151`–`:5153` and has octo·modern discover them through a mock Docker API (fictional containers, devices and networks pointing at the real ports, on `:5251`), a mock Arcane (`:5252`), a unicast mDNS responder (`OCM_MDNS_TARGET=127.0.0.1:5253`), the real local Docker socket (read-only) and a subnet scan of `127.0.0.1`. It runs the setup wizard in Chromium, adds printers through the Application Keys flow (approving and denying in OctoPrint by logging in to its API as its admin), pastes a key, moves a published port and relinks the saved printer, then writes the Discover screenshots and cleans up.
 

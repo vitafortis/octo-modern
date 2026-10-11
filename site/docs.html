@@ -89,6 +89,7 @@
 							<summary>On this page<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
 							<ul>
 								<li><a href="#printers">Adding a printer</a></li>
+								<li><a href="#klipper">Klipper (Moonraker)</a></li>
 								<li><a href="#discover">Discover</a></li>
 								<li><a href="#roles">Users and roles</a></li>
 								<li><a href="#configuration">Configuration</a></li>
@@ -124,6 +125,18 @@
 						</ul>
 						<p><strong>Test connection</strong> shows OctoPrint's version, which user the key belongs to, and any permission the key lacks. Self-signed certificate on your LAN? Turn off <strong>Verify TLS certificate</strong> for that server.</p>
 						<p>Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and <a href="#discover">Discover</a> does the rest. You approve the key in OctoPrint instead of copying it.</p>
+					</section>
+
+					<section id="klipper">
+						<h2>Klipper printers (Moonraker)</h2>
+						<p>octo·modern talks to Klipper through Moonraker, the API server behind Mainsail and Fluidd. Choose <strong>Klipper</strong> when adding a printer (or <strong>Auto-detect</strong>, which asks <code>/server/info</code> before OctoPrint's <code>/api/version</code>, since Moonraker imitates the latter), or find it in <a href="#discover">Discover</a>: Moonraker announces itself as <code>_moonraker._tcp</code>.</p>
+						<ul>
+							<li><strong>URL</strong>: <code>http://&lt;host&gt;:7125</code>, or the Mainsail/Fluidd host, which proxies the same API.</li>
+							<li><strong>API key, optional</strong>: add octo·modern's address to <code>[authorization] trusted_clients</code> in <code>moonraker.conf</code> and leave it empty, or paste Moonraker's key (Mainsail: <strong>Settings → Authorization</strong>). The websocket then uses a one-shot token.</li>
+							<li><strong>Live</strong>: Moonraker's JSON-RPC websocket (<code>printer.objects.subscribe</code>), reconnecting with backoff and polled over HTTP meanwhile.</li>
+						</ul>
+						<p>What works: live status, temperatures, progress and ETA; start, pause, resume, cancel; files with folders, uploads, thumbnails and slicer estimates; G-code preview; jog, home, extrude, fan, feed and flow rate (as G-code); Klipper macros as buttons; Mainsail's temperature presets; the terminal; emergency stop (<code>printer.emergency_stop</code>) and firmware restart; webcams from <code>server.webcams.list</code>; history, including Moonraker's own job history; the queue, failure detection, notifications, smart plugs, spools and maintenance.</p>
+						<p>What doesn't (OctoPrint-only): loading a file without printing it, the SD card, serial connect/disconnect settings, OctoPrint's timelapse (the tab is hidden), and plugin features like the bed visualizer.</p>
 					</section>
 
 					<section id="discover">

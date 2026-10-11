@@ -267,7 +267,7 @@ test('test connection: versions, Klipper state notes, the key', async () => {
 	assert.ok(good.ok && good.kind === 'moonraker');
 	assert.ok(keyed.calls.some((c: { path?: string; key: string | null }) => c.path === '/server/info' && c.key === KEY), 'the key goes in X-Api-Key');
 	const none = await testPrinter({ baseUrl: 'http://127.0.0.1:5559', apiKey: '', verifyTls: true, kind: 'auto' });
-	assert.ok(!none.ok && none.error.code === 'UNKNOWN_SERVER');
+	assert.ok(!none.ok && none.error.code === 'ECONNREFUSED', 'unreachable: the network error, not "unknown server"');
 });
 
 // --- backend against the mock ----------------------------------------------------------------

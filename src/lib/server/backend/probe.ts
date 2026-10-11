@@ -17,6 +17,9 @@ export async function testPrinter(t: TestTarget): Promise<TestResult> {
 	if (kind === 'auto') {
 		const found = await detectKind(t);
 		if (!found.kind) {
+			// Unreachable (refused, timeout, TLS…): that error says more than "unknown server".
+			const reach = await testMoonraker({ baseUrl: t.baseUrl, apiKey: t.apiKey, verifyTls: t.verifyTls });
+			if (!reach.ok && reach.error.code && !/^(HTTP_|NOT_MOONRAKER|BAD_RESPONSE)/.test(reach.error.code)) return reach;
 			return {
 				ok: false,
 				error: { message: 'Neither OctoPrint nor Moonraker answered at this URL', code: 'UNKNOWN_SERVER', hint: 'Check the address and port: OctoPrint usually serves on 80 or 5000, Moonraker on 7125 (or behind Mainsail/Fluidd on 80).' }

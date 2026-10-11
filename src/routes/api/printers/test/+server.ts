@@ -9,7 +9,7 @@ import type { RequestHandler } from './$types';
 /**
  * Tests a server form before saving (admins): `{ baseUrl, apiKey, verifyTls, kind? }`, or
  * `{ id, baseUrl, verifyTls }` to test edited settings with the stored key. `kind` is
- * `octoprint`, `moonraker` or `auto` (the default: probes Moonraker, then OctoPrint); the
+ * `octoprint` (the default), `moonraker` or `auto` (probes Moonraker, then OctoPrint); the
  * result says which answered. Moonraker may need no key.
  */
 export const POST: RequestHandler = handler(async ({ request }) => {
@@ -22,7 +22,8 @@ export const POST: RequestHandler = handler(async ({ request }) => {
 	}
 	let apiKey = typeof b.apiKey === 'string' ? b.apiKey.trim() : '';
 	if (!apiKey && b.apiKey === undefined && typeof b.id === 'string' && getPrinter(b.id)) apiKey = getApiKey(b.id) ?? '';
-	const kind = isPrinterKind(b.kind) ? b.kind : 'auto';
+	// No kind: OctoPrint, as before Klipper support (the dialog sends 'auto' itself).
+	const kind = isPrinterKind(b.kind) ? b.kind : b.kind === 'auto' ? 'auto' : 'octoprint';
 	if (!apiKey && kind === 'octoprint') throw new BadRequest('Paste an API key to test with');
 	return json(await testPrinter({ baseUrl, apiKey, verifyTls: b.verifyTls !== false, kind }));
 });
