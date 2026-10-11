@@ -225,7 +225,7 @@
 				<button class="btn btn-secondary" onclick={enterKiosk} title="Full-screen wall for a tablet or TV: no chrome, cursor hides, screen stays on"><Monitor />Kiosk</button>
 			{/snippet}
 		</PageHeader>
-		<div class="space-y-4 px-4 pb-8 sm:px-8">
+		<div class="page-x space-y-4 pb-8">
 			<div class="flex flex-wrap items-center gap-x-5 gap-y-2">
 				<div class="hidden sm:block">{@render segmented('Columns', opts.layout, LAYOUTS, (v) => (opts.layout = v))}</div>
 				{@render segmented('Video', opts.mode, MODES, (v) => (opts.mode = v))}

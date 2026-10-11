@@ -18,7 +18,7 @@
 			{/if}
 		{/snippet}
 	</PageHeader>
-	<div class="px-8 pb-10">
+	<div class="page-x pb-10">
 		<HistoryView />
 	</div>
 </div>

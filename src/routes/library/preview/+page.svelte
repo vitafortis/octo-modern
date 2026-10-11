@@ -22,7 +22,7 @@
 			<a class="btn btn-secondary" href={backHref}><ArrowLeft />Library</a>
 		{/snippet}
 	</PageHeader>
-	<div class="px-4 pb-8 sm:px-8">
+	<div class="page-x pb-8">
 		{#if source && path}
 			{#key `${source}:${path}:${version}`}
 				<GcodeViewer url={urls.libraryFile(source, path)} cacheKey="lib:{source}:{path}:{version}" class="h-[calc(100dvh-11rem)] min-h-96" />

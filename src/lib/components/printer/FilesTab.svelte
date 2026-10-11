@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import {
 		ArrowDownAZ,
 		Box,
@@ -33,10 +34,13 @@
 	import SaveToLibraryDialog from '../library/SaveToLibraryDialog.svelte';
 	import { listSources } from '#lib/client/library.ts';
 	import type { LibrarySourceSummary } from '#lib/library.ts';
+	import ActionMenu from '../ActionMenu.svelte';
+	import { listLayout } from '#lib/client/viewport.svelte.ts';
 
 	let { printer, live, canControl }: TabProps = $props();
 
 	/** The printer page's Preview tab for a file (the date busts the parsed-file cache after a re-upload). */
+	const canPreview = (f: FileEntry) => f.type === 'machinecode' && f.origin === 'local' && !/\.bgcode$/i.test(f.name);
 	const previewHref = (f: FileEntry) => `?tab=preview&file=${encodeURIComponent(f.path)}&v=${f.date ?? ''}-${f.size ?? ''}`;
 
 	let listing = $state<FileListing | null>(null);
@@ -198,14 +202,14 @@
 				<button class="truncate rounded-md px-1.5 py-0.5 hover:bg-accent {c.path === folder ? 'font-medium' : 'text-muted-foreground'}" onclick={() => (folder = c.path)}>{c.name}</button>
 			{/each}
 		</nav>
-		<div class="ml-auto flex flex-wrap items-center gap-2">
-			<div class="relative">
-				<Search class="absolute top-2 left-2.5 size-3.5 text-muted-foreground" />
-				<input class="input h-8 w-52 pl-8 text-xs" placeholder="Search all files…" aria-label="Search files" bind:value={query} />
+		<div class="ml-auto flex flex-wrap items-center gap-2 max-md:w-full">
+			<div class="relative max-md:min-w-0 max-md:flex-1">
+				<Search class="absolute top-2 left-2.5 size-3.5 text-muted-foreground touch:top-3.5 touch:size-4" />
+				<input class="input h-8 w-52 pl-8 text-xs max-md:w-full touch:pl-9" placeholder="Search all files…" aria-label="Search files" bind:value={query} />
 			</div>
 			<label class="flex items-center gap-1.5 text-xs text-muted-foreground">
-				<ArrowDownAZ class="size-3.5" />
-				<select class="input h-8 w-28 text-xs" bind:value={sort} aria-label="Sort by">
+				<ArrowDownAZ class="size-3.5 max-sm:hidden" />
+				<select class="input h-8 w-28 text-xs max-sm:w-[6.5rem]" bind:value={sort} aria-label="Sort by">
 					<option value="date">Newest</option>
 					<option value="name">Name</option>
 					<option value="size">Size</option>
@@ -213,22 +217,25 @@
 			</label>
 			<button class="btn btn-ghost btn-icon btn-sm" title="Refresh" aria-label="Refresh" onclick={load} disabled={loading}><RefreshCw class={loading ? 'animate-spin' : ''} /></button>
 			{#if canControl && origin === 'local'}
-				<button class="btn btn-secondary btn-sm" onclick={() => (newFolder = '')}><FolderPlus />Folder</button>
-				{#if librarySources.length}<button class="btn btn-secondary btn-sm" onclick={() => (picker = true)}><LibraryBig />From library</button>{/if}
-				<label class="flex items-center gap-2 text-xs text-muted-foreground" title="Start printing right after the upload (one file at a time, and only when the printer is ready)">
-					<Switch label="Print after upload" bind:checked={printAfterUpload} />Print after upload
-				</label>
-				<button class="btn btn-primary btn-sm" onclick={() => fileInput?.click()}><UploadIcon />Upload</button>
+				<div class="flex flex-wrap items-center gap-2 max-md:w-full">
+					<button class="btn btn-secondary btn-sm max-md:flex-1" onclick={() => (newFolder = '')}><FolderPlus />Folder</button>
+					{#if librarySources.length}<button class="btn btn-secondary btn-sm max-md:flex-1" onclick={() => (picker = true)}><LibraryBig />From library</button>{/if}
+					<label class="flex items-center gap-2 text-xs text-muted-foreground max-md:order-last max-md:w-full max-md:py-1" title="Start printing right after the upload (one file at a time, and only when the printer is ready)">
+						<Switch label="Print after upload" bind:checked={printAfterUpload} />Print after upload
+					</label>
+					<!-- On touch screens there's nothing to drag from: this button is the way in. -->
+					<button class="btn btn-primary btn-sm max-md:flex-1" onclick={() => fileInput?.click()}><UploadIcon />Upload</button>
+				</div>
 				<input bind:this={fileInput} type="file" accept={GCODE_ACCEPT} multiple class="hidden" data-testid="file-input" onchange={(e) => (startUploads(e.currentTarget.files), (e.currentTarget.value = ''))} />
 			{/if}
 		</div>
 	</div>
 
 	{#if newFolder !== null}
-		<form class="flex items-center gap-2" onsubmit={addFolder}>
+		<form class="flex flex-wrap items-center gap-2" onsubmit={addFolder}>
 			<Folder class="size-4 text-muted-foreground" />
 			<!-- svelte-ignore a11y_autofocus -->
-			<input class="input h-8 w-64 text-xs" placeholder="New folder name" aria-label="New folder name" autofocus bind:value={newFolder} />
+			<input class="input h-8 w-64 text-xs max-sm:min-w-0 max-sm:flex-1" placeholder="New folder name" aria-label="New folder name" autofocus bind:value={newFolder} />
 			<button class="btn btn-primary btn-sm" disabled={!newFolder.trim()}>Create</button>
 			<button type="button" class="btn btn-ghost btn-sm" onclick={() => (newFolder = null)}>Cancel</button>
 		</form>
@@ -241,8 +248,8 @@
 				<div class="flex items-center gap-3 px-4 py-2.5 text-[13px]">
 					{#if u.state === 'done'}<CircleCheck class="size-4 text-success" />{:else if u.state === 'error' || u.state === 'aborted'}<CircleX class="size-4 text-danger" />{:else}<LoaderCircle class="size-4 animate-spin text-primary" />{/if}
 					<span class="min-w-0 flex-1 truncate">{u.name}</span>
-					<div class="h-1.5 w-48 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full transition-[width] {u.state === 'error' ? 'bg-danger' : 'bg-primary'}" style="width:{pct}%"></div></div>
-					<span class="w-40 text-right font-mono text-[11px] text-muted-foreground">
+					<div class="h-1.5 w-48 overflow-hidden max-sm:w-16 rounded-full bg-muted"><div class="h-full rounded-full transition-[width] {u.state === 'error' ? 'bg-danger' : 'bg-primary'}" style="width:{pct}%"></div></div>
+					<span class="w-40 text-right font-mono text-[11px] text-muted-foreground max-sm:hidden">
 						{u.state === 'processing' ? 'OctoPrint is saving…' : u.state === 'error' ? 'failed' : u.state === 'aborted' ? 'cancelled' : u.state === 'done' ? 'done' : `${bytes(u.loaded)} / ${bytes(u.size)}`}
 					</span>
 					{#if u.state === 'uploading'}<button class="btn btn-ghost btn-icon btn-sm" title="Cancel upload" aria-label="Cancel upload" onclick={u.abort}><X /></button>{/if}
@@ -257,6 +264,65 @@
 			<p class="px-4 py-6 text-center text-xs text-danger">{error}</p>
 		{:else if !listing}
 			<div class="grid h-32 place-items-center"><LoaderCircle class="size-5 animate-spin text-muted-foreground" /></div>
+		{:else if listLayout.current}
+			<!-- Phones: one row per file, the essentials, Print at hand and the rest in a menu. -->
+			<ul class="divide-y divide-border" data-testid="file-list">
+				{#each rows as f (`${f.origin}:${f.path}`)}
+					{@const key = `${f.origin}:${f.path}`}
+					{@const inUse = busy.has(key)}
+					<li class="flex items-center gap-3 px-3 py-2.5 {current === key ? 'bg-primary-soft/50' : ''}" data-file={f.path}>
+						<button class="flex min-w-0 flex-1 items-center gap-3 text-left" onclick={() => open(f)} tabindex={f.type === 'folder' ? 0 : -1} title={f.path}>
+							{#if f.thumbnail}
+								<img src={thumbnailUrl(printer.id, f.thumbnail)} alt="" class="size-11 shrink-0 rounded-md border border-border bg-surface object-contain" loading="lazy" />
+							{:else}
+								<span class="grid size-11 shrink-0 place-items-center rounded-md border border-border bg-surface text-muted-foreground">
+									{#if f.type === 'folder'}<Folder class="size-5 text-primary" />{:else}<FileCode2 class="size-5" />{/if}
+								</span>
+							{/if}
+							<span class="min-w-0 flex-1">
+								<span class="line-clamp-2 text-[14px] leading-snug font-medium [overflow-wrap:anywhere]">{f.display}</span>
+								<span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+									{#if f.type === 'folder'}
+										{f.children?.length ?? 0} items
+									{:else}
+										{#if query.trim() && f.path.includes('/')}<span class="truncate">{f.path.split('/').slice(0, -1).join('/')}/</span>{/if}
+										{#if f.estimatedPrintTime != null}<span class="font-mono">{formatDuration(f.estimatedPrintTime)}</span>{/if}
+										<span class="font-mono">{bytes(f.size)}</span>
+										{#if f.date}<span>{ago(new Date(f.date * 1000).toISOString())}</span>{/if}
+										{#if f.prints?.lastSuccess != null}
+											<span class={f.prints.lastSuccess ? 'text-success' : 'text-danger'} title="Last print">{#if f.prints.lastSuccess}<CircleCheck class="inline size-3" />{:else}<CircleX class="inline size-3" />{/if}</span>
+										{/if}
+									{/if}
+									{#if current === key}<span class="badge badge-primary">selected</span>{/if}
+									{#if inUse && current !== key}<span class="badge badge-warning">in use</span>{/if}
+								</span>
+							</span>
+							{#if f.type === 'folder'}<ChevronRight class="size-4 shrink-0 text-muted-foreground" />{/if}
+						</button>
+						{#if canControl && f.type === 'machinecode'}
+							<button class="btn btn-primary btn-icon btn-sm" disabled={!ready} aria-label="Print {f.display}" title={ready ? `Print ${f.display}` : jobActive(s.state) ? 'A print is already running' : 'Connect the printer first'} onclick={() => printFile(printer.id, f, true)}><Play /></button>
+						{/if}
+						<ActionMenu
+							title={f.display}
+							description={f.type === 'folder' ? 'Folder' : [bytes(f.size), f.estimatedPrintTime != null ? formatDuration(f.estimatedPrintTime) : null].filter(Boolean).join(' · ')}
+							actions={[
+								{ label: 'Preview toolpath', icon: Box, hidden: !canPreview(f), onclick: () => goto(previewHref(f)) },
+								{ label: 'Print', icon: Play, hidden: !canControl || f.type !== 'machinecode', disabled: !ready, hint: ready ? undefined : jobActive(s.state) ? 'A print is already running' : 'Connect the printer first', onclick: () => printFile(printer.id, f, true) },
+								{ label: 'Load without printing', icon: FileCode2, hidden: !canControl || f.type !== 'machinecode', disabled: !ready || current === key, onclick: () => printFile(printer.id, f, false) },
+								{ label: 'Save to library', icon: Save, hidden: !(canControl && f.type === 'machinecode' && f.origin === 'local' && writableSources.length), onclick: () => (saving = f) },
+								{ label: `Delete ${f.type === 'folder' ? 'folder' : 'file'}`, icon: Trash2, danger: true, hidden: !canControl, disabled: inUse, hint: inUse ? 'In use by OctoPrint' : undefined, onclick: async () => (await deleteFile(printer.id, f)) && load() }
+							]}
+						/>
+					</li>
+				{:else}
+					<li class="px-4 py-12 text-center text-xs text-muted-foreground">
+						{#if query.trim()}Nothing matches “{query}”.{:else if canControl && origin === 'local'}No files here yet. Use Upload to add G-code.{:else}No files.{/if}
+					</li>
+				{/each}
+			</ul>
+			{#if listing.free != null}
+				<p class="border-t border-border bg-surface px-4 py-2 text-[11px] text-muted-foreground">{bytes(listing.free)} free{listing.total ? ` of ${bytes(listing.total)}` : ''} on OctoPrint</p>
+			{/if}
 		{:else}
 			<table class="w-full text-left text-[13px]">
 				<thead class="border-b border-border bg-surface text-[11px] text-muted-foreground">
@@ -293,7 +359,7 @@
 									{#if inUse && current !== key}<span class="badge badge-warning ml-1">in use</span>{/if}
 								</button>
 							</td>
-							<td class="hidden px-3 py-2 text-right font-mono text-xs text-muted-foreground tabular-nums md:table-cell">{f.type === 'folder' ? '' : bytes(f.size)}</td>
+							<td class="hidden px-3 py-2 text-right font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums md:table-cell">{f.type === 'folder' ? '' : bytes(f.size)}</td>
 							<td class="hidden px-3 py-2 text-xs text-muted-foreground lg:table-cell" title={f.date ? new Date(f.date * 1000).toLocaleString() : ''}>{f.date ? ago(new Date(f.date * 1000).toISOString()) : ''}</td>
 							<td class="hidden px-3 py-2 text-right font-mono text-xs tabular-nums md:table-cell">{f.estimatedPrintTime != null ? formatDuration(f.estimatedPrintTime) : ''}</td>
 							<td class="hidden px-3 py-2 text-right font-mono text-xs tabular-nums lg:table-cell">{f.filamentMm != null ? `${(f.filamentMm / 1000).toFixed(2)} m` : ''}</td>
@@ -307,7 +373,7 @@
 							</td>
 							<td class="px-4 py-2">
 								<div class="flex items-center justify-end gap-1">
-									{#if f.type === 'machinecode' && f.origin === 'local' && !/\.bgcode$/i.test(f.name)}
+									{#if canPreview(f)}
 										<a class="btn btn-ghost btn-icon btn-sm" href={previewHref(f)} title="Preview toolpath" aria-label="Preview {f.display}"><Box /></a>
 									{/if}
 									{#if canControl}
