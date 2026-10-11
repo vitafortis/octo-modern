@@ -42,7 +42,7 @@
 	const MIN_PASSPHRASE = 12;
 	type Category = 'printers' | 'users' | 'settings' | 'notifications' | 'queue' | 'history';
 	const CATEGORIES: { key: Category; label: string; hint: string }[] = [
-		{ key: 'printers', label: 'Printers', hint: 'OctoPrint servers with their API keys' },
+		{ key: 'printers', label: 'Printers', hint: 'OctoPrint servers with their API keys and smart plugs' },
 		{ key: 'users', label: 'Users', hint: 'roles, password hashes, SSO links, printer access' },
 		{ key: 'settings', label: 'Settings', hint: 'single sign-on, failure detection' },
 		{ key: 'notifications', label: 'Notifications', hint: 'channels with their tokens, rules, quiet hours' },
@@ -97,7 +97,7 @@
 		createdAt: string;
 		appVersion: string;
 		contains: Record<Category, boolean>;
-		printers: { id: string; name: string; target: string; hasApiKey: boolean; status: 'new' | 'update' }[];
+		printers: { id: string; name: string; target: string; hasApiKey: boolean; plug?: string | null; status: 'new' | 'update' }[];
 		users: { email: string; name: string | null; role: string; status: 'new' | 'update' | 'self' }[];
 		grants: number;
 		settings: { label: string; detail: string; status: Status }[];
@@ -362,7 +362,7 @@
 														<span class="badge {STATUS_CLASS[pr.status]} w-16 justify-center">{STATUS_LABEL[pr.status]}</span>
 														<span class="font-medium">{pr.name}</span>
 														<span class="truncate font-mono text-muted-foreground">{pr.target}</span>
-														{#if !pr.hasApiKey}<span class="badge badge-warning">no key</span>{/if}
+														{#if !pr.hasApiKey}<span class="badge badge-warning">no key</span>{/if}{#if pr.plug}<span class="badge">plug: {pr.plug}</span>{/if}
 													</li>
 												{:else}
 													<li class="text-muted-foreground">No printers</li>

@@ -2,6 +2,9 @@ import { json } from '@sveltejs/kit';
 import { BadRequest, body, handler } from '#lib/server/http.ts';
 import { controlTarget, refreshSoon } from '#lib/server/control.ts';
 import { audit } from '#lib/server/permissions.ts';
+import { ensurePrinterOn } from '#lib/server/power/service.ts';
+import { printers } from '#lib/server/octoprint/manager.ts';
+import { isConnected } from '#lib/printer.ts';
 import type { RequestHandler } from './$types';
 
 /** Selects a file, and prints it with `print: true`: `{ origin, path, print }`. */
@@ -12,6 +15,8 @@ export const POST: RequestHandler = handler(async ({ params, locals, request }) 
 	const path = typeof b.path === 'string' ? b.path.replace(/^\/+/, '') : '';
 	if (!path || path.split('/').includes('..')) throw new BadRequest('"path" is required');
 	const print = b.print === true;
+	// Smart plug with auto power-on: switch the printer on (and connect it) first.
+	if (print && !isConnected(printers.snapshot(printer.id)?.state ?? 'unknown')) await ensurePrinterOn(printer.id, { locals, reason: `to print ${path}` });
 	await client.selectFile(origin, path, print);
 	audit(locals, print ? 'job.start' : 'file.select', { printer, detail: `${origin === 'sdcard' ? 'SD: ' : ''}${path}` });
 	refreshSoon(printer.id);

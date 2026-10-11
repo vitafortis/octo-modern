@@ -94,6 +94,9 @@ test('store export restores on a fresh install with a different master key', () 
 	assert.equal(out.detect.baselines, 0);
 	assert.match(out.detect.preview.detail, /ML API http:\/\/ml\.lan:3333 · with token · 1 printer setting$/);
 
+	// Smart plug: back with its credentials, re-sealed with the new key.
+	assert.deepEqual(out.plug, { kind: 'shelly', label: 'Desk plug', secrets: { username: 'admin', password: 'plug-password' }, previewed: 'shelly' });
+
 	// Queue: jobs merged by id, the upload without its file and the printing one come back failed, tags set.
 	assert.deepEqual(out.queue.preview, { jobs: 3, added: 3, tags: 1 });
 	assert.deepEqual(out.queue.result, { added: 3, skipped: 0, tags: 1 });

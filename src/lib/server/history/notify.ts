@@ -32,3 +32,12 @@ export async function notifyQueueEvent(event: QueueEventKind, opts: { title: str
 		dedupeKey: opts.message
 	});
 }
+
+/** Smart plug events (power/service.ts). */
+export type PowerEvent = 'power.on' | 'power.off';
+export const POWER_EVENTS: PowerEvent[] = ['power.on', 'power.off'];
+
+/** A printer's smart plug switched (who did it is in `message`). No snapshot: the camera may be on the same plug. Never throws. */
+export async function notifyPower(event: PowerEvent, printer: { id: string; name: string }, message: string): Promise<void> {
+	await notify({ kind: event, printerId: printer.id, printerName: printer.name, title: `${event === 'power.on' ? 'Power on' : 'Power off'}: ${printer.name}`, message, snapshot: false, dedupeKey: `${event}:${Date.now()}` });
+}

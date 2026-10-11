@@ -56,14 +56,14 @@ interface LegacyChannel {
 	kind: 'ntfy' | 'discord' | 'webhook';
 	name: string;
 	enabled: boolean;
-	on: ('success' | 'failed' | 'cancelled' | 'failure.suspected' | 'queue.bed_clear_needed')[];
+	on: ('success' | 'failed' | 'cancelled' | 'failure.suspected' | 'queue.bed_clear_needed' | 'power.on' | 'power.off')[];
 	config: Record<string, string>;
 	sealed: string | null;
 	lastError: string | null;
 	lastSentAt: string | null;
 }
 
-const LEGACY_EVENT: Record<string, EventKind> = { success: 'print.finished', failed: 'print.failed', cancelled: 'print.cancelled', 'failure.suspected': 'failure.suspected', 'queue.bed_clear_needed': 'queue.bed_clear_needed' };
+const LEGACY_EVENT: Record<string, EventKind> = { success: 'print.finished', failed: 'print.failed', cancelled: 'print.cancelled', 'failure.suspected': 'failure.suspected', 'queue.bed_clear_needed': 'queue.bed_clear_needed', 'power.on': 'power.on', 'power.off': 'power.off' };
 
 /** The first version's settings in today's shape (pure; exported for tests). */
 export function migrateLegacy(old: { channels?: LegacyChannel[]; publicUrl?: string | null }): Stored {

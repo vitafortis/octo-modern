@@ -10,7 +10,7 @@ export function headerValue(s: string): string {
 }
 
 export function ntfyTags(m: Message): string[] {
-	const tag = m.kind === 'print.cancelled' ? 'stop_sign' : m.severity === 'success' ? 'white_check_mark' : m.severity === 'error' ? 'x' : m.severity === 'warning' ? 'warning' : 'bell';
+	const tag = m.kind === 'print.cancelled' ? 'stop_sign' : m.kind.startsWith('power.') ? 'electric_plug' : m.kind === 'queue.bed_clear_needed' ? 'broom' : m.severity === 'success' ? 'white_check_mark' : m.severity === 'error' ? 'x' : m.severity === 'warning' ? 'warning' : 'bell';
 	return [tag, 'octo-modern'];
 }
 

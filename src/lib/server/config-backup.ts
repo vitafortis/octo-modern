@@ -3,6 +3,7 @@ import { decrypt, encrypt } from './crypto.ts';
 import { BackupError } from './backup.ts';
 import { deleteKv, getApiKey, getKv, setKv, sqlite } from './store.ts';
 import { isRole, type Role } from '#lib/types.ts';
+import { getPlug, parseSettings as parsePlugSettings, savePlug } from './power/config.ts';
 import { checkPortable, exportSettings, importSettings, load as loadNotify, type PortableSettings } from './notify/settings.ts';
 import { checkQueue, exportQueue, importQueue, previewQueue, type BackupQueue } from './queue/backup.ts';
 import { checkHistory, exportHistory, importHistoryRows, previewHistory, type BackupHistory } from './history/backup.ts';
@@ -43,6 +44,8 @@ export interface BackupPrinter {
 	color: string;
 	sort: number;
 	createdAt: string;
+	/** Its smart plug, credentials decrypted (re-sealed on restore). */
+	plug?: { kind: string; label: string | null; config: Record<string, unknown>; secrets: Record<string, string>; settings: unknown } | null;
 }
 
 export interface BackupUser {
@@ -130,7 +133,8 @@ export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): Ba
 			webcamUrl: (r.webcam_url as string) ?? null,
 			color: r.color as string,
 			sort: (r.sort as number) ?? 0,
-			createdAt: r.created_at as string
+			createdAt: r.created_at as string,
+			plug: plugOf(r.id as string)
 		}));
 	}
 	if (include.users) {
@@ -157,6 +161,11 @@ export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): Ba
 		};
 	}
 	return payload;
+}
+
+function plugOf(printerId: string): BackupPrinter['plug'] {
+	const p = getPlug(printerId);
+	return p ? { kind: p.kind, label: p.label, config: p.config, secrets: { ...p.secrets } as Record<string, string>, settings: p.settings } : null;
 }
 
 export function summarizeInclude(p: BackupPayload): string {
@@ -224,7 +233,7 @@ export interface RestorePreview {
 	createdAt: string;
 	appVersion: string;
 	contains: BackupInclude;
-	printers: { id: string; name: string; target: string; hasApiKey: boolean; status: 'new' | 'update' }[];
+	printers: { id: string; name: string; target: string; hasApiKey: boolean; plug: string | null; status: 'new' | 'update' }[];
 	users: { email: string; name: string | null; role: Role; status: 'new' | 'update' | 'self' }[];
 	grants: number;
 	settings: { label: string; detail: string; status: ChangeStatus }[];
@@ -242,7 +251,7 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 	const preview: RestorePreview = {
 		...meta,
 		contains: p.include,
-		printers: (p.printers ?? []).map((s) => ({ id: s.id, name: s.name, target: s.baseUrl, hasApiKey: !!s.apiKey, status: exists.get(s.id) ? 'update' : 'new' })),
+		printers: (p.printers ?? []).map((s) => ({ id: s.id, name: s.name, target: s.baseUrl, hasApiKey: !!s.apiKey, plug: s.plug?.kind ?? null, status: exists.get(s.id) ? 'update' : 'new' })),
 		users: (p.users ?? []).map((u) => {
 			const existing = userByEmail.get(u.email) as { id: string } | undefined;
 			return { email: u.email, name: u.name, role: u.role, status: !existing ? 'new' : existing.id === actorId ? 'self' : 'update' };
@@ -343,6 +352,15 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 					result.printers.added++;
 				}
 				restoredPrinters.add(s.id);
+				if (s.plug && typeof s.plug === 'object' && typeof s.plug.kind === 'string') {
+					savePlug(s.id, {
+						kind: s.plug.kind as Parameters<typeof savePlug>[1]['kind'],
+						label: s.plug.label ?? null,
+						config: (s.plug.config ?? {}) as Parameters<typeof savePlug>[1]['config'],
+						secrets: (s.plug.secrets ?? {}) as Parameters<typeof savePlug>[1]['secrets'],
+						settings: parsePlugSettings(s.plug.settings)
+					});
+				}
 			}
 			result.changedPrinterIds = [...restoredPrinters];
 		}

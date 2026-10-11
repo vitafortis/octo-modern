@@ -33,6 +33,9 @@ if (role === 'export') {
 	store.setGrants(op.id, [mk4.id]);
 	saveSso({ issuer: 'https://id.example', clientId: 'ocm', clientSecret: 'sso-secret-value', name: 'Pocket', scopes: 'openid email', autoCreate: [], adminEmails: [], defaultRole: 'operator' });
 	store.setKv('local-login-disabled', true);
+	// A smart plug with a password on the MK4.
+	const power = await import('../../src/lib/server/power/config.ts');
+	power.savePlug(mk4.id, { kind: 'shelly', label: 'Desk plug', config: { host: 'http://plug.lan', channel: 0, generation: 2 }, secrets: { username: 'admin', password: 'plug-password' }, settings: power.parseSettings({}) });
 	// Failure detection: the ML API with its token, and one printer's settings.
 	detect.saveGlobal({ mlApiUrl: 'http://ml.lan:3333', token: 'ml-secret-token', publicUrl: 'http://octo.lan' });
 	detect.savePrinterSettings(mk4.id, { ...DETECT_DEFAULTS, enabled: true, onFailure: 'pause' });
@@ -97,6 +100,11 @@ if (role === 'export') {
 			sso: ssoConfig(),
 			localLogin: store.getKv('local-login-disabled', null),
 			detect: { ml: detect.mlConfig(), mk4: detect.printerSettings(printers.find((x) => x.name === 'mk4')!.id), baselines: (store.sqlite().prepare(`SELECT key FROM kv WHERE key LIKE 'detect:baseline:%'`).all() as unknown[]).length, preview: preview.settings.find((x: { label: string }) => x.label === 'Failure detection') },
+			plug: await (async () => {
+				const power = await import('../../src/lib/server/power/config.ts');
+				const p = power.getPlug(printers.find((x) => x.name === 'mk4')!.id);
+				return p ? { kind: p.kind, label: p.label, secrets: p.secrets, previewed: preview.printers.find((x: { name: string }) => x.name === 'mk4')?.plug } : null;
+			})(),
 			queue: {
 				preview: preview.queue,
 				result: result.queue,

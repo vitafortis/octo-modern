@@ -21,6 +21,7 @@ import { audit, canControl } from '../permissions.ts';
 import { currentState, refreshSoon } from '../control.ts';
 import { getPrinter, getUser, listPrinters } from '../store.ts';
 import { getSource } from '../library/sources.ts';
+import { power } from '../power/service.ts';
 import { sourceAllowsPrinter, withDriver } from '../library/service.ts';
 import { startSend } from '../library/send.ts';
 import { octoprintFileSize, stagedPath, stagedSize, uploadFileToPrinter } from './files.ts';
@@ -80,6 +81,30 @@ export function planDispatch(
 	return plan;
 }
 
+/** Not talking to OctoPrint's printer: what a printer whose smart plug is off looks like. */
+const UNPOWERED: (PrinterState | undefined)[] = ['disconnected', 'error', 'offline', 'unknown', undefined];
+
+/**
+ * Printers that would take a job if they were on: everything `printerReady` asks for except
+ * the connection (bed confirmed clear, not held or busy), with a queued job that fits.
+ * The dispatcher asks smart plugs with auto power-on to switch these on.
+ */
+export function wantPower(
+	paused: boolean,
+	views: PrinterView[],
+	jobs: Pick<StoredJob, 'id' | 'status' | 'printerId' | 'tags'>[],
+	allowed: (jobId: string, printerId: string) => boolean = () => true
+): { printerId: string; jobId: string }[] {
+	if (paused) return [];
+	const out: { printerId: string; jobId: string }[] = [];
+	for (const p of views) {
+		if (!p.hasApiKey || p.held || p.awaitingClear || p.busy || p.tracking || !UNPOWERED.includes(p.state)) continue;
+		const job = jobs.find((j) => j.status === 'queued' && jobFits(j, p) && allowed(j.id, p.id));
+		if (job) out.push({ printerId: p.id, jobId: job.id });
+	}
+	return out;
+}
+
 /** Same file? Compares OctoPrint paths, falling back to the base name (the printer may store it elsewhere). */
 export function sameFile(a: string | null | undefined, b: string | null | undefined): boolean {
 	if (!a || !b) return false;
@@ -89,6 +114,8 @@ export function sameFile(a: string | null | undefined, b: string | null | undefi
 // --- the dispatcher ---------------------------------------------------------------------------
 
 const STUCK_MS = 90_000;
+/** After a failed auto power-on, wait this long before trying that printer again. */
+const POWER_RETRY_MS = 5 * 60_000;
 const SEND_TIMEOUT_MS = 60 * 60_000;
 
 type Locals = { user: User | null; ip?: string };
@@ -105,11 +132,14 @@ class Dispatcher {
 	private stopObserving: (() => void) | null = null;
 	private ticking: Promise<void> | null = null;
 	private kickTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Printers being powered on for a queued job, or when that last failed. */
+	private powering = new Map<string, number>();
 	/** Set by tests to observe notifications. */
 	notify: typeof notifyQueueEvent = notifyQueueEvent;
 
 	/** Starts listening to live state and print ends. Idempotent. */
 	start() {
+		power.keepOnChecks.add(this.keepOnCheck);
 		history.start();
 		history.ended.add(this.onEnded);
 		this.stopObserving ??= printers.observe((id, e) => {
@@ -214,7 +244,22 @@ class Dispatcher {
 				} else this.idleSince.delete(v.id);
 			}
 		}
-		const plan = planDispatch(isPaused(), views, jobs, (jobId, printerId) => this.allowed(jobs.find((j) => j.id === jobId)!, printerId));
+		const allowedFn = (jobId: string, printerId: string) => this.allowed(jobs.find((j) => j.id === jobId)!, printerId);
+		// Smart plugs with auto power-on: switch on printers that have a job waiting and a clear bed.
+		for (const { printerId, jobId } of wantPower(isPaused(), views, jobs, allowedFn)) {
+			if (!power.autoOnEnabled(printerId)) continue;
+			const last = this.powering.get(printerId);
+			if (last !== undefined && (last === 0 || now - last < POWER_RETRY_MS)) continue;
+			this.powering.set(printerId, 0);
+			const job = jobs.find((j) => j.id === jobId)!;
+			void power.ensurePrinterOn(printerId, { reason: `queued job ${job.name}` }).then((r) => {
+				if (r.ready) {
+					this.powering.delete(printerId);
+					this.kick(500);
+				} else this.powering.set(printerId, Date.now());
+			});
+		}
+		const plan = planDispatch(isPaused(), views, jobs, allowedFn);
 		for (const { printerId, jobId } of plan) {
 			const v = views.find((x) => x.id === printerId)!;
 			const job = jobs.find((j) => j.id === jobId)!;
@@ -331,6 +376,14 @@ class Dispatcher {
 			message: `${p.name} finished ${record.file} (${record.result}). ${waiting.length} queued job${waiting.length === 1 ? '' : 's'} wait${waiting.length === 1 ? 's' : ''} for it; next: ${waiting[0].name}. Confirm the bed is clear in octo·modern to continue.`,
 			printer: { id: p.id, name: p.name }
 		}).catch(() => {});
+	};
+
+	/** Holds back a due auto power-off while queued jobs wait for this printer's bed to be cleared. */
+	readonly keepOnCheck = (printerId: string): string | null => {
+		const q = getQueuePrinter(printerId);
+		if (!q.awaitingClear || q.held || isPaused()) return null;
+		const n = listJobs().filter((j) => j.status === 'queued' && jobFits(j, { id: printerId, tags: q.tags }) && this.allowed(j, printerId)).length;
+		return n ? `${n} queued job${n === 1 ? '' : 's'} wait${n === 1 ? 's' : ''} for the bed to be cleared` : null;
 	};
 
 	/** Someone confirmed the bed is clear. */

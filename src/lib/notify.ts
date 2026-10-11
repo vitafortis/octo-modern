@@ -25,6 +25,7 @@ export const EVENT_KINDS = [
 	'spool.low',
 	'maintenance.due',
 	'failure.suspected',
+	'power.on',
 	'power.off'
 ] as const;
 
@@ -55,7 +56,8 @@ export const EVENT_INFO: Record<AnyKind, EventInfo> = {
 	'spool.low': { label: 'Spool low', group: 'Other features', severity: 'warning', hint: 'Filament on a spool is running low' },
 	'maintenance.due': { label: 'Maintenance due', group: 'Other features', severity: 'info', hint: 'A maintenance task is due' },
 	'failure.suspected': { label: 'Failure suspected', group: 'Other features', severity: 'error', hint: 'Failure detection: a warning or a failure, with the annotated frame' },
-	'power.off': { label: 'Power off', group: 'Other features', severity: 'info', hint: 'A printer was switched off' },
+	'power.on': { label: 'Power on', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched on' },
+	'power.off': { label: 'Power off', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched off' },
 	test: { label: 'Test', group: 'Other features', severity: 'info', hint: 'Send test' }
 };
 
