@@ -13,9 +13,12 @@ import type { PrintRecord } from '#lib/history.ts';
 export type ChannelKind = 'ntfy' | 'discord' | 'webhook';
 export const CHANNEL_KINDS: ChannelKind[] = ['ntfy', 'discord', 'webhook'];
 export type EndResult = 'success' | 'failed' | 'cancelled';
+/** Print queue events (see queue/dispatcher.ts); channels subscribe to them like to print results. */
+export type QueueEventKind = 'queue.bed_clear_needed';
+export const QUEUE_EVENTS: QueueEventKind[] = ['queue.bed_clear_needed'];
 
 export interface PrintNotification {
-	event: EndResult | 'test';
+	event: EndResult | QueueEventKind | 'test';
 	title: string;
 	message: string;
 	printer: { id: string; name: string } | null;
@@ -31,8 +34,8 @@ export interface OutgoingRequest {
 	body: string;
 }
 
-const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test' };
-const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6 };
+const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'queue.bed_clear_needed': 'Bed clear needed' };
+const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'queue.bed_clear_needed': 0x8b5cf6 };
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
 
 /** The notification for a finished print. */
@@ -76,7 +79,7 @@ export function buildRequest(kind: ChannelKind, config: Record<string, string>, 
 					title: n.title,
 					message: n.message,
 					priority: n.event === 'failed' ? 4 : 3,
-					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : 'bell', 'octo-modern'],
+					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : n.event === 'queue.bed_clear_needed' ? 'broom' : 'bell', 'octo-modern'],
 					...(n.url ? { click: n.url } : {})
 				})
 			};
@@ -145,7 +148,7 @@ interface StoredChannel {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: (EndResult | QueueEventKind)[];
 	config: Record<string, string>;
 	sealed: string | null;
 	lastError: string | null;
@@ -164,7 +167,7 @@ export interface ChannelInfo {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: (EndResult | QueueEventKind)[];
 	config: Record<string, string>;
 	secrets: Record<string, string>;
 	lastError: string | null;
@@ -212,7 +215,7 @@ export function saveChannels(raw: unknown, publicUrl: string | null): ChannelInf
 			if (!config.topic) throw new Error(`${name}: an ntfy topic is required`);
 			if (config.server && !/^https?:\/\//i.test(config.server)) throw new Error(`${name}: the ntfy server must be an http(s) URL`);
 		} else if (!/^https?:\/\//i.test(secrets.url ?? '')) throw new Error(`${name}: a webhook URL (http or https) is required`);
-		const on = Array.isArray(o.on) ? RESULTS.filter((x) => (o.on as unknown[]).includes(x)) : ['failed' as const];
+		const on = Array.isArray(o.on) ? [...RESULTS, ...QUEUE_EVENTS].filter((x) => (o.on as unknown[]).includes(x)) : ['failed' as const];
 		return {
 			id,
 			kind,
@@ -258,6 +261,36 @@ export async function notifyPrintEnded(r: PrintRecord): Promise<void> {
 	const targets = s.channels.filter((c) => c.enabled && c.on.includes(r.result as EndResult));
 	if (!targets.length) return;
 	const n = printNotification(r, s.publicUrl);
+	await Promise.all(
+		targets.map(async (c) => {
+			try {
+				await deliver(c.kind, c.config, secretsOf(c), n);
+				record(c.id, null);
+			} catch (err) {
+				record(c.id, (err as Error).message);
+				console.warn(`[octo-modern] notification via ${c.name} failed: ${(err as Error).message}`);
+			}
+		})
+	);
+}
+
+/**
+ * Notifies every enabled channel subscribed to a queue event (e.g. a printer waiting
+ * for someone to clear its bed). Never throws.
+ */
+export async function notifyQueueEvent(event: QueueEventKind, opts: { title: string; message: string; printer: { id: string; name: string } }): Promise<void> {
+	const s = load();
+	const targets = s.channels.filter((c) => c.enabled && c.on.includes(event));
+	if (!targets.length) return;
+	const n: PrintNotification = {
+		event,
+		title: opts.title,
+		message: opts.message,
+		printer: opts.printer,
+		print: null,
+		at: new Date().toISOString(),
+		url: s.publicUrl ? `${trimSlash(s.publicUrl)}/p/${encodeURIComponent(opts.printer.id)}?tab=queue` : null
+	};
 	await Promise.all(
 		targets.map(async (c) => {
 			try {

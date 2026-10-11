@@ -4,5 +4,6 @@
  */
 import './printer-status.ts';
 import './history.ts';
+import './queue.ts';
 
 export {};
