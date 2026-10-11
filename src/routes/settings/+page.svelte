@@ -3,6 +3,7 @@
 	import { KeyRound, LogIn, ShieldCheck, Plug, ArrowRight, Archive, Download, Upload, TriangleAlert, Eye, RotateCcw } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Switch from '#lib/components/Switch.svelte';
+	import DetectionSettings from '#lib/components/detect/DetectionSettings.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { refreshPrinters, toast } from '#lib/client/state.svelte.ts';
 
@@ -233,6 +234,8 @@
 				</div>
 			{/if}
 		</section>
+
+		<DetectionSettings />
 
 		<section class="card p-5">
 			<h2 class="flex items-center gap-2 text-[14px] font-semibold"><Archive class="size-4 text-primary" />Backup &amp; restore</h2>

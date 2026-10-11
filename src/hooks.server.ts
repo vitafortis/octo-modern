@@ -8,6 +8,7 @@ import { ADMIN_PAGES, adminOnlyApi, controlApi, printerIdFromPath, roleAllows } 
 import { canSee } from '#lib/server/permissions.ts';
 import { getPrinter } from '#lib/server/store.ts';
 import { authorizeStatusRequest, isStatusRoute } from '#lib/server/api-tokens.ts';
+import { FRAME_PATH } from '#lib/server/detect/frames.ts';
 
 export const init: ServerInit = () => {
 	startJobs();
@@ -41,6 +42,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const visible = publicUrl(event.url, event.request.headers);
 	event.locals.origin = visible.origin;
 	event.locals.secure = visible.protocol === 'https:';
+
+	// Failure detection: Obico's ML API fetches one webcam frame by one-time token
+	// (detect/frames.ts). No session, GET only; the token opens nothing else.
+	if (pathname.startsWith(FRAME_PATH)) {
+		event.locals.auth = 'anonymous';
+		event.locals.user = null;
+		if (method !== 'GET') return json({ message: 'Method not allowed' }, { status: 405, headers: { allow: 'GET' } });
+		const response = await resolve(event);
+		response.headers.set('X-Content-Type-Options', 'nosniff');
+		response.headers.set('Referrer-Policy', 'no-referrer');
+		return response;
+	}
 
 	// Dashboard status routes take an API token (Bearer or ?token=) and nothing else:
 	// no session, no cookies. Tokens are checked here only, so they open no other route.

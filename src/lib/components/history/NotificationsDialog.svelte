@@ -10,7 +10,7 @@
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
 	type Kind = 'ntfy' | 'discord' | 'webhook';
-	type Result = 'success' | 'failed' | 'cancelled';
+	type Result = 'success' | 'failed' | 'cancelled' | 'failure.suspected';
 	interface Channel {
 		id?: string;
 		kind: Kind;
@@ -38,7 +38,9 @@
 	const RESULTS: { value: Result; label: string }[] = [
 		{ value: 'success', label: 'Finished' },
 		{ value: 'failed', label: 'Failed' },
-		{ value: 'cancelled', label: 'Cancelled' }
+		{ value: 'cancelled', label: 'Cancelled' },
+		// Failure detection (warnings and detected failures, with the frame attached).
+		{ value: 'failure.suspected', label: 'Failure suspected' }
 	];
 
 	type Server = Omit<Channel, 'input'>;

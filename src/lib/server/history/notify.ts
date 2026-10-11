@@ -13,9 +13,11 @@ import type { PrintRecord } from '#lib/history.ts';
 export type ChannelKind = 'ntfy' | 'discord' | 'webhook';
 export const CHANNEL_KINDS: ChannelKind[] = ['ntfy', 'discord', 'webhook'];
 export type EndResult = 'success' | 'failed' | 'cancelled';
+/** What a channel can subscribe to: print outcomes, and failure detection (detect/notify.ts). */
+export type NotifyOn = EndResult | 'failure.suspected';
 
 export interface PrintNotification {
-	event: EndResult | 'test';
+	event: EndResult | 'test' | 'failure.suspected';
 	title: string;
 	message: string;
 	printer: { id: string; name: string } | null;
@@ -31,8 +33,8 @@ export interface OutgoingRequest {
 	body: string;
 }
 
-const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test' };
-const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6 };
+const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'failure.suspected': 'Failure suspected' };
+export const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'failure.suspected': 0xf97316 };
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
 
 /** The notification for a finished print. */
@@ -145,7 +147,7 @@ interface StoredChannel {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: NotifyOn[];
 	config: Record<string, string>;
 	sealed: string | null;
 	lastError: string | null;
@@ -164,7 +166,7 @@ export interface ChannelInfo {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: NotifyOn[];
 	config: Record<string, string>;
 	secrets: Record<string, string>;
 	lastError: string | null;
@@ -181,7 +183,7 @@ export function listChannels(): ChannelInfo[] {
 	});
 }
 
-const RESULTS: EndResult[] = ['success', 'failed', 'cancelled'];
+const RESULTS: NotifyOn[] = ['success', 'failed', 'cancelled', 'failure.suspected'];
 
 /**
  * Replaces the channel list. A secret field left out (or empty) keeps the stored value
@@ -229,7 +231,7 @@ export function saveChannels(raw: unknown, publicUrl: string | null): ChannelInf
 	return listChannels();
 }
 
-function record(id: string, error: string | null) {
+export function record(id: string, error: string | null) {
 	const s = load();
 	const c = s.channels.find((x) => x.id === id);
 	if (!c) return;
@@ -269,4 +271,11 @@ export async function notifyPrintEnded(r: PrintRecord): Promise<void> {
 			}
 		})
 	);
+}
+
+/** Enabled channels subscribed to `on`, with their secrets (server-only; for detect/notify.ts). */
+export function subscribedChannels(on: NotifyOn): { id: string; kind: ChannelKind; name: string; config: Record<string, string>; secrets: Record<string, string> }[] {
+	return load()
+		.channels.filter((c) => c.enabled && c.on.includes(on))
+		.map((c) => ({ id: c.id, kind: c.kind, name: c.name, config: c.config, secrets: secretsOf(c) }));
 }
