@@ -4,6 +4,7 @@
 	import { CirclePause, CirclePlay, CircleStop, OctagonX, Settings2, WifiOff } from '@lucide/svelte';
 	import StateBadge from '#lib/components/printer/StateBadge.svelte';
 	import ConnectionControls from '#lib/components/printer/ConnectionControls.svelte';
+	import PowerButtons from '#lib/components/power/PowerButtons.svelte';
 	import { TABS } from '#lib/components/printer/tabs.ts';
 	import { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { emergencyStop, jobCommand } from '#lib/client/actions.ts';
@@ -87,6 +88,7 @@
 				{:else}
 					<ConnectionControls {live} {canControl} />
 				{/if}
+				{#if canControl}<PowerButtons printerId={printer.id} name={printer.name} compact={phone.current} />{/if}
 				{#if canControl && isConnected(s.state) && !(active && phone.current)}
 					<!-- Phones: outlined rather than a solid red block next to Connect/Disconnect; it asks first either way. -->
 					<button class="btn btn-sm {phone.current ? 'border border-danger/50 text-danger' : 'btn-danger'}" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>

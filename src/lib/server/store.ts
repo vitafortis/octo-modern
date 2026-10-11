@@ -233,6 +233,23 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 			-- Per-token options: a slicer upload key's destination, a status token's bed-clear permission.
 			ALTER TABLE api_tokens ADD COLUMN options TEXT;
 		`)
+	],
+	[
+		'power-001-plugs',
+		(h) =>
+			h.exec(`
+			-- Smart plug per printer (see power/config.ts). Credentials are sealed in "secret", bound to the printer id.
+			CREATE TABLE IF NOT EXISTS power_plugs (
+				printer_id TEXT PRIMARY KEY REFERENCES printers(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL,
+				label TEXT,
+				config TEXT NOT NULL,
+				secret TEXT,
+				settings TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL
+			);
+		`)
 	]
 ];
 
