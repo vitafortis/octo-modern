@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import { page } from '$app/state';
 	import { CalendarRange, Download, FileCode2, History, ImageOff, Import, LoaderCircle, NotebookPen, RotateCcw, Search, Trash2 } from '@lucide/svelte';
 	import Dialog from '../Dialog.svelte';
 	import WeeklyChart from './WeeklyChart.svelte';
@@ -17,7 +18,9 @@
 	let { printerId, live }: { printerId?: string; live?: LivePrinter } = $props();
 
 	const PAGE = 50;
-	let filter = $state<HistoryFilter>({ printer: '', result: '', from: '', to: '', q: '' });
+	// The History page takes `?q=&printer=` (links from the Stats page).
+	const fromUrl = (k: string) => (printerId ? '' : (page.url.searchParams.get(k) ?? ''));
+	let filter = $state<HistoryFilter>({ printer: fromUrl('printer'), result: '', from: '', to: '', q: fromUrl('q') });
 	const query = $derived<HistoryFilter>({ ...filter, printer: printerId ?? filter.printer });
 	let items = $state<PrintRecord[]>([]);
 	let total = $state(0);

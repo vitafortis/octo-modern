@@ -226,6 +226,7 @@ async function main() {
 		['/library', 'library'],
 		['/library/sources', 'library sources'],
 		['/history', 'history'],
+		['/stats', 'stats'],
 		['/discover', 'discover'],
 		['/users', 'users'],
 		['/audit', 'audit'],
