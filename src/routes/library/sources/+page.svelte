@@ -195,17 +195,17 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="max-w-5xl space-y-3 px-8 pb-12">
+	<div class="max-w-5xl space-y-3 page-x pb-12">
 		{#if !sources}
 			<div class="grid h-32 place-items-center"><LoaderCircle class="size-5 animate-spin text-muted-foreground" /></div>
 		{:else if !sources.length}
 			<div class="card px-6 py-10 text-center text-[13px] text-muted-foreground">No sources yet. <button class="text-primary hover:underline" onclick={() => edit(null)}>Add the first one</button>.</div>
 		{:else}
 			{#each sources as s (s.id)}
-				<div class="card flex flex-wrap items-center gap-4 px-5 py-4" data-source={s.name}>
+				<div class="card flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 max-sm:px-4" data-source={s.name}>
 					<span class="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"><SourceIcon kind={s.kind} class="size-5" /></span>
 					<div class="min-w-0 flex-1">
-						<p class="flex items-center gap-2 text-[14px] font-semibold">
+						<p class="flex flex-wrap items-center gap-2 text-[14px] font-semibold">
 							{s.name}
 							<span class="badge">{SOURCE_KIND_LABEL[s.kind]}</span>
 							{#if s.writable}<span class="badge badge-warning">Writable</span>{:else}<span class="badge">Read-only</span>{/if}
@@ -215,8 +215,11 @@
 							{s.printers === 'all' ? 'All printers' : s.printers.length ? s.printers.map(printerName).join(', ') : 'No printers'}
 						</p>
 					</div>
+					<!-- Phones: the buttons get their own row under the description. -->
+					<div class="flex items-center gap-2 max-sm:w-full max-sm:pl-14 max-sm:[&>.btn-secondary]:flex-1">
 					<button class="btn btn-secondary btn-sm" onclick={() => edit(s)}><Pencil />Edit</button>
 					<button class="btn btn-ghost btn-icon btn-sm hover:text-danger" title="Remove {s.name}" aria-label="Remove {s.name}" onclick={() => remove(s)}><Trash2 /></button>
+					</div>
 				</div>
 			{/each}
 		{/if}
@@ -240,13 +243,13 @@
 			</div>
 			<div>
 				<span class="label">Type</span>
-				<div class="inline-flex h-9 rounded-lg border border-border bg-surface p-0.5" role="radiogroup" aria-label="Type">
+				<div class="inline-flex h-9 rounded-lg border border-border bg-surface p-0.5 max-sm:grid max-sm:h-auto max-sm:w-full max-sm:grid-cols-2" role="radiogroup" aria-label="Type">
 					{#each SOURCE_KINDS as k (k)}
 						<button
 							type="button"
 							role="radio"
 							aria-checked={form.kind === k}
-							class="flex items-center gap-1.5 rounded-md px-2.5 text-xs {form.kind === k ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
+							class="flex items-center gap-1.5 rounded-md px-2.5 text-xs touch:min-h-10 {form.kind === k ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}"
 							onclick={() => ((form.kind = k), (test = null), k === 'folder' && !form.path.startsWith('/') && (form.path = '/library'))}
 						>
 							<SourceIcon kind={k} class="size-3.5" />{SOURCE_KIND_LABEL[k]}

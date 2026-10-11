@@ -73,6 +73,7 @@ export const theme = $state<{ value: 'dark' | 'light' }>({ value: 'dark' });
 export function setTheme(value: 'dark' | 'light') {
 	theme.value = value;
 	document.documentElement.dataset.theme = value;
+	document.querySelector<HTMLMetaElement>('meta[name=theme-color]')?.setAttribute('content', value === 'light' ? '#fbfaff' : '#0b0a10');
 	try {
 		localStorage.setItem('ocm-theme', value);
 	} catch {}

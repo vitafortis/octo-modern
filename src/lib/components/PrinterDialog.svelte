@@ -76,22 +76,21 @@
 	width="max-w-xl"
 >
 	<form id="printer-form" onsubmit={save} class="space-y-4">
-		<div class="grid grid-cols-[1fr_auto] gap-3">
+		<div class="grid gap-3 sm:grid-cols-[1fr_auto]">
 			<div>
 				<label class="label" for="p-name">Name</label>
 				<input id="p-name" class="input" placeholder="Prusa MK4" bind:value={form.name} />
 			</div>
 			<div>
 				<span class="label">Color</span>
-				<div class="flex h-9 items-center gap-1.5">
+				<div class="flex h-9 items-center gap-1.5 touch:h-11 touch:gap-0">
 					{#each Object.entries(COLORS) as [key, value] (key)}
 						<button
 							type="button"
 							aria-label={key}
 							onclick={() => (form.color = key)}
-							class="size-4 rounded-full ring-offset-2 ring-offset-card transition {form.color === key ? 'ring-2 ring-foreground/60' : ''}"
-							style="background:{value}"
-						></button>
+							class="grid size-4 place-items-center rounded-full transition touch:size-10"
+						><span class="size-4 rounded-full ring-offset-2 ring-offset-card touch:size-6 {form.color === key ? 'ring-2 ring-foreground/60' : ''}" style="background:{value}"></span></button>
 					{/each}
 				</div>
 			</div>

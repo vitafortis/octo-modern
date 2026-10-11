@@ -210,19 +210,19 @@
 				<button class="truncate rounded-md px-1.5 py-0.5 hover:bg-accent {c.path === path ? 'font-medium' : 'text-muted-foreground'}" onclick={() => go(c.path)}>{c.name}</button>
 			{/each}
 		</nav>
-		<div class="flex flex-wrap items-center gap-2">
-			<div class="relative">
-				<Search class="absolute top-2 left-2.5 size-3.5 text-muted-foreground" />
-				<input class="input h-8 {compact ? 'w-44' : 'w-56'} pr-7 pl-8 text-xs" placeholder={path ? 'Search this folder…' : 'Search everything…'} aria-label="Search the library" bind:value={query} />
+		<div class="flex flex-wrap items-center gap-2 max-sm:w-full">
+			<div class="relative max-sm:min-w-0 max-sm:basis-full">
+				<Search class="absolute top-2 left-2.5 size-3.5 text-muted-foreground touch:top-3.5 touch:size-4" />
+				<input class="input h-8 {compact ? 'w-44' : 'w-56'} pr-7 pl-8 text-xs max-sm:w-full touch:pl-9" placeholder={path ? 'Search this folder…' : 'Search everything…'} aria-label="Search the library" bind:value={query} />
 				{#if searching}
-					<LoaderCircle class="absolute top-2 right-2.5 size-3.5 animate-spin text-muted-foreground" />
+					<LoaderCircle class="absolute top-2 right-2.5 size-3.5 animate-spin text-muted-foreground touch:top-3.5" />
 				{:else if query}
-					<button class="absolute top-1.5 right-1.5 rounded p-0.5 text-muted-foreground hover:text-foreground" aria-label="Clear search" onclick={() => (query = '')}><X class="size-3.5" /></button>
+					<button class="absolute top-1.5 right-1.5 rounded p-0.5 text-muted-foreground hover:text-foreground touch:top-1 touch:right-1 touch:p-2.5" aria-label="Clear search" onclick={() => (query = '')}><X class="size-3.5" /></button>
 				{/if}
 			</div>
 			<label class="flex items-center gap-1.5 text-xs text-muted-foreground">
-				<ArrowDownAZ class="size-3.5" />
-				<select class="input h-8 w-28 text-xs" bind:value={sort} aria-label="Sort by">
+				<ArrowDownAZ class="size-3.5 max-sm:hidden" />
+				<select class="input h-8 w-28 text-xs max-sm:w-[6.5rem]" bind:value={sort} aria-label="Sort by">
 					<option value="name">Name</option>
 					<option value="date">Newest</option>
 					<option value="size">Size</option>
@@ -241,16 +241,17 @@
 		{:else if !entries}
 			<div class="grid h-40 place-items-center"><LoaderCircle class="size-5 animate-spin text-muted-foreground" /></div>
 		{:else}
-			<div class="max-h-[calc(100dvh-16rem)] overflow-y-auto {compact ? 'max-h-[min(52vh,32rem)]' : ''}">
-				<table class="w-full text-left text-[13px]">
+			<div class="overflow-y-auto {compact ? 'max-h-[min(52vh,32rem)] max-sm:max-h-none' : 'lg:max-h-[calc(100dvh-16rem)]'}">
+				<!-- Below md only the name (wrapping) and the actions remain: fixed layout keeps them inside. -->
+				<table class="w-full text-left text-[13px] max-md:table-fixed">
 					<thead class="sticky top-0 z-10 border-b border-border bg-surface text-[11px] text-muted-foreground">
 						<tr>
 							<th class="px-4 py-2 font-medium">Name</th>
 							<th class="hidden px-3 py-2 text-right font-medium md:table-cell">Print time</th>
 							{#if !compact}<th class="hidden px-3 py-2 text-right font-medium lg:table-cell">Filament</th>{/if}
-							<th class="hidden px-3 py-2 text-right font-medium sm:table-cell">Size</th>
+							<th class="hidden px-3 py-2 text-right font-medium sm:table-cell max-md:w-20">Size</th>
 							{#if !compact}<th class="hidden px-3 py-2 font-medium xl:table-cell">Modified</th>{/if}
-							{#if row}<th class="px-3 py-2"><span class="sr-only">Actions</span></th>{/if}
+							{#if row}<th class="px-3 py-2 max-md:w-14"><span class="sr-only">Actions</span></th>{/if}
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-border">
@@ -273,7 +274,7 @@
 								ondblclick={() => e.type === 'file' && onopen?.(e)}
 								onkeydown={(ev) => onkeydown(ev, e)}
 							>
-								<td class="px-4 py-1.5">
+								<td class="px-4 py-1.5 max-md:px-3 max-md:py-2.5">
 									<div class="flex min-w-0 items-center gap-3">
 										{#if e.meta?.thumbnail}
 											<img src={thumbnailUrl(sourceId, e)} alt="" class="size-9 shrink-0 rounded-md border border-border bg-surface object-contain" loading="lazy" />
@@ -283,7 +284,10 @@
 											</span>
 										{/if}
 										<span class="min-w-0">
-											<span class="block truncate font-medium {printable || e.type === 'folder' ? '' : 'text-muted-foreground'}">{e.name}</span>
+											<span class="block truncate font-medium max-md:line-clamp-2 max-md:whitespace-normal max-md:[overflow-wrap:anywhere] {printable || e.type === 'folder' ? '' : 'text-muted-foreground'}" title={e.name}>{e.name}</span>
+											{#if !compact && e.type === 'file' && printable}
+												<span class="block truncate text-[11px] text-muted-foreground md:hidden">{[e.meta?.estimatedTime != null ? formatDuration(e.meta.estimatedTime) : null, bytes(e.size)].filter(Boolean).join(' · ')}</span>
+											{/if}
 											{#if query.trim() && e.path.includes('/')}
 												<span class="block truncate text-[11px] text-muted-foreground">{parentPath(e.path)}</span>
 											{:else if e.meta?.slicer && !compact}
