@@ -33,6 +33,7 @@
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
+- **AI failure detection**: while a printer prints, webcam frames go to your own [Obico](https://www.obico.io) ML container; a smoothed failure score (Obico's own algorithm) warns you with the annotated frame and can pause a print that has turned to spaghetti. A "false alarm" button quiets it for the rest of the print. See [Failure detection](#failure-detection).
 - **Audit log**: every print started, paused or cancelled, every temperature change, upload, deletion, G-code command and connection change, with who did it and from where.
 - **Single sign-on**: any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …), with accounts created automatically for matching emails.
 - **Status API for dashboards**: read-only tokens for Homepage, Glance, Uptime Kuma and Home Assistant. See [Dashboards and monitoring](#dashboards-and-monitoring).
@@ -153,9 +154,11 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Send library files to printers, save printer files to the library | ✓ | ✓ | |
 | Watch the print history and timelapses, export CSV | ✓ | ✓ | ✓ |
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
+| Watch failure detection (score, last frame) | ✓ | ✓ | ✓ |
+| Turn failure detection on/off per printer, its sensitivity and action; mark a false alarm | ✓ | ✓ | |
 | Timelapse settings, delete history entries, import history, notifications | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
-| Users, Integrations, Audit log, Settings, backups, library sources | ✓ | | |
+| Users, Integrations, Audit log, Settings (including the ML API), backups, library sources | ✓ | | |
 
 Operators and viewers see every printer, or only the ones you pick under **Users → Printers**. Printers someone hasn't been given don't exist as far as they can tell. Roles are enforced on the server for every route, not just hidden in the UI.
 
@@ -265,6 +268,37 @@ A print shorter than one poll interval, started and finished while nobody watche
 ## Timelapses
 
 The **Timelapse** tab lists OctoPrint's rendered timelapses with their thumbnails, plays them in the browser and downloads them. octo·modern relays the videos with HTTP Range requests passed through, so the player can seek without downloading the whole file, and the browser never needs to reach OctoPrint. Operators delete timelapses and render or delete unrendered ones; admins change the settings (off, on each layer change, or timed; frame rate, interval, post-roll). OctoPrint needs a webcam snapshot URL and ffmpeg to record timelapses (the `octoprint/octoprint` image has ffmpeg).
+
+## Failure detection
+
+octo·modern watches printing printers with **Obico's failure-detection model** (the "Spaghetti Detective"), running in your own `ml_api` container from [obico-server](https://github.com/TheSpaghettiDetective/obico-server). No Obico account or cloud is involved. Add the container with [`compose.detect.yaml`](compose.detect.yaml):
+
+```sh
+echo "ML_API_TOKEN=$(openssl rand -hex 32)" >> .env
+docker compose -f compose.yaml -f compose.detect.yaml up -d
+```
+
+Then, as an admin, check **Settings → Failure detection** (the ML API URL, its token, and *octo·modern's address as the ML container sees it*, usually `http://octo-modern:3000`); **Test** checks the model is loaded and does a full round trip. Turn detection on per printer in its **Failure detection** tab.
+
+**What happens while a printer prints**
+
+1. After the first minutes of the print (default 5, by OctoPrint's print time; covers the first layer), every *N* seconds (default 10, which is what Obico's thresholds are tuned for) octo·modern takes a webcam snapshot, the same way the Webcam tab does.
+2. It sends the ML API `GET /p/?img=<one-time link to that frame>`; the container downloads the frame and answers with boxes and confidences.
+3. The detections feed a smoothed **failure score**, Obico's first-generation algorithm ported as is (and tested frame by frame against obico-server's code): `p` = the sum of the frame's confidences; an exponentially weighted mean of `p` over 12 frames; minus a long-term baseline of what this camera normally looks like (a rolling mean over ~7200 frames, kept per printer across prints, so a camera that always sees a bit of "failure" doesn't cry wolf); times the sensitivity (Obico's `detective_sensitivity`, 1.0 by default). It's compared against a warning threshold of `(short-term mean − baseline) × 3.8`, clamped to 0.38–0.78, and a failure threshold of 1.75 × that. The panel shows it on Obico's 0–100 % scale: **warning** from 33 %, **failure** from 67 %.
+4. **Warning**: a `failure.suspected` notification with the frame, boxes drawn in (once; again only after 10 minutes back to normal). **Failure**, once per print, the printer's setting: *do nothing*, *notify*, or *pause the print* (OctoPrint's pause, in the audit log as `octo·modern detector`, plus a notification).
+5. **This is a false alarm** (operators) turns detection off until the print ends. Paused prints get no frames; nothing is resumed automatically.
+
+The tab shows the score over the print, the last analysed frame with its boxes, what happened (warnings, pauses, errors such as an unreachable ML API) and the settings. Channels get these notifications when **Failure suspected** is ticked under **History → Notifications**: ntfy gets the JPEG as an attachment, Discord in the embed, and a generic webhook gets the usual JSON with `"event": "failure.suspected"` plus `"detection": { "level": "warning" | "failure", "score": 0.71, "action": "notify" | "none" | "paused" | "pause-failed" }` and `"image": { "contentType": "image/jpeg", "filename": "failure.jpg", "base64": "…" }`.
+
+**The ML API, as verified in obico-server's source** (`release` branch, commit `6f93896`: `ml_api/server.py`, `ml_api/auth.py`, `ml_api/lib/onnx.py`, `backend/lib/prediction.py`, `backend/lib/failure_detection.py`):
+
+| | |
+| --- | --- |
+| `GET /p/?img=<url>` | Downloads the image from `<url>` (0.1 s connect / 5 s read timeout, up to 3 tries on connection errors and 5xx), returns `200 {"detections": [["failure", 0.83, [xc, yc, w, h]], …]}`: box centre and size in pixels of that image, every box above 0.08 confidence. `400 {"detections": [], "message": …}` when it can't fetch or decode the image, `422` without `img` |
+| `GET /hc/` | `ok` once the model has loaded (no auth) |
+| Auth | With `ML_API_TOKEN` set on the container, `/p/` needs `Authorization: Bearer <token>` and answers a bare `401` otherwise; without it, no auth |
+
+There is **no endpoint that takes image bytes** (no POST, no upload), so the frame has to be at a URL the container can reach, which is why octo·modern serves it through the one-time link (see [Security model](#security-model)). Detection state is kept in memory, so after a restart a running print's score starts over (the long-term baseline is saved).
 
 ## Dashboards and monitoring
 
@@ -389,6 +423,8 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | **A print**: how it ended, notes, print again | **History tab** of one printer |
 | ![Timelapse player](docs/screenshots/timelapse-player.png) | ![Timelapses, light](docs/screenshots/timelapse-light.png) |
 | **Timelapse**: play with seeking, download | **Timelapse settings**, light |
+| ![Failure detection](docs/screenshots/detection.png) | ![Failure detection, light](docs/screenshots/detection-light.png) |
+| **Failure detection**: score, last frame with boxes, paused by the detector | **Failure detection**, light |
 | ![Settings](docs/screenshots/settings.png) | ![Sign in](docs/screenshots/login.png) |
 | **Settings**: security and backup | **Sign in** |
 | ![Discover, light](docs/screenshots/discover-light.png) | ![Setup wizard](docs/screenshots/setup-discover.png) |
@@ -416,6 +452,9 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | `OCM_DOCKER_HOSTS` | the local socket, if present | Docker endpoints for Discover, e.g. `tcp://docker-proxy:2375,tcp://nas.lan:2375`; `none` turns it off |
 | `OCM_SELF_CONTAINER` | — | octo·modern's own container name, when Discover can't find it by hostname or IP |
 | `OCM_ARCANE_URL`, `OCM_ARCANE_API_KEY`, `OCM_ARCANE_NAME` | — | An Arcane instance for Discover (or connect one in the UI) |
+| `OCM_ML_API_URL` | — | Obico's ML API for failure detection, e.g. `http://ml_api:3333` (or set it under Settings → Failure detection, which overrides this) |
+| `OCM_ML_API_TOKEN` | — | The ml_api container's `ML_API_TOKEN`, sent as `Authorization: Bearer …` |
+| `OCM_DETECT_PUBLIC_URL` | — | octo·modern's address as the ML container reaches it, e.g. `http://octo-modern:3000` |
 | `OCM_POLL_INTERVAL_MS` | `10000` | Status poll for printers nobody is watching live |
 | `OCM_REQUEST_TIMEOUT_MS` | `10000` | Timeout for each request to OctoPrint |
 | `OCM_PUSH_THROTTLE` | `2` | Live updates arrive every 500 ms × this |
@@ -438,6 +477,7 @@ Under **Settings → Backup & restore**, admins download an encrypted file with 
 - **Sign-in** is by OIDC or by local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies tied to a user and end when the user is disabled or their role changes. Writes from another origin are rejected.
 - **Discovery** is admin-only and read-only: Docker and Arcane are only read (`GET`), a socket proxy keeps writes blocked, and fingerprinting uses unauthenticated `GET`s. Keys from the Application Keys flow are polled for by octo·modern's server and go straight into the encrypted store; the browser only sees the request's state. Subnet scans need an admin, are capped at 4096 addresses and are audited.
 - **Library sources**: NAS passwords and SFTP keys are sealed like API keys (bound to the source) and never sent to a browser. Sources are read-only unless an admin allows writing; folder sources refuse `..` and symlinks that lead outside the folder; SFTP host keys can be pinned.
+- **Failure detection frames**: Obico's ML API only accepts an image URL, so octo·modern serves each frame at `/api/detect/frame/<token>`: a 256-bit random, single-use token (only its SHA-256 is kept, in memory) that expires after 30 s and is revoked when the ML API answers. It serves that one captured frame, never the camera itself. Apart from the token-only status API, it's the only path open without a session, and only for `GET`. The ML API token is sealed like API keys.
 - **Backup files** hold decrypted API keys and the SSO client secret, re-encrypted with AES-256-GCM under a key derived from your passphrase (scrypt). Treat the file and its passphrase like a password manager export.
 
 ## Development

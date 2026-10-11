@@ -333,7 +333,8 @@ async function main() {
 	// --- browser: admin sets up the ML API --------------------------------------------------------
 	browser = await chromium.launch();
 	const newPage = async (theme, viewport = { width: 1440, height: 900 }) => {
-		const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, colorScheme: theme });
+		const phone = viewport.width < 600;
+		const ctx = await browser.newContext({ viewport, deviceScaleFactor: phone ? 2 : 1, colorScheme: theme, ...(phone ? { isMobile: true, hasTouch: true } : {}) });
 		await ctx.addInitScript((t) => localStorage.setItem('ocm-theme', t), theme);
 		const page = await ctx.newPage();
 		const errors = [];
@@ -448,7 +449,7 @@ async function main() {
 	await phone.waitForSelector('[data-testid=detection-panel]');
 	await phone.waitForFunction(() => document.querySelector('[data-testid=detection-frame]')?.complete);
 	await sleep(600);
-	await shot(phone, 'detection-mobile');
+	await shot(phone, 'mobile-detection');
 	const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 	assert.ok(overflow <= 0, `no sideways scrolling on a phone (${overflow}px)`);
 

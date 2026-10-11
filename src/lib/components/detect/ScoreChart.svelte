@@ -41,8 +41,8 @@
 		{/each}
 		<line x1={PAD.left} x2={width - PAD.right} y1={y(1 / 3)} y2={y(1 / 3)} stroke="var(--warning)" stroke-width="1" stroke-dasharray="4 4" />
 		<line x1={PAD.left} x2={width - PAD.right} y1={y(2 / 3)} y2={y(2 / 3)} stroke="var(--danger)" stroke-width="1" stroke-dasharray="4 4" />
-		<text x={width - PAD.right - 2} y={y(1 / 3) - 4} text-anchor="end" class="fill-muted-foreground text-[10px]">warning</text>
-		<text x={width - PAD.right - 2} y={y(2 / 3) - 4} text-anchor="end" class="fill-muted-foreground text-[10px]">failure</text>
+		<text x={PAD.left + 4} y={y(1 / 3) - 4} class="fill-muted-foreground text-[10px]">warning</text>
+		<text x={PAD.left + 4} y={y(2 / 3) - 4} class="fill-muted-foreground text-[10px]">failure</text>
 		{#if area}<path d={area} fill="var(--primary-soft)" />{/if}
 		{#if points.length > 1}
 			<path d={path} fill="none" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />

@@ -72,12 +72,12 @@
 		<div class="mt-4 grid gap-3 md:grid-cols-2">
 			<label>
 				<span class="label">ML API URL</span>
-				<input class="input h-11 w-full sm:h-9" placeholder="http://ml_api:3333" bind:value={form.mlApiUrl} data-testid="ml-api-url" />
+				<input class="input w-full touch:h-11" placeholder="http://ml_api:3333" bind:value={form.mlApiUrl} data-testid="ml-api-url" />
 				<span class="mt-1 block text-xs text-muted-foreground">{info.fromEnv.mlApiUrl ? 'From OCM_ML_API_URL; saving a value overrides it.' : 'Where octo·modern reaches the ml_api container.'}</span>
 			</label>
 			<div>
 				<label for="ml-api-token" class="label">ML API token</label>
-				<input id="ml-api-token" class="input h-11 w-full sm:h-9" type="password" autocomplete="off" placeholder={info.hasToken ? '•••••• (set)' : 'optional: the container’s ML_API_TOKEN'} bind:value={form.token} data-testid="ml-api-token" />
+				<input id="ml-api-token" class="input w-full touch:h-11" type="password" autocomplete="off" placeholder={info.hasToken ? '•••••• (set)' : 'optional: the container’s ML_API_TOKEN'} bind:value={form.token} data-testid="ml-api-token" />
 				<span class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
 					{#if info.hasToken && !info.fromEnv.token}
 						<label class="flex items-center gap-1.5"><input type="checkbox" bind:checked={clearToken} />Remove the saved token</label>
@@ -86,7 +86,7 @@
 			</div>
 			<label class="md:col-span-2">
 				<span class="label">octo·modern’s address, as the ML container sees it</span>
-				<input class="input h-11 w-full sm:h-9" placeholder="http://octo-modern:3000" bind:value={form.publicUrl} data-testid="detect-public-url" />
+				<input class="input w-full touch:h-11" placeholder="http://octo-modern:3000" bind:value={form.publicUrl} data-testid="detect-public-url" />
 				<span class="mt-1 block text-xs text-muted-foreground">
 					Usually the compose service name (<code class="font-mono">http://octo-modern:3000</code>), not the address in your browser ({origin}). Only
 					<code class="font-mono">/api/detect/frame/&lt;one-time token&gt;</code> is reachable without signing in.
@@ -94,12 +94,12 @@
 			</label>
 		</div>
 		<div class="mt-4 flex flex-wrap items-center gap-2">
-			<button class="btn btn-primary h-11 sm:h-9" disabled={saving || testing} onclick={save}>{#if saving}<LoaderCircle class="animate-spin" />{/if}Save</button>
-			<select class="input h-11 w-full sm:h-9 sm:w-56" aria-label="Test with" bind:value={testPrinter}>
+			<button class="btn btn-primary touch:h-11" disabled={saving || testing} onclick={save}>{#if saving}<LoaderCircle class="animate-spin" />{/if}Save</button>
+			<select class="input w-full touch:h-11 sm:w-56" aria-label="Test with" bind:value={testPrinter}>
 				<option value="">Test with a test card</option>
 				{#each printers.list as p (p.id)}<option value={p.id}>Test with {p.name}’s webcam</option>{/each}
 			</select>
-			<button class="btn btn-secondary h-11 sm:h-9" disabled={saving || testing || !form.mlApiUrl || !form.publicUrl} onclick={test} data-testid="detect-test">
+			<button class="btn btn-secondary touch:h-11" disabled={saving || testing || !form.mlApiUrl || !form.publicUrl} onclick={test} data-testid="detect-test">
 				{#if testing}<LoaderCircle class="animate-spin" />{:else}<Send />{/if}Test
 			</button>
 		</div>

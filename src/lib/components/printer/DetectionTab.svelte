@@ -89,7 +89,7 @@
 {:else}
 	<div class="space-y-4" data-testid="detection-panel" data-phase={st.phase} data-level={st.level}>
 		<section class="card flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
-			<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary"><ScanEye class="size-4" /></span>
+			<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary max-sm:hidden"><ScanEye class="size-4" /></span>
 			<div class="min-w-0 flex-1">
 				<h2 class="flex flex-wrap items-center gap-2 text-[14px] font-semibold">
 					Failure detection
@@ -99,7 +99,7 @@
 					Webcam frames go to your self-hosted Obico ML model while this printer prints; a smoothed score warns early and can pause a failing print.
 				</p>
 			</div>
-			<label class="flex min-h-11 items-center gap-2 text-[13px]">
+			<label class="flex items-center touch:min-h-11 gap-2 text-[13px]">
 				<span class="text-muted-foreground">Enabled</span>
 				<Switch label="Enable failure detection" checked={st.settings.enabled} disabled={!canControl || saving} onchange={(v) => save({ enabled: v })} />
 			</label>
@@ -164,7 +164,7 @@
 						<p class="mt-2 text-xs text-muted-foreground">First frame around {time(st.nextFrameAt)} (skipping the first {st.settings.skipMinutes} min).</p>
 					{/if}
 					{#if canDismiss}
-						<button class="btn {st.level === 'ok' ? 'btn-secondary' : 'btn-primary'} mt-3 h-11 w-full sm:h-9" onclick={falseAlarm} data-testid="false-alarm"><ThumbsUp />This is a false alarm</button>
+						<button class="btn {st.level === 'ok' ? 'btn-secondary' : 'btn-primary'} mt-3 w-full touch:h-11" onclick={falseAlarm} data-testid="false-alarm"><ThumbsUp />This is a false alarm</button>
 					{/if}
 					{#if st.dismissed}
 						<p class="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground"><Eye class="size-3.5" />Marked as a false alarm by {st.dismissed.by} {ago(new Date(st.dismissed.at).toISOString())}.</p>
@@ -178,7 +178,7 @@
 							<span class="label flex justify-between"><span>Sensitivity</span><span class="font-mono">{draft.sensitivity.toFixed(1)}</span></span>
 							<input
 								type="range"
-								class="h-11 w-full accent-[var(--primary)] sm:h-7"
+								class="h-7 w-full accent-[var(--primary)] touch:h-11"
 								min={SENSITIVITY.min}
 								max={SENSITIVITY.max}
 								step="0.1"
@@ -190,7 +190,7 @@
 						</label>
 						<label class="block">
 							<span class="label">When a failure is detected</span>
-							<select class="input h-11 w-full sm:h-9" disabled={!canControl} bind:value={draft.onFailure} onchange={() => save({ onFailure: draft!.onFailure })}>
+							<select class="input w-full touch:h-11" disabled={!canControl} bind:value={draft.onFailure} onchange={() => save({ onFailure: draft!.onFailure })}>
 								{#each ACTIONS as a (a.value)}<option value={a.value}>{a.label}</option>{/each}
 							</select>
 							<span class="mt-1 block text-xs text-muted-foreground">{ACTIONS.find((a) => a.value === draft!.onFailure)?.hint} Warnings always notify.</span>
@@ -198,11 +198,11 @@
 						<div class="grid grid-cols-2 gap-3">
 							<label>
 								<span class="label">Frame every (s)</span>
-								<input class="input h-11 w-full sm:h-9" type="number" min={INTERVAL.min} max={INTERVAL.max} disabled={!canControl} bind:value={draft.intervalS} onchange={() => save({ intervalS: Number(draft!.intervalS) })} />
+								<input class="input w-full touch:h-11" type="number" min={INTERVAL.min} max={INTERVAL.max} disabled={!canControl} bind:value={draft.intervalS} onchange={() => save({ intervalS: Number(draft!.intervalS) })} />
 							</label>
 							<label>
 								<span class="label">Skip first (min)</span>
-								<input class="input h-11 w-full sm:h-9" type="number" min={SKIP_MINUTES.min} max={SKIP_MINUTES.max} disabled={!canControl} bind:value={draft.skipMinutes} onchange={() => save({ skipMinutes: Number(draft!.skipMinutes) })} />
+								<input class="input w-full touch:h-11" type="number" min={SKIP_MINUTES.min} max={SKIP_MINUTES.max} disabled={!canControl} bind:value={draft.skipMinutes} onchange={() => save({ skipMinutes: Number(draft!.skipMinutes) })} />
 							</label>
 						</div>
 						{#if !canControl}<p class="text-xs text-muted-foreground">Operators and admins can change these.</p>{/if}
