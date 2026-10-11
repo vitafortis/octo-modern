@@ -10,8 +10,25 @@ import { notify } from '../notify/service.ts';
 export { notify } from '../notify/service.ts';
 export type { NotifyEvent } from '../notify/types.ts';
 
+/** Print queue events (see queue/dispatcher.ts); rules route them like any other kind. */
+export type QueueEventKind = 'queue.bed_clear_needed';
+export const QUEUE_EVENTS: QueueEventKind[] = ['queue.bed_clear_needed'];
+
 /** Notifies the channels whose rules want this print's outcome. Never throws. */
 export async function notifyPrintEnded(r: PrintRecord): Promise<void> {
 	const ev = endEvent(r);
 	if (ev) await notify(ev);
+}
+
+/** A queue event (e.g. a printer waiting for someone to clear its bed), with a webcam snapshot. Never throws. */
+export async function notifyQueueEvent(event: QueueEventKind, opts: { title: string; message: string; printer: { id: string; name: string } }): Promise<void> {
+	await notify({
+		kind: event,
+		printerId: opts.printer.id,
+		printerName: opts.printer.name,
+		title: opts.title,
+		message: opts.message,
+		link: `/p/${encodeURIComponent(opts.printer.id)}?tab=queue`,
+		dedupeKey: opts.message
+	});
 }

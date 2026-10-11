@@ -40,19 +40,20 @@
 	// --- backup & restore ------------------------------------------------------
 
 	const MIN_PASSPHRASE = 12;
-	type Category = 'printers' | 'users' | 'settings' | 'notifications' | 'history';
+	type Category = 'printers' | 'users' | 'settings' | 'notifications' | 'queue' | 'history';
 	const CATEGORIES: { key: Category; label: string; hint: string }[] = [
 		{ key: 'printers', label: 'Printers', hint: 'OctoPrint servers with their API keys' },
 		{ key: 'users', label: 'Users', hint: 'roles, password hashes, SSO links, printer access' },
 		{ key: 'settings', label: 'Settings', hint: 'single sign-on, failure detection' },
 		{ key: 'notifications', label: 'Notifications', hint: 'channels with their tokens, rules, quiet hours' },
+		{ key: 'queue', label: 'Print queue', hint: 'jobs and printer tags; files uploaded to the queue aren’t included' },
 		{ key: 'history', label: 'Print history', hint: 'every entry; can make the file large' }
 	];
 
 	let exp = $state({
 		passphrase: '',
 		confirm: '',
-		include: { printers: true, users: true, settings: true, notifications: true, history: false } as Record<Category, boolean>,
+		include: { printers: true, users: true, settings: true, notifications: true, queue: true, history: false } as Record<Category, boolean>,
 		historyImages: false
 	});
 	let exporting = $state(false);
@@ -102,6 +103,7 @@
 		settings: { label: string; detail: string; status: Status }[];
 		notifications: { channels: { name: string; type: string; status: 'new' | 'update' }[]; rules: number; replaces: number } | null;
 		history: { total: number; added: number; images: boolean } | null;
+		queue: { jobs: number; added: number; tags: number } | null;
 	};
 	type Result = {
 		printers: { added: number; updated: number };
@@ -110,13 +112,14 @@
 		settings: boolean;
 		notifications: boolean;
 		history: { added: number; skipped: number };
+		queue: { added: number; skipped: number; tags: number };
 	};
 
-	const NONE: Record<Category, boolean> = { printers: false, users: false, settings: false, notifications: false, history: false };
+	const NONE: Record<Category, boolean> = { printers: false, users: false, settings: false, notifications: false, queue: false, history: false };
 	let restoreFile = $state<File | null>(null);
 	let restorePass = $state('');
 	let preview = $state<Preview | null>(null);
-	let choose = $state<Record<Category, boolean>>({ printers: true, users: true, settings: true, notifications: true, history: true });
+	let choose = $state<Record<Category, boolean>>({ printers: true, users: true, settings: true, notifications: true, queue: true, history: true });
 	let restoring = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 
@@ -163,6 +166,7 @@
 				choose.users && `${r.users.added} users added, ${r.users.updated} updated`,
 				choose.settings && 'settings replaced',
 				choose.notifications && r.notifications && 'notifications replaced',
+				choose.queue && r.queue && `${r.queue.added} queued jobs added`,
 				choose.history && `${r.history.added} history entries added`
 			].filter(Boolean);
 			toast('success', 'Backup restored', parts.join(' · '));
@@ -391,6 +395,12 @@
 													</li>
 												{/each}
 											</ul>
+										</td>
+									{:else if c.key === 'queue' && p.queue}
+										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.queue.jobs} jobs<br />{p.queue.tags} printer tags</td>
+										<td class="px-4 py-3 text-xs">
+											<span class="badge {p.queue.added ? 'badge-success' : ''}">add {p.queue.added}</span>
+											<span class="ml-2 text-muted-foreground">{p.queue.jobs - p.queue.added} already here (kept); printer tags replaced</span>
 										</td>
 									{:else if c.key === 'history' && p.history}
 										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.history.total} entries<br />{p.history.images ? 'with pictures' : 'no pictures'}</td>

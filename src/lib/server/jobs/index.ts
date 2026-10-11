@@ -6,5 +6,6 @@ import './printer-status.ts';
 import './history.ts';
 import './notify.ts';
 import './detect.ts';
+import './queue.ts';
 
 export {};

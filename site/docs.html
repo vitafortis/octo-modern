@@ -92,6 +92,8 @@
 								<li><a href="#discover">Discover</a></li>
 								<li><a href="#roles">Users and roles</a></li>
 								<li><a href="#configuration">Configuration</a></li>
+								<li><a href="#queue">Print queue</a></li>
+								<li><a href="#slicers">Slicer uploads</a></li>
 								<li><a href="#status-api">Status API</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
 								<li><a href="#detection">Failure detection</a></li>
@@ -168,6 +170,8 @@
 								<tr><td>Set temperatures, connect/disconnect, G-code, emergency stop</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Upload, print and delete files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Turn failure detection on per printer, sensitivity, action; mark a false alarm</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Add, reorder and remove queued jobs, confirm a bed is clear</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Printer tags, slicer upload keys</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Add, edit and remove printers (and their API keys)</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Users, Integrations, Audit log, Settings (including the ML API), backups</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 							</tbody>
@@ -216,6 +220,33 @@
 						</table>
 					</section>
 
+					<section id="queue">
+						<h2>Print queue</h2>
+						<p><strong>Queue</strong> in the sidebar holds prints waiting for a printer; each printer's <strong>Queue</strong> tab shows what it could take. Add jobs from the library, a printer's files (they print on that printer) or an upload, or let a slicer add them.</p>
+						<ul>
+							<li><strong>Which printer</strong>: one printer, or <em>any compatible printer</em>, meaning one whose tags include all the job's tags. Admins tag printers on the Queue page (<code>0.4mm</code>, <code>petg</code>, <code>bed:300</code>, …).</li>
+							<li><strong>Order and copies</strong>: drag jobs, or use the up/down arrows (the ⋯ menu on phones). Copies print one after another.</li>
+							<li><strong>Bed is clear</strong>: after every print the printer waits until someone confirms its bed is clear, on the overview card, the printer page or the Queue page, or with <code>POST /api/status/&lt;id&gt;/bed-clear</code> and a token allowed to. Channels subscribed to <em>Queue: clear the bed</em> get a <code>queue.bed_clear_needed</code> notification.</li>
+							<li><strong>Failures</strong>: a failed or cancelled queued print marks the job failed (requeue it with one click) and pauses that printer's queue. <strong>Pause queue</strong> stops all new starts.</li>
+						</ul>
+						<p>Files are transferred when the printer doesn't already have them, then printed; each run links to its print history entry. Everything is stored, so restarts pick up where they left off.</p>
+					</section>
+
+					<section id="slicers">
+						<h2>Slicer uploads</h2>
+						<p>octo·modern speaks enough of OctoPrint's API (<code>/api/version</code>, <code>/api/server</code>, <code>/api/files/local</code> uploads) for slicers to upload to it. It lives under <code>/octoprint</code>, apart from octo·modern's own <code>/api</code>, so the address to enter is:</p>
+						<div class="code">
+							<div class="code-head"><span>slicer host</span></div>
+							<pre><code>http://octo-modern.lan:3040/octoprint</code></pre>
+						</div>
+						<p>Create a key under <strong>Integrations → Slicer upload keys</strong> and choose where its uploads go: the print queue (a printer, or any printer with given tags), a folder in a writable library source, or one printer (optionally allowed to start the print). The key is an <code>ocm_…</code> token that opens <code>/octoprint/api/…</code> only.</p>
+						<ul>
+							<li><strong>PrusaSlicer</strong>: Physical printer → Host type <em>OctoPrint</em>, URL as above, API key = the key → Test.</li>
+							<li><strong>OrcaSlicer</strong>: printer Connection → Host type <em>Octo/Klipper</em>, URL as above, API key = the key → Test.</li>
+							<li><strong>Cura</strong>: install <em>OctoPrint Connection</em> from the Marketplace → Preferences → Printers → Connect OctoPrint → Add: host <code>octo-modern.lan</code>, port <code>3040</code>, path <code>/octoprint/</code>, then paste the key (without <code>ocm_</code> if Cura refuses the underscore).</li>
+						</ul>
+					</section>
+
 					<section id="status-api">
 						<h2>Status API for dashboards</h2>
 						<p>Create a token under <strong>Integrations → Status API tokens</strong> (admins). It's shown once; only its SHA-256 is stored. Tokens open these routes only, and only for <code>GET</code>.</p>
@@ -227,6 +258,7 @@
 								<tr><td class="var"><code>GET /api/status</code></td><td data-label="Returns"><code>{ printers, online, printing, checkedAt, items: [...] }</code></td></tr>
 								<tr><td class="var"><code>GET /api/status/&lt;id&gt;</code></td><td data-label="Returns">One item; add <code>?strict=1</code> to get HTTP 503 while it's unreachable or in an error state</td></tr>
 								<tr><td class="var"><code>GET /api/status/badge/&lt;id&gt;.svg</code></td><td data-label="Returns">A shields-style badge, e.g. <code>printing 42%</code></td></tr>
+								<tr><td class="var"><code>POST /api/status/&lt;id&gt;/bed-clear</code></td><td data-label="Returns">Confirms the bed is clear for the print queue; only tokens created with <strong>May confirm bed clear</strong></td></tr>
 							</tbody>
 						</table>
 						<p style="margin-top: 16px">Send the token as <code>Authorization: Bearer ocm_…</code>. Widgets that can't set headers can use <code>?token=ocm_…</code>; give such a widget its own token.</p>

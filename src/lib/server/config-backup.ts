@@ -4,6 +4,7 @@ import { BackupError } from './backup.ts';
 import { deleteKv, getApiKey, getKv, setKv, sqlite } from './store.ts';
 import { isRole, type Role } from '#lib/types.ts';
 import { checkPortable, exportSettings, importSettings, load as loadNotify, type PortableSettings } from './notify/settings.ts';
+import { checkQueue, exportQueue, importQueue, previewQueue, type BackupQueue } from './queue/backup.ts';
 import { checkHistory, exportHistory, importHistoryRows, previewHistory, type BackupHistory } from './history/backup.ts';
 
 /**
@@ -20,6 +21,8 @@ export interface BackupInclude {
 	notifications: boolean;
 	/** The print history (can be large). */
 	history: boolean;
+	/** Print queue jobs and printer tags (not the files uploaded to the queue). */
+	queue: boolean;
 }
 
 /** Export-only: put the history's pictures in too (bigger file). */
@@ -27,7 +30,7 @@ export interface SnapshotOptions {
 	historyImages?: boolean;
 }
 
-export const NO_CATEGORIES: BackupInclude = { printers: false, users: false, settings: false, notifications: false, history: false };
+export const NO_CATEGORIES: BackupInclude = { printers: false, users: false, settings: false, notifications: false, history: false, queue: false };
 
 export interface BackupPrinter {
 	id: string;
@@ -99,6 +102,7 @@ export interface BackupPayload {
 	settings?: BackupSettings;
 	notifications?: PortableSettings;
 	history?: BackupHistory;
+	queue?: BackupQueue;
 }
 
 type Row = Record<string, unknown>;
@@ -115,6 +119,7 @@ export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): Ba
 	const payload: BackupPayload = { include };
 	if (include.notifications) payload.notifications = exportSettings();
 	if (include.history) payload.history = exportHistory(!!opts.historyImages);
+	if (include.queue) payload.queue = exportQueue();
 	if (include.printers) {
 		payload.printers = (h.prepare('SELECT * FROM printers ORDER BY sort, name COLLATE NOCASE').all() as Row[]).map((r) => ({
 			id: r.id as string,
@@ -161,6 +166,7 @@ export function summarizeInclude(p: BackupPayload): string {
 	if (p.settings) parts.push(`settings${p.settings.sso ? ' (SSO)' : ''}`);
 	if (p.notifications) parts.push(`${p.notifications.channels.length} notification channels`);
 	if (p.history) parts.push(`${p.history.prints.length} history entries${p.history.images ? ' with pictures' : ''}`);
+	if (p.queue) parts.push(`${p.queue.jobs.length} queued jobs`);
 	return parts.join(', ') || 'nothing';
 }
 
@@ -200,12 +206,13 @@ export function validatePayload(raw: unknown): BackupPayload {
 	try {
 		if (p.notifications !== undefined) checkPortable(p.notifications);
 		if (p.history !== undefined) checkHistory(p.history);
+		if (p.queue !== undefined) checkQueue(p.queue);
 	} catch (err) {
 		throw new BackupError(`Damaged backup: ${(err as Error).message}`);
 	}
 	return {
 		...p,
-		include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings, notifications: !!inc.notifications && !!p.notifications, history: !!inc.history && !!p.history }
+		include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings, notifications: !!inc.notifications && !!p.notifications, history: !!inc.history && !!p.history, queue: !!inc.queue && !!p.queue }
 	};
 }
 
@@ -223,6 +230,7 @@ export interface RestorePreview {
 	settings: { label: string; detail: string; status: ChangeStatus }[];
 	notifications: { channels: { name: string; type: string; status: 'new' | 'update' }[]; rules: number; replaces: number } | null;
 	history: { total: number; added: number; images: boolean } | null;
+	queue: { jobs: number; added: number; tags: number } | null;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -242,7 +250,8 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 		grants: p.grants?.length ?? 0,
 		settings: [],
 		notifications: null,
-		history: null
+		history: null,
+		queue: p.queue ? previewQueue(p.queue) : null
 	};
 	if (p.notifications) {
 		const here = loadNotify();
@@ -291,6 +300,7 @@ export interface RestoreResult {
 	settings: boolean;
 	notifications: boolean;
 	history: { added: number; skipped: number };
+	queue: { added: number; skipped: number; tags: number };
 	/** Printers whose live connections should be rebuilt. */
 	changedPrinterIds: string[];
 }
@@ -309,6 +319,7 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 		settings: false,
 		notifications: false,
 		history: { added: 0, skipped: 0 },
+		queue: { added: 0, skipped: 0, tags: 0 },
 		changedPrinterIds: []
 	};
 	const now = new Date().toISOString();
@@ -416,6 +427,10 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
 			result.history = importHistoryRows(p.history, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
 		}
+		if (choice.queue && p.queue) {
+			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
+			result.queue = importQueue(p.queue, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
+		}
 		h.exec('COMMIT');
 	} catch (err) {
 		h.exec('ROLLBACK');
@@ -431,6 +446,7 @@ export function summarizeResult(r: RestoreResult): string {
 	if (r.grants) parts.push(`${r.grants} grants`);
 	if (r.settings) parts.push('settings replaced');
 	if (r.notifications) parts.push('notifications replaced');
+	if (r.queue.added || r.queue.skipped || r.queue.tags) parts.push(`queue +${r.queue.added} (had ${r.queue.skipped}), ${r.queue.tags} printer tags`);
 	if (r.history.added || r.history.skipped) parts.push(`history +${r.history.added} (had ${r.history.skipped})`);
 	return parts.join('; ') || 'nothing changed';
 }

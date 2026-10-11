@@ -15,7 +15,7 @@ const { hashPassword, verifyPassword } = await import('../../src/lib/server/cryp
 
 const PASSPHRASE = 'correct horse battery staple';
 const FAST = { N: 1024, r: 8, p: 1 };
-const ALL = { printers: true, users: true, settings: true, notifications: true, history: true };
+const ALL = { printers: true, users: true, settings: true, notifications: true, history: true, queue: true };
 const notify = await import('../../src/lib/server/notify/settings.ts');
 const hs = await import('../../src/lib/server/history/store.ts');
 const detect = await import('../../src/lib/server/detect/settings.ts');
@@ -44,6 +44,15 @@ if (role === 'export') {
 	const one = hs.insertPrint({ printerId: mk4.id, printerName: 'mk4', file: 'benchy.gcode', path: 'benchy.gcode', origin: 'local', startedAt: '2026-10-01T10:00:00.000Z', endedAt: '2026-10-01T11:00:00.000Z', result: 'success', durationS: 3600, userId: op.id, startedBy: 'op' })!;
 	hs.setThumbnail(one, new Uint8Array([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]), 'image/jpeg');
 	hs.insertPrint({ printerId: mk4.id, printerName: 'mk4', file: 'gear.gcode', path: 'parts/gear.gcode', origin: 'local', startedAt: '2026-10-02T10:00:00.000Z', result: 'printing', userId: op.id, startedBy: 'op' });
+	// Queue: a queued library job, an upload (its file stays behind), a printing one with a run, MK4 tags.
+	const job = store.sqlite().prepare(
+		`INSERT INTO queue_jobs (id, position, name, source_kind, source_id, source_path, tags, copies, done, status, created_by, created_by_label, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, '["pla"]', 2, 0, ?, ?, 'op', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z')`
+	);
+	job.run('11111111-1111-1111-1111-111111111111', 1, 'cube.gcode', 'library', 'src-1', 'cube.gcode', 'queued', op.id);
+	job.run('22222222-2222-2222-2222-222222222222', 2, 'upload.gcode', 'upload', null, 'upload.gcode', 'queued', op.id);
+	job.run('33333333-3333-3333-3333-333333333333', 3, 'busy.gcode', 'library', 'src-1', 'busy.gcode', 'printing', op.id);
+	store.sqlite().prepare(`INSERT INTO queue_runs (job_id, printer_id, printer_name, result, started_at) VALUES (?, ?, 'mk4', 'printing', '2026-10-01T01:00:00Z')`).run('33333333-3333-3333-3333-333333333333', mk4.id);
+	store.sqlite().prepare(`INSERT INTO queue_printers (printer_id, tags, updated_at) VALUES (?, '["pla","0.4"]', '2026-10-01T00:00:00Z')`).run(mk4.id);
 	const env = await encodeBackup(cb.snapshot(ALL, { historyImages: true }), PASSPHRASE, FAST);
 	writeFileSync(file, JSON.stringify(env));
 	const small = JSON.stringify(cb.snapshot({ ...ALL, history: true }, { historyImages: false })).includes('"thumbnail"');
@@ -88,6 +97,13 @@ if (role === 'export') {
 			sso: ssoConfig(),
 			localLogin: store.getKv('local-login-disabled', null),
 			detect: { ml: detect.mlConfig(), mk4: detect.printerSettings(printers.find((x) => x.name === 'mk4')!.id), baselines: (store.sqlite().prepare(`SELECT key FROM kv WHERE key LIKE 'detect:baseline:%'`).all() as unknown[]).length, preview: preview.settings.find((x: { label: string }) => x.label === 'Failure detection') },
+			queue: {
+				preview: preview.queue,
+				result: result.queue,
+				jobs: store.sqlite().prepare('SELECT name, status, error, created_by FROM queue_jobs ORDER BY position').all(),
+				runs: (store.sqlite().prepare('SELECT count(*) AS n FROM queue_runs').get() as { n: number }).n,
+				tags: store.sqlite().prepare('SELECT tags FROM queue_printers').all()
+			},
 			notify: {
 				channels: ns.channels.map((c) => ({ name: c.name, type: c.type, config: c.config, quiet: c.quiet, secrets: notify.secretsOf(c) })),
 				rules: ns.rules.map((r) => ({ name: r.name, printers: r.printers, events: r.events, channels: r.channels.map((id) => ns.channels.find((c) => c.id === id)?.name) })),

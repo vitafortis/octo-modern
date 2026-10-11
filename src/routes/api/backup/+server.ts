@@ -15,7 +15,7 @@ export const POST: RequestHandler = handler(async ({ request, locals }) => {
 	}
 	const inc = body.include && typeof body.include === 'object' ? body.include : {};
 	// The print history can be large: only when asked for (pictures even more so).
-	const include = { printers: inc.printers !== false, users: inc.users !== false, settings: inc.settings !== false, notifications: inc.notifications !== false, history: inc.history === true };
+	const include = { printers: inc.printers !== false, users: inc.users !== false, settings: inc.settings !== false, notifications: inc.notifications !== false, history: inc.history === true, queue: inc.queue !== false };
 	if (!Object.values(include).some(Boolean)) throw new BadRequest('Choose at least one thing to back up');
 	let payload: BackupPayload;
 	try {

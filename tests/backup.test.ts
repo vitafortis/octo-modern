@@ -94,6 +94,21 @@ test('store export restores on a fresh install with a different master key', () 
 	assert.equal(out.detect.baselines, 0);
 	assert.match(out.detect.preview.detail, /ML API http:\/\/ml\.lan:3333 · with token · 1 printer setting$/);
 
+	// Queue: jobs merged by id, the upload without its file and the printing one come back failed, tags set.
+	assert.deepEqual(out.queue.preview, { jobs: 3, added: 3, tags: 1 });
+	assert.deepEqual(out.queue.result, { added: 3, skipped: 0, tags: 1 });
+	assert.deepEqual(
+		out.queue.jobs.map((j: { name: string; status: string; error: string | null }) => [j.name, j.status, j.error]),
+		[
+			['cube.gcode', 'queued', null],
+			['upload.gcode', 'failed', 'Its uploaded file isn’t in the backup: upload it again'],
+			['busy.gcode', 'failed', 'Was printing when the backup was made']
+		]
+	);
+	assert.ok(out.queue.jobs.every((j: { created_by: string }) => j.created_by === out.operator.id), 'creators mapped to local users');
+	assert.equal(out.queue.runs, 1);
+	assert.deepEqual(out.queue.tags, [{ tags: '["pla","0.4"]' }]);
+
 	// Notifications: secrets re-sealed with the new key, rules still point at their printer and channel.
 	assert.deepEqual(out.notify.channels, [
 		{ name: 'Team chat', type: 'telegram', config: { chatId: '-1001' }, quiet: { enabled: true, start: '22:00', end: '07:00', days: [], allowCritical: true }, secrets: { botToken: '123:telegram-secret' } }

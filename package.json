@@ -19,7 +19,8 @@
 		"e2e:history": "node scripts/e2e/history.mjs",
 		"e2e:notify": "node scripts/e2e/notify.mjs",
 		"e2e:mobile": "node scripts/e2e/mobile.mjs",
-		"e2e:detect": "node scripts/e2e/detect.mjs"
+		"e2e:detect": "node scripts/e2e/detect.mjs",
+		"e2e:queue": "node scripts/e2e/queue.mjs"
 	},
 	"devDependencies": {
 		"@fontsource-variable/geist": "^5.3.0",
