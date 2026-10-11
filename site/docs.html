@@ -100,6 +100,7 @@
 								<li><a href="#notifications">Notifications</a></li>
 								<li><a href="#detection">Failure detection</a></li>
 								<li><a href="#spools">Spools, costs and maintenance</a></li>
+								<li><a href="#stats">Stats</a></li>
 								<li><a href="#preview">G-code preview</a></li>
 								<li><a href="#cameras">Camera wall</a></li>
 								<li><a href="#images">Images</a></li>
@@ -396,6 +397,19 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 						</ul>
 						<p><strong>Cost per print</strong> (admins set the prices): filament by weight, at the spool's price from Spoolman or a price per kg per material, plus electricity (print time × the printer's power draw × the price per kWh). It's on every history entry, in the History stats per printer and in the CSV export (<code>filament_g</code>, <code>material</code>, <code>cost_filament</code>, <code>cost_energy</code>, <code>cost_total</code>); earlier prints are costed too, and <strong>Recalculate history</strong> applies new prices.</p>
 						<p><strong>Maintenance</strong>: per-printer tasks every so many print hours, kg of filament or days, counted from the print history since they were last done. Nozzle change, belt tension, lubrication, bed cleaning and e-steps are offered. Tasks are <em>due soon</em> at 90 % and <em>overdue</em> past their interval; the sidebar counts overdue ones and <code>maintenance.due</code> is sent once. <strong>Done</strong> logs who, when and your notes, and restarts the count.</p>
+					<section id="stats">
+						<h2>Stats</h2>
+						<p>The <strong>Stats</strong> page sums up the print history over the last 30 days, 90 days, 12 months or all time, for every printer or one.</p>
+						<ul>
+							<li><strong>Tiles</strong>: print hours, finished prints, success rate, filament in metres and grams, cost (only when prints have one) and the average print.</li>
+							<li><strong>Charts</strong>: print hours per day, week or month stacked by printer, and successes, failures and cancels over the same buckets. Hover or tap a column for its numbers; screen readers get them as a table.</li>
+							<li><strong>Tables</strong>: most-printed files (each opens the History filtered to it), why prints failed or were cancelled, and utilisation, the share of the range each printer spent printing.</li>
+							<li><strong>Filament</strong> per material, and per Spoolman spool when Spoolman is set up.</li>
+							<li><strong>Export CSV</strong>: the prints of the range, with the History export's columns.</li>
+						</ul>
+						<p>Everyone sees only the printers they have access to. Buckets follow the browser's time zone (sent as <code>tz</code>), so months and days match your calendar across daylight-saving changes; without one, the server's <code>TZ</code> is used. The API is <code>GET /api/stats?range=30d|90d|12m|all&amp;printer=&lt;id&gt;&amp;tz=&lt;zone&gt;</code>.</p>
+					</section>
+
 					<section id="preview">
 						<h2>G-code preview</h2>
 						<p>The <strong>Preview</strong> tab on a printer shows the job's toolpath; the cube button next to a file in <strong>Files</strong> or the <strong>Library</strong> previews any other. Drag to orbit (right-drag or Shift to pan), scroll or pinch to zoom, double-tap to reset; the slider and ↑/↓ change the layer. <strong>Layer</strong> shows one layer from above; <strong>Travel</strong> adds moves without extrusion; the legend hides feature types.</p>

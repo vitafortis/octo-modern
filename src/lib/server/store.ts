@@ -342,6 +342,15 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 			);
 			CREATE INDEX IF NOT EXISTS maintenance_log_printer ON maintenance_log(printer_id, id DESC);
 		`)
+	],
+	[
+		'stats-001',
+		(h) =>
+			h.exec(`
+			-- Stats page (history/report.ts): a covering index, so aggregating a time range reads
+			-- the index alone instead of each row (rows carry the thumbnail BLOBs).
+			CREATE INDEX IF NOT EXISTS prints_stats ON prints(started_at, printer_id, result, duration_s, filament_mm, filament_g, material, cost_filament, cost_energy, ended_at, reason);
+		`)
 	]
 ];
 
