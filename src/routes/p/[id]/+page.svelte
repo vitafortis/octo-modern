@@ -12,6 +12,7 @@
 	import { registerPrinter } from '#lib/client/palette.svelte.ts';
 	import { editor, isAdmin, printers } from '#lib/client/state.svelte.ts';
 	import { isConnected, jobActive, progressPercent } from '#lib/printer.ts';
+	import { phone } from '#lib/client/viewport.svelte.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -37,51 +38,68 @@
 	const s = $derived(live.snapshot);
 	const pct = $derived(progressPercent(s));
 	const color = $derived(COLORS[printer.color] ?? COLORS.violet);
+	const active = $derived(canControl && jobActive(s.state));
+
+	// Keep the open tab in view in the (horizontally scrolling) tab strip on phones.
+	let strip = $state<HTMLElement>();
+	$effect(() => {
+		void tab.id;
+		strip?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+	});
 </script>
+
+{#snippet jobButtons(big: boolean)}
+	{#if s.state === 'paused'}
+		<button class="btn btn-secondary {big ? 'flex-1' : 'btn-sm'}" onclick={() => jobCommand(printer.id, 'resume')}><CirclePlay />Resume</button>
+	{:else}
+		<button class="btn btn-secondary {big ? 'flex-1' : 'btn-sm'}" disabled={s.state !== 'printing'} onclick={() => jobCommand(printer.id, 'pause')}><CirclePause />Pause</button>
+	{/if}
+	<button class="btn btn-secondary {big ? 'flex-1' : 'btn-sm'} border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />{big ? 'Cancel' : 'Cancel print'}</button>
+{/snippet}
 
 <svelte:head><title>{pct != null ? `${Math.round(pct)}% · ` : ''}{printer.name} · octo·modern</title></svelte:head>
 
 <div class="flex h-full flex-col overflow-hidden">
 	<header class="relative shrink-0 border-b border-border">
 		<div class="glow-top pointer-events-none absolute inset-x-0 -top-10 h-48 opacity-70"></div>
-		<div class="relative flex flex-wrap items-center gap-x-4 gap-y-3 px-8 pt-6 pb-4">
-			<span class="size-2.5 rounded-full" style="background:{color}; box-shadow:0 0 10px {color}"></span>
-			<div class="min-w-0">
+		<div class="page-x relative flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 pb-2 short:py-1 lg:gap-y-3 lg:pt-6 lg:pb-4">
+			<span class="hidden size-2.5 rounded-full lg:block" style="background:{color}; box-shadow:0 0 10px {color}"></span>
+			<div class="min-w-0 flex-1 lg:flex-none">
 				<div class="flex items-center gap-2.5">
-					<h1 class="truncate text-2xl font-semibold tracking-tight">{printer.name}</h1>
+					<!-- Below lg the top bar already names the printer. -->
+					<h1 class="hidden truncate text-2xl font-semibold tracking-tight lg:block">{printer.name}</h1>
 					<StateBadge state={s.state} text={s.stateText} />
 				</div>
-				<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+				<p class="mt-0.5 truncate font-mono text-xs text-muted-foreground short:hidden">
 					{printer.baseUrl.replace(/^https?:\/\//, '')}{#if s.version}{' · '}OctoPrint {s.version}{/if}
 				</p>
 			</div>
-			<div class="ml-auto flex items-center gap-2">
+			<div class="ml-auto flex flex-wrap items-center justify-end gap-2">
 				{#if !live.connected}
 					<span class="badge badge-warning" title="The live connection to octo·modern dropped; reconnecting"><WifiOff />reconnecting</span>
 				{/if}
-				{#if canControl && jobActive(s.state)}
-					{#if s.state === 'paused'}
-						<button class="btn btn-secondary btn-sm" onclick={() => jobCommand(printer.id, 'resume')}><CirclePlay />Resume</button>
-					{:else}
-						<button class="btn btn-secondary btn-sm" disabled={s.state !== 'printing'} onclick={() => jobCommand(printer.id, 'pause')}><CirclePause />Pause</button>
-					{/if}
-					<button class="btn btn-secondary btn-sm border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />Cancel print</button>
+				{#if active}
+					<!-- On phones these live in the bar at the bottom, under the thumb. -->
+					{#if !phone.current}{@render jobButtons(false)}{/if}
 				{:else}
 					<ConnectionControls {live} {canControl} />
 				{/if}
-				{#if canControl}<PowerButtons printerId={printer.id} name={printer.name} />{/if}
-				{#if canControl && isConnected(s.state)}
-					<button class="btn btn-danger btn-sm" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>
+				{#if canControl}<PowerButtons printerId={printer.id} name={printer.name} compact={phone.current} />{/if}
+				{#if canControl && isConnected(s.state) && !(active && phone.current)}
+					<!-- Phones: outlined rather than a solid red block next to Connect/Disconnect; it asks first either way. -->
+					<button class="btn btn-sm {phone.current ? 'border border-danger/50 text-danger' : 'btn-danger'}" title="Emergency stop (M112)" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX />Stop</button>
 				{/if}
 				{#if isAdmin()}
-					<button class="btn btn-ghost btn-icon btn-sm" title="Edit server" onclick={() => (editor.target = printer)}><Settings2 /></button>
+					<button class="btn btn-ghost btn-icon btn-sm" title="Edit server" aria-label="Edit server" onclick={() => (editor.target = printer)}><Settings2 /></button>
 				{/if}
 			</div>
 		</div>
-		<nav class="relative flex gap-1 overflow-x-auto px-6" aria-label="Printer sections">
+		<!-- Seven sections: a strip that scrolls sideways on phones (a bottom tab bar would need a "More"
+		     menu, and the bottom edge belongs to Pause/Cancel and the terminal prompt). -->
+		<nav bind:this={strip} class="scrollbar-none relative flex snap-x gap-1 overflow-x-auto px-2 sm:px-4 lg:px-6" aria-label="Printer sections">
 			{#each TABS as t (t.id)}
 				<button
-					class="relative flex h-9 shrink-0 items-center gap-1.5 rounded-t-lg px-3 text-[13px] font-medium transition-colors {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+					class="relative flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-t-lg px-3 text-[13px] font-medium transition-colors touch:h-11 touch:text-sm short:h-9 lg:h-9 {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 					aria-current={tab.id === t.id ? 'page' : undefined}
 					onclick={() => openTab(t.id)}
 				>
@@ -93,7 +111,7 @@
 	</header>
 
 	{#if s.state === 'offline' && s.problem}
-		<div class="mx-8 mt-4 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[13px]">
+		<div class="mx-4 mt-4 flex items-start gap-2 sm:mx-6 lg:mx-8 rounded-xl border border-danger/30 bg-danger/5 p-3 text-[13px]">
 			<WifiOff class="mt-0.5 size-4 shrink-0 text-danger" />
 			<div>
 				<p class="font-medium">Can’t reach OctoPrint: {s.problem.message}</p>
@@ -102,9 +120,21 @@
 		</div>
 	{/if}
 
-	<div class="min-h-0 flex-1 overflow-y-auto px-8 py-5">
+	<div class="page-x min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 lg:py-5 {tab.id === 'terminal' ? 'flex flex-col max-sm:py-2' : ''}">
 		{#key `${data.printer.id}:${tab.id}`}
 			<tab.component {printer} {live} {canControl} />
 		{/key}
 	</div>
+
+	{#if active && phone.current}
+		<!-- Phones: the running job's controls, always in reach. Steps aside for the keyboard. -->
+		<div class="relative shrink-0 border-t border-border bg-surface/95 backdrop-blur-md in-[[data-keyboard]]:hidden" data-testid="job-bar">
+			<div class="absolute inset-x-0 -top-px h-0.5 bg-border"><div class="h-full bg-primary transition-[width] duration-700 {s.state === 'paused' ? 'bg-warning' : ''}" style="width:{pct ?? 0}%"></div></div>
+			<div class="page-x flex items-center gap-2 pt-2.5 pb-safe">
+				{@render jobButtons(true)}
+				<!-- Set apart, and it still asks first. -->
+				<button class="btn btn-icon ml-1 border border-danger/50 text-danger hover:bg-danger/10" title="Emergency stop (M112)" aria-label="Emergency stop" onclick={() => emergencyStop(printer.id, printer.name)}><OctagonX class="size-5!" /></button>
+			</div>
+		</div>
+	{/if}
 </div>

@@ -56,7 +56,9 @@
 	}
 
 	const xTicks = $derived.by(() => {
-		const stepMs = windowMs <= 5 * 60_000 ? 60_000 : windowMs <= 15 * 60_000 ? 3 * 60_000 : 5 * 60_000;
+		// As many time labels as fit (about 64 px each), at a round step.
+		const fit = Math.max(2, Math.floor(innerW / 64));
+		const stepMs = [1, 2, 3, 5, 10, 15, 30, 60].map((m) => m * 60_000).find((ms) => windowMs / ms <= fit) ?? 60 * 60_000;
 		const out: number[] = [];
 		for (let t = Math.ceil(start / stepMs) * stepMs; t <= end; t += stepMs) out.push(t);
 		return out;
@@ -75,11 +77,23 @@
 		const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
 		const px = e.clientX - rect.left;
 		hoverX = px >= PAD.left && px <= width - PAD.right ? px : null;
+		clearTimeout(touchTimer);
 	}
+
+	// Touch: tap or drag sideways to read values; the reading stays a few seconds after lifting.
+	let touchTimer: ReturnType<typeof setTimeout> | undefined;
+	function onleave(e: PointerEvent) {
+		if (e.pointerType === 'mouse') hoverX = null;
+		else {
+			clearTimeout(touchTimer);
+			touchTimer = setTimeout(() => (hoverX = null), 4000);
+		}
+	}
+	$effect(() => () => clearTimeout(touchTimer));
 </script>
 
 <div class="relative" bind:clientWidth={width}>
-	<svg {width} {height} role="img" aria-label="Temperature chart" class="block touch-none select-none" onpointermove={onmove} onpointerleave={() => (hoverX = null)}>
+	<svg {width} {height} role="img" aria-label="Temperature chart" class="block touch-pan-y select-none" onpointerdown={onmove} onpointermove={onmove} onpointerleave={onleave} onpointercancel={onleave}>
 		{#each yTicks as v (v)}
 			<line x1={PAD.left} x2={width - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--border)" stroke-width="1" />
 			<text x={PAD.left - 6} y={y(v) + 3.5} text-anchor="end" class="fill-muted-foreground font-mono text-[10px]">{v}°</text>

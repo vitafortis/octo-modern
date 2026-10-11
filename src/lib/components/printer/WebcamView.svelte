@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Camera, ExternalLink, Maximize2, RefreshCw, VideoOff } from '@lucide/svelte';
+	import { Camera, ExternalLink, Maximize2, RefreshCw, VideoOff, X } from '@lucide/svelte';
 	import { cameras, snapshotUrl, streamUrl, visible, webcamTransform, type CameraInfo } from '#lib/client/webcam.ts';
 
 	/**
@@ -9,7 +9,8 @@
 	 */
 	let { printerId, class: cls = '', compact = false, height, onavailable }: { printerId: string; class?: string; compact?: boolean; /** Fixed frame height (CSS), e.g. on the dashboard; default 16:9. */ height?: string; onavailable?: (has: boolean) => void } = $props();
 
-	const frame = $derived(height ? '' : 'aspect-video');
+	// A fixed height (the dashboard) applies from lg up; phones and tablets get the full-width 16:9 frame.
+	const frame = $derived(height ? 'aspect-video lg:aspect-auto' : 'aspect-video');
 
 	let list = $state<CameraInfo[] | null>(null);
 	let camId = $state<string | null>(null);
@@ -38,9 +39,17 @@
 		attempt++;
 	}
 
+	// iPhone Safari can't put an element in fullscreen: fill the window instead.
+	let pseudoFull = $state(false);
 	function fullscreen() {
-		if (document.fullscreenElement) void document.exitFullscreen();
-		else void box?.requestFullscreen();
+		if (pseudoFull) pseudoFull = false;
+		else if (document.fullscreenElement) void document.exitFullscreen();
+		else if (box?.requestFullscreen && document.fullscreenEnabled) void box.requestFullscreen().catch(() => (pseudoFull = true));
+		else pseudoFull = true;
+	}
+	/** Tap the picture on a touch screen to go fullscreen (and tap again to come back). */
+	function onframetap() {
+		if (window.matchMedia('(pointer: coarse)').matches) fullscreen();
 	}
 </script>
 
@@ -57,13 +66,20 @@
 		</div>
 	{/if}
 {:else if cam}
-	<div bind:this={box} use:visible={(v) => (shown = v)} class="group relative overflow-hidden rounded-xl border border-border bg-black {cls}" style:height>
+	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+	<div
+		bind:this={box}
+		use:visible={(v) => (shown = v)}
+		class="group relative overflow-hidden rounded-xl border border-border bg-black {cls} {height ? 'lg:h-(--cam-h)' : ''} {pseudoFull ? 'fixed! inset-0 z-50 m-0 h-auto! rounded-none border-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]' : ''}"
+		style:--cam-h={height}
+		onclick={(e) => (e.target as HTMLElement).tagName === 'IMG' && onframetap()}
+	>
 		{#if cam.proxied}
 			{#if src}
 				<img
 					{src}
 					alt="{cam.label} live"
-					class="{frame} h-full w-full object-contain"
+					class="{pseudoFull ? '' : frame} h-full w-full object-contain"
 					style:transform={webcamTransform(cam)}
 					onerror={() => (failed = true)}
 				/>
@@ -111,7 +127,7 @@
 					{/each}
 				</div>
 			{/if}
-			<button class="ml-auto rounded-md bg-black/40 p-1 opacity-80 hover:opacity-100" title="Fullscreen" aria-label="Fullscreen" onclick={fullscreen}><Maximize2 class="size-3.5" /></button>
+			<button class="ml-auto rounded-md bg-black/40 p-1 opacity-80 hover:opacity-100 touch:grid touch:size-10 touch:place-items-center" title="Fullscreen" aria-label="Fullscreen" onclick={fullscreen}>{#if pseudoFull}<X class="size-5" />{:else}<Maximize2 class="size-3.5 touch:size-4.5" />{/if}</button>
 		</div>
 	</div>
 {/if}

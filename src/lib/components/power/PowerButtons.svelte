@@ -19,13 +19,13 @@
 
 {#if info}
 	{#if on !== true}
-		<button class="btn btn-primary btn-sm" disabled={busy || info.busy} onclick={() => run(powerOn)} title="Switch {name}’s smart plug on" data-testid="power-on">
+		<button class="btn btn-primary btn-sm touch:h-11" disabled={busy || info.busy} onclick={() => run(powerOn)} title="Switch {name}’s smart plug on" data-testid="power-on">
 			{#if busy}<LoaderCircle class="animate-spin" />{:else}<Power />{/if}{compact ? 'On' : 'Power on'}
 		</button>
 	{/if}
 	{#if on !== false}
 		<button
-			class="btn btn-secondary btn-sm border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger"
+			class="btn btn-secondary btn-sm touch:h-11 border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger"
 			disabled={busy || info.busy}
 			onclick={() => run(powerOff)}
 			title="Switch {name}’s smart plug off"

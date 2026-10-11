@@ -7,6 +7,7 @@
 	import { errorMessage } from '#lib/client/api.ts';
 	import { ago } from '#lib/client/format.ts';
 	import { isAdmin, printers, toast } from '#lib/client/state.svelte.ts';
+	import { listLayout } from '#lib/client/viewport.svelte.ts';
 	import { formatDuration } from '#lib/printer.ts';
 	import { RESULT_LABEL, resultTone, type HistoryFilter, type HistoryStats, type PrintRecord, type PrintResult } from '#lib/history.ts';
 	import type { LivePrinter } from '#lib/client/live.svelte.ts';
@@ -133,27 +134,27 @@
 	<!-- Filters, one row above everything they affect. -->
 	<div class="flex flex-wrap items-center gap-2">
 		{#if !printerId}
-			<select class="input h-8 w-40 text-xs" aria-label="Printer" bind:value={filter.printer}>
+			<select class="input h-8 w-40 text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" aria-label="Printer" bind:value={filter.printer}>
 				<option value="">All printers</option>
 				{#each printers.list as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
 			</select>
 		{/if}
-		<select class="input h-8 w-32 text-xs" aria-label="Result" bind:value={filter.result}>
+		<select class="input h-8 w-32 text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" aria-label="Result" bind:value={filter.result}>
 			<option value="">Any result</option>
 			<option value="success">Success</option>
 			<option value="failed">Failed</option>
 			<option value="cancelled">Cancelled</option>
 			<option value="printing">Printing</option>
 		</select>
-		<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-			<CalendarRange class="size-3.5" />
-			<input type="date" class="input h-8 w-[8.5rem] text-xs" aria-label="From" bind:value={filter.from} max={filter.to || undefined} />
+		<div class="flex items-center gap-1.5 text-xs text-muted-foreground max-sm:w-full">
+			<CalendarRange class="size-3.5 shrink-0" />
+			<input type="date" class="input h-8 w-[8.5rem] text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" aria-label="From" bind:value={filter.from} max={filter.to || undefined} />
 			<span>–</span>
-			<input type="date" class="input h-8 w-[8.5rem] text-xs" aria-label="To" bind:value={filter.to} min={filter.from || undefined} />
+			<input type="date" class="input h-8 w-[8.5rem] text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" aria-label="To" bind:value={filter.to} min={filter.from || undefined} />
 		</div>
-		<div class="relative">
-			<Search class="absolute top-2 left-2.5 size-3.5 text-muted-foreground" />
-			<input class="input h-8 w-48 pl-8 text-xs" placeholder="File, notes, person…" aria-label="Search history" bind:value={filter.q} />
+		<div class="relative max-sm:order-first max-sm:w-full">
+			<Search class="absolute top-2 left-2.5 size-3.5 text-muted-foreground touch:top-3.5 touch:size-4" />
+			<input class="input h-8 w-48 pl-8 text-xs max-sm:w-full touch:pl-9" placeholder="File, notes, person…" aria-label="Search history" bind:value={filter.q} />
 		</div>
 		{#if filtered}<button class="btn btn-ghost btn-sm" onclick={clear}>Clear</button>{/if}
 		{#if loading}<LoaderCircle class="size-4 animate-spin text-muted-foreground" />{/if}
@@ -225,7 +226,7 @@
 										<th class="px-4 py-1.5 font-medium">Printer</th>
 										<th class="px-2 py-1.5 text-right font-medium">Prints</th>
 										<th class="px-2 py-1.5 text-right font-medium">Success</th>
-										<th class="px-2 py-1.5 text-right font-medium">Time</th>
+										<th class="px-2 py-1.5 text-right font-medium max-sm:hidden">Time</th>
 										<th class="px-4 py-1.5 text-right font-medium">Filament</th>
 									</tr>
 								</thead>
@@ -235,7 +236,7 @@
 											<td class="max-w-36 truncate px-4 py-2">{printers.list.find((x) => x.id === p.printerId)?.name ?? p.printerName}</td>
 											<td class="px-2 py-2 text-right font-mono tabular-nums">{p.prints}</td>
 											<td class="px-2 py-2 text-right font-mono tabular-nums">{pct(p.prints ? p.success / p.prints : null)}</td>
-											<td class="px-2 py-2 text-right font-mono whitespace-nowrap tabular-nums">{formatDuration(p.printTime)}</td>
+											<td class="px-2 py-2 text-right font-mono whitespace-nowrap tabular-nums max-sm:hidden">{formatDuration(p.printTime)}</td>
 											<td class="px-4 py-2 text-right font-mono whitespace-nowrap tabular-nums">{meters(p.filamentMm)}</td>
 										</tr>
 									{/each}
@@ -248,6 +249,34 @@
 		{/if}
 
 		<div class="card overflow-hidden">
+			{#if listLayout.current}
+				<!-- Phones: a list; tapping a print opens it, with Print again, notes and Delete. -->
+				<ul class="divide-y divide-border" data-testid="history-list">
+					{#each items as r (r.id)}
+						<li data-print={r.file} data-result={r.result}>
+							<button class="flex w-full items-center gap-3 px-3 py-2.5 text-left active:bg-accent/40" onclick={() => open(r)}>
+								{#if r.hasThumbnail}
+									<img src={thumbnailUrl(r)} alt="" loading="lazy" class="h-12 w-20 shrink-0 rounded-md border border-border bg-muted object-cover" />
+								{:else}
+									<div class="grid h-12 w-20 shrink-0 place-items-center rounded-md border border-dashed border-border text-muted-foreground/60"><FileCode2 class="size-4" /></div>
+								{/if}
+								<span class="min-w-0 flex-1">
+									<span class="line-clamp-2 text-[14px] leading-snug font-medium [overflow-wrap:anywhere]">{r.file}</span>
+									<span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+										<span class="badge {badge(r.result)}" title={r.reason ?? undefined}>{#if r.result === 'printing'}<span class="size-1.5 animate-pulse rounded-full bg-current"></span>{/if}{RESULT_LABEL[r.result]}</span>
+										<span class="font-mono">{r.endedAt ? formatDuration(r.durationS) : ago(r.startedAt).replace(' ago', '')}</span>
+										<span>{when(r.startedAt)}</span>
+										{#if !printerId}<span class="truncate">· {printerName(r)}</span>{/if}
+									</span>
+									{#if r.notes}<span class="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground"><NotebookPen class="size-3 shrink-0" /><span class="truncate">{r.notes}</span></span>{/if}
+								</span>
+							</button>
+						</li>
+					{:else}
+						<li class="px-4 py-10 text-center text-xs text-muted-foreground">{loading || !loaded ? 'Loading…' : 'No prints match these filters.'}</li>
+					{/each}
+				</ul>
+			{:else}
 			<table class="w-full table-fixed text-left text-[13px]">
 				<thead class="border-b border-border bg-surface text-[11px] text-muted-foreground">
 					<tr>
@@ -305,6 +334,7 @@
 					{/each}
 				</tbody>
 			</table>
+			{/if}
 			{#if items.length}
 				<div class="flex items-center justify-between border-t border-border bg-surface px-4 py-2 text-[11px] text-muted-foreground">
 					<span>{items.length} of {total} print{total === 1 ? '' : 's'}</span>

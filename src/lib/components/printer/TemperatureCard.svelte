@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Flame, Power, Thermometer } from '@lucide/svelte';
 	import TempChart from './TempChart.svelte';
+	import { phone as chartH } from '#lib/client/viewport.svelte.ts';
 	import { api } from '#lib/client/api.ts';
 	import { setTargets } from '#lib/client/actions.ts';
 	import type { LivePrinter } from '#lib/client/live.svelte.ts';
@@ -78,13 +79,13 @@
 		</div>
 		<div class="ml-auto inline-flex rounded-lg border border-border bg-surface p-0.5">
 			{#each RANGES as r (r.ms)}
-				<button class="h-6 rounded-md px-2 text-[11px] {range === r.ms ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}" onclick={() => (picked = r.ms)}>{r.label}</button>
+				<button class="h-6 rounded-md px-2 text-[11px] touch:h-9 touch:px-2.5 touch:text-xs {range === r.ms ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}" onclick={() => (picked = r.ms)}>{r.label}</button>
 			{/each}
 		</div>
 	</div>
 
 	<div class="px-2 pt-3">
-		<TempChart {samples} {heaters} windowMs={range} />
+		<TempChart {samples} {heaters} windowMs={range} height={chartH.current ? 180 : 220} />
 	</div>
 
 	<div class="border-t border-border">
@@ -94,15 +95,16 @@
 		{#each heaters as k (k)}
 			{@const t = s.temps[k]}
 			<form class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-2.5 last:border-0" onsubmit={(e) => setOne(k, e)}>
-				<span class="flex w-24 items-center gap-2 text-[13px] font-medium"><span class="size-2 rounded-full" style="background:{heaterColor(k)}"></span>{heaterLabel(k, tools)}</span>
-				<span class="w-20 font-mono text-[15px] font-semibold tabular-nums">{formatTemp(t.actual)}</span>
+				<span class="flex w-24 items-center gap-2 text-[13px] font-medium max-sm:w-auto max-sm:min-w-20"><span class="size-2 rounded-full" style="background:{heaterColor(k)}"></span>{heaterLabel(k, tools)}</span>
+				<span class="w-20 font-mono text-[15px] font-semibold tabular-nums max-sm:w-auto">{formatTemp(t.actual)}</span>
 				<span class="flex items-center gap-1 text-xs text-muted-foreground">
 					{#if (t.target ?? 0) > 0}<Flame class="size-3.5 text-warning" />target <span class="font-mono text-foreground">{formatTemp(t.target)}</span>{:else}off{/if}
 				</span>
 				{#if canControl}
-					<div class="ml-auto flex items-center gap-1.5">
+					<!-- Phones: its own full-width row under the reading. -->
+					<div class="ml-auto flex items-center gap-1.5 max-sm:w-full">
 						<input
-							class="input h-7 w-20 text-right font-mono text-xs"
+							class="input h-7 w-20 text-right font-mono text-xs max-sm:min-w-0 max-sm:flex-1"
 							type="number"
 							min="0"
 							max={k.startsWith('tool') ? 450 : k === 'bed' ? 200 : 120}
@@ -115,7 +117,7 @@
 						<button class="btn btn-secondary btn-sm" disabled={!connected || busy === k || !drafts[k]}>Set</button>
 						{#if profiles.length}
 							<select
-								class="input h-7 w-28 text-xs"
+								class="input h-7 w-28 text-xs max-sm:w-auto max-sm:max-w-[40%] max-sm:flex-1"
 								aria-label="{heaterLabel(k, tools)} preset"
 								disabled={!connected}
 								onchange={(e) => {

@@ -44,8 +44,8 @@
 		{#if active && s}
 			<div class="mt-4">
 				<div class="min-w-0">
-					<p class="flex items-center gap-1.5 truncate text-[13px] font-medium" title={s.job?.file?.display}><FileBox class="size-3.5 shrink-0 text-muted-foreground" />{s.job?.file?.display ?? 'Unknown file'}</p>
-					<div class="mt-2 flex items-baseline justify-between">
+					<p class="flex items-start gap-1.5 text-[13px] font-medium" title={s.job?.file?.display}><FileBox class="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span class="min-w-0 line-clamp-2 [overflow-wrap:anywhere] sm:truncate">{s.job?.file?.display ?? 'Unknown file'}</span></p>
+					<div class="mt-2 flex flex-wrap items-baseline justify-between gap-x-3">
 						<span class="text-2xl font-semibold tracking-tight tabular-nums">{pct != null ? `${pct.toFixed(pct >= 10 ? 0 : 1)}%` : '—'}</span>
 						{#if s.progress?.printTimeLeft != null}<span class="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock class="size-3" />{formatDuration(s.progress.printTimeLeft)} left · {formatEta(s.progress.printTimeLeft)}</span>{/if}
 					</div>
@@ -79,6 +79,6 @@
 	{/if}
 	<PowerStrip {printer} />
 	{#if isAdmin()}
-		<button class="btn btn-ghost btn-icon btn-sm absolute top-2 right-2 bg-card/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" title="Edit {printer.name}" onclick={() => (editor.target = printer)}><Settings2 /></button>
+		<button class="btn btn-ghost btn-icon btn-sm absolute top-2 right-2 bg-card/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 touch:opacity-100" title="Edit {printer.name}" onclick={() => (editor.target = printer)}><Settings2 /></button>
 	{/if}
 </div>

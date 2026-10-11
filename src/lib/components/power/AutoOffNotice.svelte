@@ -23,7 +23,7 @@
 			</div>
 			{#if canControl}
 				<button
-					class="btn btn-secondary btn-sm shrink-0"
+					class="btn btn-secondary btn-sm shrink-0 touch:h-11"
 					disabled={busy}
 					onclick={async (e) => {
 						e.preventDefault();

@@ -17,7 +17,8 @@
 		"e2e:discover": "node scripts/e2e/discover.mjs",
 		"e2e:library": "node scripts/e2e/library.mjs",
 		"e2e:history": "node scripts/e2e/history.mjs",
-		"e2e:power": "node scripts/e2e/power.mjs"
+		"e2e:power": "node scripts/e2e/power.mjs",
+		"e2e:mobile": "node scripts/e2e/mobile.mjs"
 	},
 	"devDependencies": {
 		"@fontsource-variable/geist": "^5.3.0",
