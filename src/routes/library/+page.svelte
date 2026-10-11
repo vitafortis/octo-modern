@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
-	import { CircleCheck, CircleX, Clock, FileCode2, Layers, LibraryBig, LoaderCircle, Play, Send, Settings2, Thermometer, Weight, X } from '@lucide/svelte';
+	import { Box, CircleCheck, CircleX, Clock, FileCode2, Layers, LibraryBig, LoaderCircle, Play, Send, Settings2, Thermometer, Weight, X } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import LibraryBrowser from '#lib/components/library/LibraryBrowser.svelte';
 	import SendDialog from '#lib/components/library/SendDialog.svelte';
@@ -27,6 +27,8 @@
 	const wide = new MediaQuery('(min-width: 1280px)', true);
 
 	const source = $derived(sources?.find((s) => s.id === sourceId));
+	const canPreview = (e: LibraryEntry) => isPrintable(e.name) && !/\.(bgcode|ufp)$/i.test(e.name);
+	const previewHref = (e: LibraryEntry) => `/library/preview?source=${encodeURIComponent(sourceId)}&path=${encodeURIComponent(e.path)}&v=${e.size}-${e.mtime ?? ''}`;
 	/** Printers the user may send this source's files to. */
 	const targets = $derived(source ? printers.list.filter((p) => p.access?.control && source.printers.includes(p.id)) : []);
 
@@ -133,6 +135,9 @@
 										<div class="col-span-2"><dt class="text-[0.6875rem] text-muted-foreground">Slicer</dt><dd>{m.slicer}{m.slicerVersion ? ` ${m.slicerVersion}` : ''}{m.format === 'binary' ? ' · binary G-code' : ''}</dd></div>
 									{/if}
 								</dl>
+								{#if canPreview(selected)}
+									<a class="btn btn-secondary w-full" href={previewHref(selected)}><Box />Preview toolpath</a>
+								{/if}
 								{#if targets.length && isPrintable(selected.name)}
 									<div class="flex gap-2 pt-1">
 										<button class="btn btn-secondary flex-1" onclick={() => openSend(selected!, false)}><Send />{targets.length === 1 ? `Send to ${targets[0].name}` : 'Send to…'}</button>
@@ -178,6 +183,9 @@
 			<div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
 				<LibraryBrowser {sources} bind:sourceId bind:path bind:selected onopen={(e) => targets.length && openSend(e, false)}>
 					{#snippet row(e)}
+						{#if canPreview(e)}
+							<a class="btn btn-ghost btn-icon btn-sm {targets.length ? 'max-md:hidden' : ''}" href={previewHref(e)} title="Preview toolpath" aria-label="Preview {e.name}"><Box /></a>
+						{/if}
 						{#if targets.length && isPrintable(e.name)}
 							<button class="btn btn-ghost btn-icon btn-sm" title="Send to a printer" aria-label="Send {e.name}" onclick={() => openSend(e, false)}><Send /></button>
 							<button class="btn btn-ghost btn-icon btn-sm" title="Add to the queue" aria-label="Queue {e.name}" onclick={() => (queueing = { source: source!, entry: e })}><ListPlus /></button>

@@ -371,3 +371,31 @@ html {
 		transform: translateX(-100%);
 	}
 }
+
+/* --- G-code preview: toolpath colours by feature (index order = FEATURES in src/lib/gcode/parse.ts) --- */
+:root {
+	--gc-outer-wall: #f08c00;
+	--gc-inner-wall: #fab005;
+	--gc-overhang: #1c7ed6;
+	--gc-infill: #c2255c;
+	--gc-solid-infill: #ae3ec9;
+	--gc-top-bottom: #e03131;
+	--gc-bridge: #3bc9db;
+	--gc-gap-fill: #868e96;
+	--gc-skirt: #12b886;
+	--gc-support: #2f9e44;
+	--gc-support-interface: #94d82d;
+	--gc-tower: #adb5bd;
+	--gc-ironing: #ff8787;
+	--gc-custom: #5c7cfa;
+	--gc-extrusion: oklch(62% 0.2 292.717);
+	--gc-travel: oklch(55% 0.12 240);
+	--gc-grid: oklch(90% 0.008 292);
+	--gc-nozzle: oklch(60% 0.25 25);
+}
+:root[data-theme='dark'] {
+	--gc-gap-fill: #dee2e6;
+	--gc-extrusion: oklch(70% 0.18 292.717);
+	--gc-travel: oklch(72% 0.11 230);
+	--gc-grid: oklch(28% 0.012 292);
+}

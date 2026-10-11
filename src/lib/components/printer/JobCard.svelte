@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CirclePause, CirclePlay, CircleStop, Clock, FileBox, Hourglass, Layers, RotateCcw, Ruler, Timer } from '@lucide/svelte';
+	import { Box, CirclePause, CirclePlay, CircleStop, Clock, FileBox, Hourglass, Layers, RotateCcw, Ruler, Timer } from '@lucide/svelte';
 	import { jobCommand } from '#lib/client/actions.ts';
 	import { bytes } from '#lib/client/format.ts';
 	import type { LivePrinter } from '#lib/client/live.svelte.ts';
@@ -39,7 +39,10 @@
 	</div>
 	<div class="p-4">
 		{#if file}
-			<p class="text-[0.9375rem] font-semibold tracking-tight [overflow-wrap:anywhere] sm:truncate" title={file.path}>{file.display}</p>
+			<div class="flex items-start gap-2">
+				<p class="min-w-0 flex-1 text-[0.9375rem] font-semibold tracking-tight [overflow-wrap:anywhere] sm:truncate" title={file.path}>{file.display}</p>
+				{#if file.origin === 'local'}<a class="btn btn-ghost btn-sm -mt-1 -mr-2 shrink-0" href="?tab=preview" title="Toolpath preview{active ? ', following the print' : ''}"><Box />Preview</a>{/if}
+			</div>
 			<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">{ORIGIN[file.origin] ?? file.origin}{file.size != null ? ` · ${bytes(file.size)}` : ''}{s.job?.user ? ` · started by ${s.job.user}` : ''}</p>
 		{:else}
 			<p class="text-[0.8125rem] text-muted-foreground">No file selected. Choose one in the Files tab{canControl ? '' : ' (operators)'}.</p>

@@ -3,7 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, Disc3, Wrench, BellRing } from '@lucide/svelte';
+	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, Disc3, Wrench, BellRing, Cctv } from '@lucide/svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -51,6 +51,7 @@
 		...(single ? [] : [{ href: '/', label: 'Overview', icon: LayoutDashboard }]),
 		{ href: '/queue', label: 'Queue', icon: ListOrdered },
 		{ href: '/library', label: 'Library', icon: LibraryBig },
+		{ href: '/cameras', label: 'Cameras', icon: Cctv },
 		{ href: '/history', label: 'History', icon: History },
 		{ href: '/filament', label: 'Filament', icon: Disc3 },
 		{ href: '/maintenance', label: 'Maintenance', icon: Wrench, badge: data.maintenanceOverdue },
