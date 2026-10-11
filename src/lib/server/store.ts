@@ -178,6 +178,23 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 			CREATE INDEX IF NOT EXISTS prints_time ON prints(started_at DESC);
 			CREATE INDEX IF NOT EXISTS prints_printer ON prints(printer_id, started_at DESC);
 		`)
+	],
+	[
+		'power-001-plugs',
+		(h) =>
+			h.exec(`
+			-- Smart plug per printer (see power/config.ts). Credentials are sealed in "secret", bound to the printer id.
+			CREATE TABLE IF NOT EXISTS power_plugs (
+				printer_id TEXT PRIMARY KEY REFERENCES printers(id) ON DELETE CASCADE,
+				kind TEXT NOT NULL,
+				label TEXT,
+				config TEXT NOT NULL,
+				secret TEXT,
+				settings TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL
+			);
+		`)
 	]
 ];
 

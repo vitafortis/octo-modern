@@ -13,9 +13,13 @@ import type { PrintRecord } from '#lib/history.ts';
 export type ChannelKind = 'ntfy' | 'discord' | 'webhook';
 export const CHANNEL_KINDS: ChannelKind[] = ['ntfy', 'discord', 'webhook'];
 export type EndResult = 'success' | 'failed' | 'cancelled';
+/** Smart plug events (power/service.ts). */
+export type PowerEvent = 'power.on' | 'power.off';
+export const POWER_EVENTS: PowerEvent[] = ['power.on', 'power.off'];
+export type ChannelEvent = EndResult | PowerEvent;
 
 export interface PrintNotification {
-	event: EndResult | 'test';
+	event: EndResult | PowerEvent | 'test';
 	title: string;
 	message: string;
 	printer: { id: string; name: string } | null;
@@ -31,8 +35,8 @@ export interface OutgoingRequest {
 	body: string;
 }
 
-const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test' };
-const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6 };
+const LABEL: Record<PrintNotification['event'], string> = { success: 'Print finished', failed: 'Print failed', cancelled: 'Print cancelled', test: 'Test', 'power.on': 'Power on', 'power.off': 'Power off' };
+const DISCORD_COLORS: Record<PrintNotification['event'], number> = { success: 0x22c55e, failed: 0xef4444, cancelled: 0xf59e0b, test: 0x8b5cf6, 'power.on': 0x22c55e, 'power.off': 0x64748b };
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
 
 /** The notification for a finished print. */
@@ -76,7 +80,7 @@ export function buildRequest(kind: ChannelKind, config: Record<string, string>, 
 					title: n.title,
 					message: n.message,
 					priority: n.event === 'failed' ? 4 : 3,
-					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : 'bell', 'octo-modern'],
+					tags: [n.event === 'success' ? 'white_check_mark' : n.event === 'failed' ? 'x' : n.event === 'cancelled' ? 'stop_sign' : n.event.startsWith('power.') ? 'electric_plug' : 'bell', 'octo-modern'],
 					...(n.url ? { click: n.url } : {})
 				})
 			};
@@ -145,7 +149,7 @@ interface StoredChannel {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: ChannelEvent[];
 	config: Record<string, string>;
 	sealed: string | null;
 	lastError: string | null;
@@ -164,7 +168,7 @@ export interface ChannelInfo {
 	kind: ChannelKind;
 	name: string;
 	enabled: boolean;
-	on: EndResult[];
+	on: ChannelEvent[];
 	config: Record<string, string>;
 	secrets: Record<string, string>;
 	lastError: string | null;
@@ -181,7 +185,7 @@ export function listChannels(): ChannelInfo[] {
 	});
 }
 
-const RESULTS: EndResult[] = ['success', 'failed', 'cancelled'];
+const RESULTS: ChannelEvent[] = ['success', 'failed', 'cancelled', ...POWER_EVENTS];
 
 /**
  * Replaces the channel list. A secret field left out (or empty) keeps the stored value
@@ -212,7 +216,7 @@ export function saveChannels(raw: unknown, publicUrl: string | null): ChannelInf
 			if (!config.topic) throw new Error(`${name}: an ntfy topic is required`);
 			if (config.server && !/^https?:\/\//i.test(config.server)) throw new Error(`${name}: the ntfy server must be an http(s) URL`);
 		} else if (!/^https?:\/\//i.test(secrets.url ?? '')) throw new Error(`${name}: a webhook URL (http or https) is required`);
-		const on = Array.isArray(o.on) ? RESULTS.filter((x) => (o.on as unknown[]).includes(x)) : ['failed' as const];
+		const on: ChannelEvent[] = Array.isArray(o.on) ? RESULTS.filter((x) => (o.on as unknown[]).includes(x)) : ['failed'];
 		return {
 			id,
 			kind,
@@ -255,9 +259,26 @@ export async function testChannel(id: string): Promise<void> {
 /** Notifies every enabled channel subscribed to this print's outcome. Never throws. */
 export async function notifyPrintEnded(r: PrintRecord): Promise<void> {
 	const s = load();
-	const targets = s.channels.filter((c) => c.enabled && c.on.includes(r.result as EndResult));
+	await notifyChannels(s.channels.filter((c) => c.enabled && c.on.includes(r.result as EndResult)), printNotification(r, s.publicUrl));
+}
+
+/** Notifies channels subscribed to a smart plug switching (`power.on` / `power.off`). Never throws. */
+export async function notifyPower(event: PowerEvent, printer: { id: string; name: string }, message: string): Promise<void> {
+	const s = load();
+	const n: PrintNotification = {
+		event,
+		title: `${LABEL[event]}: ${printer.name}`,
+		message,
+		printer,
+		print: null,
+		at: new Date().toISOString(),
+		url: s.publicUrl ? `${trimSlash(s.publicUrl)}/p/${encodeURIComponent(printer.id)}` : null
+	};
+	await notifyChannels(s.channels.filter((c) => c.enabled && c.on.includes(event)), n);
+}
+
+async function notifyChannels(targets: StoredChannel[], n: PrintNotification): Promise<void> {
 	if (!targets.length) return;
-	const n = printNotification(r, s.publicUrl);
 	await Promise.all(
 		targets.map(async (c) => {
 			try {

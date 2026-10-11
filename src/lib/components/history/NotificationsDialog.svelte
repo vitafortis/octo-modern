@@ -10,7 +10,7 @@
 	let { open = $bindable(false) }: { open: boolean } = $props();
 
 	type Kind = 'ntfy' | 'discord' | 'webhook';
-	type Result = 'success' | 'failed' | 'cancelled';
+	type Result = 'success' | 'failed' | 'cancelled' | 'power.on' | 'power.off';
 	interface Channel {
 		id?: string;
 		kind: Kind;
@@ -39,6 +39,11 @@
 		{ value: 'success', label: 'Finished' },
 		{ value: 'failed', label: 'Failed' },
 		{ value: 'cancelled', label: 'Cancelled' }
+	];
+	// Smart plug events (power control).
+	const POWER: { value: Result; label: string }[] = [
+		{ value: 'power.on', label: 'Power on' },
+		{ value: 'power.off', label: 'Power off' }
 	];
 
 	type Server = Omit<Channel, 'input'>;
@@ -135,6 +140,10 @@
 				<div class="flex flex-wrap items-center gap-1.5 text-xs">
 					<span class="mr-1 text-muted-foreground">When a print</span>
 					{#each RESULTS as r (r.value)}
+						<button type="button" class="badge h-6 cursor-pointer px-2 {c.on.includes(r.value) ? 'badge-primary' : ''}" aria-pressed={c.on.includes(r.value)} onclick={() => toggle(c, r.value)}>{r.label}</button>
+					{/each}
+					<span class="mr-1 ml-2 text-muted-foreground">Plug</span>
+					{#each POWER as r (r.value)}
 						<button type="button" class="badge h-6 cursor-pointer px-2 {c.on.includes(r.value) ? 'badge-primary' : ''}" aria-pressed={c.on.includes(r.value)} onclick={() => toggle(c, r.value)}>{r.label}</button>
 					{/each}
 					{#if c.lastError}<span class="ml-auto truncate text-danger" title={c.lastError}>Last attempt failed: {c.lastError}</span>{:else if c.lastSentAt}<span class="ml-auto text-muted-foreground">Last sent {ago(c.lastSentAt)}</span>{/if}

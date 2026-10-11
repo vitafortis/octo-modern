@@ -10,6 +10,9 @@
 	import PrinterDialog from '#lib/components/PrinterDialog.svelte';
 	import CommandPalette from '#lib/components/CommandPalette.svelte';
 	import StateDot from '#lib/components/printer/StateDot.svelte';
+	import PowerGlyph from '#lib/components/power/PowerGlyph.svelte';
+	import PowerMenu, { powerMenu } from '#lib/components/power/PowerMenu.svelte';
+	import { plugs } from '#lib/client/power.svelte.ts';
 	import { api } from '#lib/client/api.ts';
 	import { COLORS } from '#lib/client/format.ts';
 	import { editor, isAdmin, pollStatuses, printers, session, setTheme, statuses, theme } from '#lib/client/state.svelte.ts';
@@ -84,6 +87,14 @@
 	<a
 		href="/p/{p.id}"
 		title="{p.name} — {s ? STATE_LABEL[s.state] : 'loading'}{pct != null ? ` ${Math.round(pct)}%` : ''}"
+		oncontextmenu={(e) => {
+			// Smart plug: power on/off from the sidebar.
+			if (!plugs[p.id]) return;
+			e.preventDefault();
+			powerMenu.target = { id: p.id, name: p.name, control: !!p.access?.control };
+			powerMenu.x = e.clientX;
+			powerMenu.y = e.clientY;
+		}}
 		class="relative flex h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors {active
 			? 'bg-accent text-foreground shadow-surface'
 			: 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}"
@@ -92,6 +103,7 @@
 		<StateDot state={s?.state} />
 		{#if !collapsed}
 			<span class="min-w-0 flex-1 truncate">{p.name}</span>
+			<PowerGlyph printerId={p.id} />
 			{#if pct != null}
 				<span class="font-mono text-[11px] text-primary tabular-nums">{Math.round(pct)}%</span>
 			{/if}
@@ -213,6 +225,7 @@
 		</main>
 	</div>
 	<PrinterDialog />
+	<PowerMenu />
 	<!-- ⌘K / Ctrl+K: search printers, pages and actions. -->
 	<CommandPalette signedIn={!!data.viewer} ontogglesidebar={() => (collapsed = !collapsed)} />
 {/if}

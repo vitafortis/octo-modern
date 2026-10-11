@@ -2,6 +2,7 @@
 	import { CircleAlert, CirclePause, CirclePlay, CircleStop, Clock, FileBox, Settings2, Unplug } from '@lucide/svelte';
 	import StateBadge from './StateBadge.svelte';
 	import WebcamThumb from './WebcamThumb.svelte';
+	import PowerStrip from '../power/PowerStrip.svelte';
 	import { COLORS } from '#lib/client/format.ts';
 	import { editor, isAdmin } from '#lib/client/state.svelte.ts';
 	import { jobCommand } from '#lib/client/actions.ts';
@@ -76,6 +77,7 @@
 			<button class="btn btn-secondary btn-sm ml-auto border-danger/40 text-danger hover:border-danger hover:bg-danger/10 hover:text-danger" onclick={() => jobCommand(printer.id, 'cancel', s.job?.file?.display)}><CircleStop />Cancel print</button>
 		</div>
 	{/if}
+	<PowerStrip {printer} />
 	{#if isAdmin()}
 		<button class="btn btn-ghost btn-icon btn-sm absolute top-2 right-2 bg-card/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" title="Edit {printer.name}" onclick={() => (editor.target = printer)}><Settings2 /></button>
 	{/if}
