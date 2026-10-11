@@ -4,7 +4,7 @@ import { BadRequest, handler } from '#lib/server/http.ts';
 import { audit } from '#lib/server/permissions.ts';
 import type { RequestHandler } from './$types';
 
-/** Downloads an encrypted backup of printers, users and settings. */
+/** Downloads an encrypted backup of printers, users, settings, notifications and (optionally) the print history. */
 export const POST: RequestHandler = handler(async ({ request, locals }) => {
 	const body = await request.json().catch(() => ({}));
 	let passphrase: string;
@@ -14,11 +14,12 @@ export const POST: RequestHandler = handler(async ({ request, locals }) => {
 		throw new BadRequest((err as Error).message);
 	}
 	const inc = body.include && typeof body.include === 'object' ? body.include : {};
-	const include = { printers: inc.printers !== false, users: inc.users !== false, settings: inc.settings !== false };
-	if (!include.printers && !include.users && !include.settings) throw new BadRequest('Choose at least one thing to back up');
+	// The print history can be large: only when asked for (pictures even more so).
+	const include = { printers: inc.printers !== false, users: inc.users !== false, settings: inc.settings !== false, notifications: inc.notifications !== false, history: inc.history === true, queue: inc.queue !== false, filament: inc.filament !== false };
+	if (!Object.values(include).some(Boolean)) throw new BadRequest('Choose at least one thing to back up');
 	let payload: BackupPayload;
 	try {
-		payload = snapshot(include);
+		payload = snapshot(include, { historyImages: inc.historyImages === true });
 	} catch (err) {
 		if (err instanceof BackupError) throw new BadRequest(err.message);
 		throw new BadRequest(`Couldn't read the stored secrets: ${(err as Error).message}`);

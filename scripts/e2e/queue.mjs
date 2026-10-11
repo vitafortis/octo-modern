@@ -200,11 +200,11 @@ async function main() {
 	assert.equal((await viewer.post('/api/auth/login', VIEWER)).status, 200);
 	const lib = (await admin.post('/api/library/sources', { name: 'NAS prints', kind: 'folder', config: { path: libDir }, writable: true })).data;
 	assert.ok(lib.id, JSON.stringify(lib));
-	const saved = await admin.put('/api/settings/notifications', {
-		channels: [{ kind: 'webhook', name: 'e2e hook', on: ['queue.bed_clear_needed'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/queue` } }]
-	});
+	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e hook', secrets: { url: `http://127.0.0.1:${HOOK_PORT}/queue` } });
+	assert.equal(hookChannel.status, 201, JSON.stringify(hookChannel.data));
+	const saved = await admin.put('/api/settings/notifications', { rules: [{ name: 'Bed clear', printers: 'all', events: ['queue.bed_clear_needed'], channels: [hookChannel.data.channel.id] }] });
 	assert.equal(saved.status, 200, JSON.stringify(saved.data));
-	assert.deepEqual(saved.data.channels[0].on, ['queue.bed_clear_needed']);
+	assert.deepEqual(saved.data.rules[0].events, ['queue.bed_clear_needed']);
 
 	// --- route collisions: octo·modern's /api stays its own ------------------------------------------
 	log('routes: /octoprint/api/* is the slicer API; /api/* stays octo·modern’s');
@@ -449,7 +449,7 @@ async function main() {
 
 	const audit = (await admin.get('/api/audit?action=queue.&limit=200')).data;
 	const actions = new Set((audit.items ?? audit).map((a) => a.action));
-	for (const a of ['queue.add', 'queue.start', 'queue.bed_clear', 'queue.edit', 'queue.release', 'queue.pause', 'queue.tags']) assert.ok(actions.has(a), `audited: ${a}`);
+	for (const a of ['queue.add', 'queue.start', 'queue.bed_clear_needed', 'queue.edit', 'queue.release', 'queue.pause', 'queue.tags']) assert.ok(actions.has(a), `audited: ${a}`);
 	for (const p of [dark, light, phone]) assert.deepEqual(p.errors, [], 'no browser errors');
 	log('✓ queue e2e passed');
 }

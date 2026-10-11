@@ -148,6 +148,6 @@ export async function confirmBedClear(locals: { user: User | null; ip?: string }
 	const running = listJobs().some((j) => j.activePrinterId === printerId && (j.status === 'printing' || j.status === 'starting'));
 	if ((state && jobActive(state)) || running) return { ok: false, message: `${printer.name} is printing; confirm the bed once the print is done and removed` };
 	dispatcher.bedCleared(printerId);
-	audit(locals, 'queue.bed_clear', { printer, detail: via ?? undefined });
+	audit(locals, 'queue.bed_clear_needed', { printer, detail: via ?? undefined });
 	return { ok: true };
 }

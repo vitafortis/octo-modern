@@ -3,6 +3,11 @@ import { decrypt, encrypt } from './crypto.ts';
 import { BackupError } from './backup.ts';
 import { deleteKv, getApiKey, getKv, setKv, sqlite } from './store.ts';
 import { isRole, type Role } from '#lib/types.ts';
+import { getPlug, parseSettings as parsePlugSettings, savePlug } from './power/config.ts';
+import { checkPortable, exportSettings, importSettings, load as loadNotify, type PortableSettings } from './notify/settings.ts';
+import { checkFilament, exportFilament, importFilament, previewFilament, type BackupFilament } from './spools/backup.ts';
+import { checkQueue, exportQueue, importQueue, previewQueue, type BackupQueue } from './queue/backup.ts';
+import { checkHistory, exportHistory, importHistoryRows, previewHistory, type BackupHistory } from './history/backup.ts';
 
 /**
  * What goes into a backup and how it merges back in. The audit log, sessions and API
@@ -14,7 +19,22 @@ export interface BackupInclude {
 	printers: boolean;
 	users: boolean;
 	settings: boolean;
+	/** Notification channels (with their secrets), rules and options. */
+	notifications: boolean;
+	/** The print history (can be large). */
+	history: boolean;
+	/** Print queue jobs and printer tags (not the files uploaded to the queue). */
+	queue: boolean;
+	/** Spoolman connection, cost settings, spool assignments, maintenance tasks and log. */
+	filament: boolean;
 }
+
+/** Export-only: put the history's pictures in too (bigger file). */
+export interface SnapshotOptions {
+	historyImages?: boolean;
+}
+
+export const NO_CATEGORIES: BackupInclude = { printers: false, users: false, settings: false, notifications: false, history: false, queue: false, filament: false };
 
 export interface BackupPrinter {
 	id: string;
@@ -27,6 +47,8 @@ export interface BackupPrinter {
 	color: string;
 	sort: number;
 	createdAt: string;
+	/** Its smart plug, credentials decrypted (re-sealed on restore). */
+	plug?: { kind: string; label: string | null; config: Record<string, unknown>; secrets: Record<string, string>; settings: unknown } | null;
 }
 
 export interface BackupUser {
@@ -46,6 +68,36 @@ export interface BackupSettings {
 	sso: Record<string, unknown> | null;
 	ssoClientSecret: string | null;
 	localLoginDisabled: boolean | null;
+	/** Failure detection: the `detect:settings` and `detect:printer:*` rows, the ML API token decrypted (learned baselines are left out). */
+	detect?: { rows: Record<string, unknown>; mlToken: string | null };
+}
+
+const DETECT_GLOBAL = 'detect:settings';
+const isDetectSetting = (key: string) => key === DETECT_GLOBAL || key.startsWith('detect:printer:');
+
+function exportDetect(): BackupSettings['detect'] {
+	const rows: Record<string, unknown> = {};
+	let mlToken: string | null = null;
+	for (const r of sqlite().prepare(`SELECT key, value FROM kv WHERE key LIKE 'detect:%' ORDER BY key`).all() as { key: string; value: string }[]) {
+		if (!isDetectSetting(r.key)) continue;
+		const v = JSON.parse(r.value);
+		if (r.key === DETECT_GLOBAL && v && typeof v === 'object') {
+			mlToken = v.sealedToken ? decrypt(v.sealedToken, 'detect:ml-api') : null;
+			rows[r.key] = { ...v, sealedToken: null };
+		} else rows[r.key] = v;
+	}
+	return { rows, mlToken };
+}
+
+/** Replaces the failure detection settings (call inside the restore's transaction). */
+function importDetect(d: NonNullable<BackupSettings['detect']>) {
+	const h = sqlite();
+	for (const r of h.prepare(`SELECT key FROM kv WHERE key LIKE 'detect:%'`).all() as { key: string }[]) if (isDetectSetting(r.key)) deleteKv(r.key);
+	for (const [key, value] of Object.entries(d.rows ?? {})) {
+		if (!isDetectSetting(key)) continue;
+		if (key === DETECT_GLOBAL && value && typeof value === 'object') setKv(key, { ...value, sealedToken: d.mlToken ? encrypt(d.mlToken, 'detect:ml-api') : null });
+		else setKv(key, value);
+	}
 }
 
 export interface BackupPayload {
@@ -54,6 +106,10 @@ export interface BackupPayload {
 	users?: BackupUser[];
 	grants?: { userId: string; printerId: string }[];
 	settings?: BackupSettings;
+	notifications?: PortableSettings;
+	history?: BackupHistory;
+	queue?: BackupQueue;
+	filament?: BackupFilament;
 }
 
 type Row = Record<string, unknown>;
@@ -65,9 +121,13 @@ export function appVersion(): string {
 
 // --- export ------------------------------------------------------------------
 
-export function snapshot(include: BackupInclude): BackupPayload {
+export function snapshot(include: BackupInclude, opts: SnapshotOptions = {}): BackupPayload {
 	const h = sqlite();
 	const payload: BackupPayload = { include };
+	if (include.notifications) payload.notifications = exportSettings();
+	if (include.history) payload.history = exportHistory(!!opts.historyImages);
+	if (include.queue) payload.queue = exportQueue();
+	if (include.filament) payload.filament = exportFilament();
 	if (include.printers) {
 		payload.printers = (h.prepare('SELECT * FROM printers ORDER BY sort, name COLLATE NOCASE').all() as Row[]).map((r) => ({
 			id: r.id as string,
@@ -78,7 +138,8 @@ export function snapshot(include: BackupInclude): BackupPayload {
 			webcamUrl: (r.webcam_url as string) ?? null,
 			color: r.color as string,
 			sort: (r.sort as number) ?? 0,
-			createdAt: r.created_at as string
+			createdAt: r.created_at as string,
+			plug: plugOf(r.id as string)
 		}));
 	}
 	if (include.users) {
@@ -100,10 +161,16 @@ export function snapshot(include: BackupInclude): BackupPayload {
 		payload.settings = {
 			sso: getKv<Record<string, unknown> | null>('sso', null),
 			ssoClientSecret: sealed ? decrypt(sealed, 'sso') : null,
-			localLoginDisabled: getKv<boolean | null>('local-login-disabled', null)
+			localLoginDisabled: getKv<boolean | null>('local-login-disabled', null),
+			detect: exportDetect()
 		};
 	}
 	return payload;
+}
+
+function plugOf(printerId: string): BackupPrinter['plug'] {
+	const p = getPlug(printerId);
+	return p ? { kind: p.kind, label: p.label, config: p.config, secrets: { ...p.secrets } as Record<string, string>, settings: p.settings } : null;
 }
 
 export function summarizeInclude(p: BackupPayload): string {
@@ -111,6 +178,10 @@ export function summarizeInclude(p: BackupPayload): string {
 	if (p.printers) parts.push(`${p.printers.length} printers`);
 	if (p.users) parts.push(`${p.users.length} users`, `${p.grants?.length ?? 0} grants`);
 	if (p.settings) parts.push(`settings${p.settings.sso ? ' (SSO)' : ''}`);
+	if (p.notifications) parts.push(`${p.notifications.channels.length} notification channels`);
+	if (p.history) parts.push(`${p.history.prints.length} history entries${p.history.images ? ' with pictures' : ''}`);
+	if (p.queue) parts.push(`${p.queue.jobs.length} queued jobs`);
+	if (p.filament) parts.push(`spools & maintenance (${p.filament.tasks.length} tasks)`);
 	return parts.join(', ') || 'nothing';
 }
 
@@ -125,7 +196,7 @@ function str(v: unknown, what: string): string {
 export function validatePayload(raw: unknown): BackupPayload {
 	if (!raw || typeof raw !== 'object') throw new BackupError('Damaged backup: no payload');
 	const p = raw as BackupPayload;
-	const inc = p.include ?? { printers: !!p.printers, users: !!p.users, settings: !!p.settings };
+	const inc: Partial<BackupInclude> = p.include ?? { printers: !!p.printers, users: !!p.users, settings: !!p.settings };
 	if (p.printers !== undefined) {
 		if (!Array.isArray(p.printers)) throw new BackupError('Damaged backup: printers');
 		for (const s of p.printers) {
@@ -147,7 +218,18 @@ export function validatePayload(raw: unknown): BackupPayload {
 	}
 	if (p.grants !== undefined && !Array.isArray(p.grants)) throw new BackupError('Damaged backup: grants');
 	if (p.settings !== undefined && (typeof p.settings !== 'object' || !p.settings)) throw new BackupError('Damaged backup: settings');
-	return { ...p, include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings } };
+	try {
+		if (p.notifications !== undefined) checkPortable(p.notifications);
+		if (p.history !== undefined) checkHistory(p.history);
+		if (p.queue !== undefined) checkQueue(p.queue);
+		if (p.filament !== undefined) checkFilament(p.filament);
+	} catch (err) {
+		throw new BackupError(`Damaged backup: ${(err as Error).message}`);
+	}
+	return {
+		...p,
+		include: { printers: !!inc.printers, users: !!inc.users, settings: !!inc.settings, notifications: !!inc.notifications && !!p.notifications, history: !!inc.history && !!p.history, queue: !!inc.queue && !!p.queue, filament: !!inc.filament && !!p.filament }
+	};
 }
 
 // --- preview -------------------------------------------------------------------
@@ -158,10 +240,14 @@ export interface RestorePreview {
 	createdAt: string;
 	appVersion: string;
 	contains: BackupInclude;
-	printers: { id: string; name: string; target: string; hasApiKey: boolean; status: 'new' | 'update' }[];
+	printers: { id: string; name: string; target: string; hasApiKey: boolean; plug: string | null; status: 'new' | 'update' }[];
 	users: { email: string; name: string | null; role: Role; status: 'new' | 'update' | 'self' }[];
 	grants: number;
 	settings: { label: string; detail: string; status: ChangeStatus }[];
+	notifications: { channels: { name: string; type: string; status: 'new' | 'update' }[]; rules: number; replaces: number } | null;
+	history: { total: number; added: number; images: boolean } | null;
+	queue: { jobs: number; added: number; tags: number } | null;
+	filament: { spoolman: string | null; assignments: number; tasks: number; newTasks: number; log: number } | null;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -173,14 +259,28 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 	const preview: RestorePreview = {
 		...meta,
 		contains: p.include,
-		printers: (p.printers ?? []).map((s) => ({ id: s.id, name: s.name, target: s.baseUrl, hasApiKey: !!s.apiKey, status: exists.get(s.id) ? 'update' : 'new' })),
+		printers: (p.printers ?? []).map((s) => ({ id: s.id, name: s.name, target: s.baseUrl, hasApiKey: !!s.apiKey, plug: s.plug?.kind ?? null, status: exists.get(s.id) ? 'update' : 'new' })),
 		users: (p.users ?? []).map((u) => {
 			const existing = userByEmail.get(u.email) as { id: string } | undefined;
 			return { email: u.email, name: u.name, role: u.role, status: !existing ? 'new' : existing.id === actorId ? 'self' : 'update' };
 		}),
 		grants: p.grants?.length ?? 0,
-		settings: []
+		settings: [],
+		notifications: null,
+		history: null,
+		queue: p.queue ? previewQueue(p.queue) : null,
+		filament: p.filament ? previewFilament(p.filament) : null
 	};
+	if (p.notifications) {
+		const here = loadNotify();
+		const ids = new Set(here.channels.map((c) => c.id));
+		preview.notifications = {
+			channels: p.notifications.channels.map((c) => ({ name: c.name, type: c.type, status: ids.has(c.id) ? 'update' : 'new' })),
+			rules: p.notifications.rules.length,
+			replaces: here.channels.length
+		};
+	}
+	if (p.history) preview.history = { ...previewHistory(p.history), images: !!p.history.images };
 	if (p.settings) {
 		const s = p.settings;
 		const status = (incoming: unknown, current: unknown): ChangeStatus =>
@@ -191,6 +291,15 @@ export function previewRestore(p: BackupPayload, actorId: string | null, meta: {
 			detail: sso ? `${sso.name ?? 'SSO'} · ${sso.issuer ?? ''}${s.ssoClientSecret ? ' · with client secret' : ''}` : 'not configured',
 			status: status(s.sso, getKv('sso', null))
 		});
+		if (s.detect) {
+			const g = s.detect.rows?.[DETECT_GLOBAL] as { mlApiUrl?: string | null } | undefined;
+			const printersSet = Object.keys(s.detect.rows ?? {}).filter((k) => k.startsWith('detect:printer:')).length;
+			preview.settings.push({
+				label: 'Failure detection',
+				detail: `${g?.mlApiUrl ? `ML API ${g.mlApiUrl}${s.detect.mlToken ? ' · with token' : ''}` : 'no ML API'} · ${printersSet} printer setting${printersSet === 1 ? '' : 's'}`,
+				status: g || printersSet ? 'update' : 'same'
+			});
+		}
 		preview.settings.push({
 			label: 'Password sign-in',
 			detail: s.localLoginDisabled ? 'disabled (SSO only)' : 'enabled',
@@ -207,6 +316,10 @@ export interface RestoreResult {
 	users: { added: number; updated: number; skipped: number };
 	grants: number;
 	settings: boolean;
+	notifications: boolean;
+	history: { added: number; skipped: number };
+	queue: { added: number; skipped: number; tags: number };
+	filament: { assignments: number; tasks: number; log: number } | null;
 	/** Printers whose live connections should be rebuilt. */
 	changedPrinterIds: string[];
 }
@@ -218,7 +331,17 @@ export interface RestoreResult {
  */
 export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: string | null): RestoreResult {
 	const h = sqlite();
-	const result: RestoreResult = { printers: { added: 0, updated: 0 }, users: { added: 0, updated: 0, skipped: 0 }, grants: 0, settings: false, changedPrinterIds: [] };
+	const result: RestoreResult = {
+		printers: { added: 0, updated: 0 },
+		users: { added: 0, updated: 0, skipped: 0 },
+		grants: 0,
+		settings: false,
+		notifications: false,
+		history: { added: 0, skipped: 0 },
+		queue: { added: 0, skipped: 0, tags: 0 },
+		filament: null,
+		changedPrinterIds: []
+	};
 	const now = new Date().toISOString();
 	h.exec('BEGIN IMMEDIATE');
 	try {
@@ -240,6 +363,15 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 					result.printers.added++;
 				}
 				restoredPrinters.add(s.id);
+				if (s.plug && typeof s.plug === 'object' && typeof s.plug.kind === 'string') {
+					savePlug(s.id, {
+						kind: s.plug.kind as Parameters<typeof savePlug>[1]['kind'],
+						label: s.plug.label ?? null,
+						config: (s.plug.config ?? {}) as Parameters<typeof savePlug>[1]['config'],
+						secrets: (s.plug.secrets ?? {}) as Parameters<typeof savePlug>[1]['secrets'],
+						settings: parsePlugSettings(s.plug.settings)
+					});
+				}
 			}
 			result.changedPrinterIds = [...restoredPrinters];
 		}
@@ -310,7 +442,27 @@ export function applyRestore(p: BackupPayload, choice: BackupInclude, actorId: s
 			else deleteKv('sso-secret');
 			if (s.localLoginDisabled != null) setKv('local-login-disabled', !!s.localLoginDisabled);
 			else deleteKv('local-login-disabled');
+			// Backups from before failure detection have no `detect`: leave it as it is.
+			if (s.detect && typeof s.detect === 'object') importDetect(s.detect);
 			result.settings = true;
+		}
+
+		if (choice.notifications && p.notifications) {
+			// Replaced as a whole, secrets re-sealed with this install's key.
+			importSettings(p.notifications);
+			result.notifications = true;
+		}
+		if (choice.history && p.history) {
+			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
+			result.history = importHistoryRows(p.history, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
+		}
+		if (choice.filament && p.filament) {
+			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
+			result.filament = importFilament(p.filament, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
+		}
+		if (choice.queue && p.queue) {
+			const userHere = h.prepare('SELECT 1 FROM users WHERE id = ?');
+			result.queue = importQueue(p.queue, (id) => userMap.get(id) ?? (userHere.get(id) ? id : null));
 		}
 		h.exec('COMMIT');
 	} catch (err) {
@@ -326,5 +478,9 @@ export function summarizeResult(r: RestoreResult): string {
 	if (r.users.added || r.users.updated || r.users.skipped) parts.push(`users +${r.users.added} ~${r.users.updated} (kept ${r.users.skipped})`);
 	if (r.grants) parts.push(`${r.grants} grants`);
 	if (r.settings) parts.push('settings replaced');
+	if (r.notifications) parts.push('notifications replaced');
+	if (r.filament) parts.push(`spools & maintenance: ${r.filament.assignments} assignments, +${r.filament.tasks} tasks, +${r.filament.log} log`);
+	if (r.queue.added || r.queue.skipped || r.queue.tags) parts.push(`queue +${r.queue.added} (had ${r.queue.skipped}), ${r.queue.tags} printer tags`);
+	if (r.history.added || r.history.skipped) parts.push(`history +${r.history.added} (had ${r.history.skipped})`);
 	return parts.join('; ') || 'nothing changed';
 }

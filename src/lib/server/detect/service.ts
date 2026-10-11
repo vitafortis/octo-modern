@@ -15,7 +15,7 @@
  * State lives in memory per printer (the long-term baseline is persisted), so a
  * restart mid-print starts the print's score afresh, like a new print would.
  */
-import { addAudit, getApiKey, getKv, listPrinters } from '../store.ts';
+import { addAudit, getApiKey, listPrinters } from '../store.ts';
 import { clientFor, printers } from '../octoprint/manager.ts';
 import { cameraFor, cameraHeaders } from '../octoprint/webcam.ts';
 import { httpFetch } from '../octoprint/transport.ts';
@@ -26,7 +26,7 @@ import { frameUrl, issueFrame, revokeFrame } from './frames.ts';
 import { predict, type MlApiConfig } from './obico.ts';
 import { annotateJpeg, isJpeg, jpegSize } from './annotate.ts';
 import { loadBaseline, mlConfig, printerSettings, saveBaseline } from './settings.ts';
-import { failureNotification, notifyFailure, type FailureInfo } from './notify.ts';
+import { notifyFailure, type FailureInfo } from './notify.ts';
 import type { DetectEvent, DetectLevel, DetectPoint, DetectStatus, PrinterDetectSettings } from '#lib/detect.ts';
 import type { Printer } from '#lib/types.ts';
 
@@ -201,10 +201,6 @@ async function analyse(p: Printer, run: Run, s: PrinterDetectSettings, cfg: MlAp
 	await react(p, run, s, a.level, a.score, now);
 }
 
-function publicLink(): string | null {
-	return getKv<{ publicUrl: string | null }>('history:notifications', { publicUrl: null }).publicUrl;
-}
-
 async function react(p: Printer, run: Run, s: PrinterDetectSettings, level: DetectLevel, score: number, now: number) {
 	if (level === 'ok') {
 		run.okSince ??= now;
@@ -212,7 +208,7 @@ async function react(p: Printer, run: Run, s: PrinterDetectSettings, level: Dete
 		return;
 	}
 	run.okSince = null;
-	const send = (info: FailureInfo) => notifyFailure(failureNotification({ printer: { id: p.id, name: p.name }, file: run.file, info, publicUrl: publicLink() }), info, run.frame);
+	const send = (info: FailureInfo) => notifyFailure({ printer: { id: p.id, name: p.name }, file: run.file, info, frame: run.frame });
 
 	if (level === 'failure' && !run.failureHandled) {
 		run.failureHandled = true;

@@ -12,7 +12,7 @@ import { printers } from '../octoprint/manager.ts';
 import { clientFor } from '../octoprint/manager.ts';
 import { getKv, getPrinter, listPrinters, setKv, sqlite } from '../store.ts';
 import { openPrints } from '../history/store.ts';
-import { notifyEvent } from '../history/notify.ts';
+import { notify } from '../notify/index.ts';
 import { listAssignments } from './assignments.ts';
 import { needForFile, perToolMm } from './check.ts';
 import { spoolmanConfigured, spoolmanSettings, useSpool } from './spoolman.ts';
@@ -109,11 +109,16 @@ export async function checkLow(spool: SpoolSummary, printerId: string | null): P
 	setKv(LOW_KEY, [...notified]);
 	const printer = printerId ? getPrinter(printerId) : undefined;
 	const what = `${spool.name}${spool.material ? ` (${spool.material})` : ''}`;
-	await notifyEvent('spool.low', {
+	await notify({
+		kind: 'spool.low',
 		title: `Spool low: ${what}`,
 		message: `${what}${printer ? ` on ${printer.name}` : ''} is down to ${remainingLabel(spool)} (below ${threshold} g).`,
-		printer: printer ? { id: printer.id, name: printer.name } : null,
-		path: printer ? `/p/${encodeURIComponent(printer.id)}` : '/filament'
+		printerId: printer?.id ?? null,
+		printerName: printer?.name ?? null,
+		fields: [{ label: 'Spool', value: what }, { label: 'Left', value: remainingLabel(spool) }],
+		link: printer ? `/p/${encodeURIComponent(printer.id)}` : '/filament',
+		dedupeKey: `spool:${spool.id}`,
+		snapshot: false
 	});
 	return true;
 }

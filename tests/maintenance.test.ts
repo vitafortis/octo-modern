@@ -10,7 +10,7 @@ process.env.OCM_SECRET_KEY = 'test-key-for-maintenance';
 const store = await import('../src/lib/server/store.ts');
 const hs = await import('../src/lib/server/history/store.ts');
 const m = await import('../src/lib/server/maintenance.ts');
-const notify = await import('../src/lib/server/history/notify.ts');
+const notify = await import('../src/lib/server/notify/settings.ts');
 const { DEFAULT_TASKS } = await import('../src/lib/spools.ts');
 
 const HOOK_PORT = 3227;
@@ -30,7 +30,8 @@ before(async () => {
 		});
 	});
 	await new Promise<void>((r) => hookServer.listen(HOOK_PORT, '127.0.0.1', () => r()));
-	notify.saveChannels([{ kind: 'webhook', name: 'hook', on: ['maintenance.due'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/` } }], 'https://octo.example');
+	const hookChannel = notify.createChannel({ type: 'webhook', name: 'hook', secrets: { url: `http://127.0.0.1:${HOOK_PORT}/` } });
+	notify.saveSettings({ publicUrl: 'https://octo.example', rules: [{ name: 'hook', printers: 'all', events: ['maintenance.due'], channels: [hookChannel.id] }] });
 });
 after(async () => {
 	hookServer.closeAllConnections();

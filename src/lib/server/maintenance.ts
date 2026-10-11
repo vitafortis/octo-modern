@@ -5,7 +5,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { getPrinter, listPrinters, sqlite } from './store.ts';
-import { notifyEvent } from './history/notify.ts';
+import { notify } from './notify/index.ts';
 import { costSettings } from './costs.ts';
 import { DEFAULT_TASKS, gramsFromMm, materialOf, maintenanceStatus, METRIC_UNIT, METRICS, usageLabel, type MaintenanceLogEntry, type MaintenanceMetric, type MaintenanceTask } from '#lib/spools.ts';
 
@@ -198,11 +198,16 @@ export async function notifyDue(): Promise<MaintenanceTask[]> {
 	for (const t of due) {
 		db().prepare('UPDATE maintenance_tasks SET notified_at = ? WHERE id = ?').run(new Date().toISOString(), t.id);
 		const printer = getPrinter(t.printerId);
-		await notifyEvent('maintenance.due', {
+		await notify({
+			kind: 'maintenance.due',
 			title: `Maintenance due: ${t.name}`,
 			message: `${printer?.name ?? 'A printer'}: “${t.name}” is due (every ${t.interval} ${METRIC_UNIT[t.metric]}; ${usageLabel(t)} since ${t.lastDoneAt ? 'it was last done' : 'tracking started'}).`,
-			printer: printer ? { id: printer.id, name: printer.name } : null,
-			path: printer ? `/p/${encodeURIComponent(printer.id)}?tab=maintenance` : '/maintenance'
+			printerId: printer?.id ?? null,
+			printerName: printer?.name ?? null,
+			fields: [{ label: 'Task', value: t.name }, { label: 'Interval', value: `${t.interval} ${METRIC_UNIT[t.metric]}` }],
+			link: printer ? `/p/${encodeURIComponent(printer.id)}?tab=maintenance` : '/maintenance',
+			dedupeKey: `task:${t.id}`,
+			snapshot: false
 		});
 	}
 	return due;

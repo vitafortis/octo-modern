@@ -142,9 +142,11 @@ async function main() {
 	const audits = async (action) => (await admin.get(`/api/audit?action=${action}`)).data;
 	await waitFor(async () => (await stateOf(voron.id)) === 'operational' && (await stateOf(mk4.id)) === 'disconnected', 'Voron ready, MK4 unpowered');
 
-	const saved = await admin.put('/api/settings/notifications', { channels: [{ kind: 'webhook', name: 'e2e hook', on: ['power.on', 'power.off'], secrets: { url: 'http://127.0.0.1:3236/power' } }] });
+	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e hook', secrets: { url: 'http://127.0.0.1:3236/power' } });
+	assert.equal(hookChannel.status, 201, hookChannel.text);
+	const saved = await admin.put('/api/settings/notifications', { rules: [{ name: 'Power', printers: 'all', events: ['power.on', 'power.off'], channels: [hookChannel.data.channel.id] }] });
 	assert.equal(saved.status, 200, saved.text);
-	assert.deepEqual(saved.data.channels[0].on, ['power.on', 'power.off']);
+	assert.deepEqual(saved.data.rules[0].events, ['power.on', 'power.off']);
 
 	// --- setup: admins only, secrets never come back --------------------------------------------
 	log('plug setup: admins only, sealed credentials, Test');

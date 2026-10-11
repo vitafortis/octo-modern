@@ -20,7 +20,8 @@ const settings = await import('../src/lib/server/detect/settings.ts');
 const dnotify = await import('../src/lib/server/detect/notify.ts');
 const service = await import('../src/lib/server/detect/service.ts');
 const store = await import('../src/lib/server/store.ts');
-const notify = await import('../src/lib/server/history/notify.ts');
+const notify = await import('../src/lib/server/notify/settings.ts');
+const nservice = await import('../src/lib/server/notify/service.ts');
 const { printers } = await import('../src/lib/server/octoprint/manager.ts');
 const { adminOnlyApi, controlApi } = await import('../src/lib/server/access.ts');
 const { DETECT_DEFAULTS } = await import('../src/lib/detect.ts');
@@ -190,44 +191,27 @@ test('settings: validation, sealed token, env defaults', () => {
 
 // --- notifications ----------------------------------------------------------------------------
 
-test('failure notifications: ntfy attachment, Discord multipart, webhook JSON', async () => {
-	const n = dnotify.failureNotification({ printer: { id: 'p1', name: 'Prusa MK4' }, file: 'benchy.gcode', info: { level: 'warning', score: 0.41, action: 'notify' }, publicUrl: 'https://octo.example', at: '2026-10-10T10:00:00.000Z' });
-	assert.equal(n.event, 'failure.suspected');
-	assert.equal(n.title, 'Failure suspected: Prusa MK4');
-	assert.match(n.message, /benchy\.gcode.*41%/);
-	assert.equal(n.url, 'https://octo.example/p/p1?tab=detection');
+test('failure notifications: an event with the annotated frame, routed like any other', async () => {
 	const img = grey(8, 8);
-	const info = { level: 'failure' as const, score: 0.8, action: 'paused' as const };
+	const ev = dnotify.failureEvent({ printer: { id: 'p1', name: 'Prusa MK4' }, file: 'benchy.gcode', info: { level: 'warning', score: 0.41, action: 'notify' }, frame: img, at: '2026-10-10T10:00:00.000Z' });
+	assert.equal(ev.kind, 'failure.suspected');
+	assert.equal(ev.severity, 'warning');
+	assert.equal(ev.title, 'Failure suspected: Prusa MK4');
+	assert.match(ev.message!, /benchy\.gcode.*41%/);
+	assert.equal(ev.link, '/p/p1?tab=detection');
+	assert.deepEqual((ev.snapshot as { data: Uint8Array }).data, img);
+	assert.deepEqual(ev.data, { detection: { level: 'warning', score: 0.41, action: 'notify' } });
+	const failure = dnotify.failureEvent({ printer: { id: 'p1', name: 'Prusa MK4' }, file: null, info: { level: 'failure', score: 0.8, action: 'paused' }, frame: null });
+	assert.equal(failure.severity, 'error');
+	assert.equal(failure.title, 'Print failure detected: Prusa MK4');
+	assert.match(failure.message!, /octo·modern paused the print/);
+	assert.equal(failure.snapshot, false);
 
-	const ntfy = dnotify.buildFailureRequest('ntfy', { server: 'https://ntfy.example/', topic: 'my printers' }, { token: 'tk' }, n, info, img);
-	assert.equal(ntfy.method, 'PUT');
-	const u = new URL(ntfy.url);
-	assert.equal(u.origin + u.pathname, 'https://ntfy.example/my%20printers');
-	assert.equal(u.searchParams.get('filename'), 'failure.jpg');
-	assert.equal(u.searchParams.get('title'), n.title);
-	assert.equal(u.searchParams.get('priority'), '5');
-	assert.equal(u.searchParams.get('click'), n.url);
-	assert.equal(ntfy.headers.authorization, 'Bearer tk');
-	assert.equal(ntfy.body, img);
-
-	const discord = dnotify.buildFailureRequest('discord', {}, { url: 'https://discord.example/hook' }, n, info, img);
-	assert.ok(discord.body instanceof FormData);
-	const payload = JSON.parse((discord.body as FormData).get('payload_json') as string);
-	assert.equal(payload.embeds[0].image.url, 'attachment://failure.jpg');
-	assert.equal(((discord.body as FormData).get('files[0]') as File).name, 'failure.jpg');
-
-	const hook = dnotify.buildFailureRequest('webhook', {}, { url: 'https://hook.example/x', authorization: 'Bearer h' }, n, info, img);
-	const body = JSON.parse(hook.body as string);
-	assert.equal(body.event, 'failure.suspected');
-	assert.equal(body.version, 1);
-	assert.deepEqual(body.detection, { level: 'failure', score: 0.8, action: 'paused' });
-	assert.equal(Buffer.from(body.image.base64, 'base64').length, img.length);
-	assert.equal(hook.headers.authorization, 'Bearer h');
-
-	// Channels opt in to failure.suspected like to print outcomes.
-	notify.saveChannels([{ kind: 'webhook', name: 'ends only', on: ['failed'], secrets: { url: 'http://127.0.0.1:9/x' } }], null);
-	assert.equal(notify.subscribedChannels('failure.suspected').length, 0);
-	assert.equal(await dnotify.notifyFailure(n, info, img), 0);
+	// Channels get them only when a rule routes failure.suspected to them.
+	const c = notify.createChannel({ type: 'webhook', name: 'ends only', secrets: { url: 'http://127.0.0.1:9/x' } });
+	notify.saveSettings({ rules: [{ name: 'ends', printers: 'all', events: ['print.failed'], channels: [c.id] }] });
+	assert.equal(await dnotify.notifyFailure({ printer: { id: 'p1', name: 'Prusa MK4' }, file: null, info: { level: 'failure', score: 0.8, action: 'paused' }, frame: img }), 0);
+	notify.deleteChannel(c.id);
 });
 
 // --- the service, against a mock OctoPrint and a mock ML API -----------------------------------
@@ -317,7 +301,9 @@ async function frame(id: string, now: number) {
 test('service: frames while printing, warning notifies once, failure pauses (audited as the detector)', async () => {
 	const p = store.createPrinter({ name: 'Prusa MK4', baseUrl: `http://127.0.0.1:${OP_PORT}`, apiKey: 'op-key-12345', verifyTls: true, webcamUrl: `http://127.0.0.1:${OP_PORT}/snapshot`, color: 'violet' });
 	settings.saveGlobal({ mlApiUrl: `http://127.0.0.1:${ML_PORT}`, token: 'ml-token', publicUrl: 'http://octo-modern:3000' });
-	notify.saveChannels([{ kind: 'webhook', name: 'hook', on: ['failure.suspected'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/f` } }], null);
+	const hook = notify.createChannel({ type: 'webhook', name: 'hook', config: { includeImage: true }, secrets: { url: `http://127.0.0.1:${HOOK_PORT}/f` } });
+	notify.saveSettings({ rules: [{ name: 'detections', printers: 'all', events: ['failure.suspected'], channels: [hook.id] }] });
+	nservice.limiter.reset();
 
 	// Off by default: nothing happens.
 	await frame(p.id, Date.now());
@@ -352,7 +338,7 @@ test('service: frames while printing, warning notifies once, failure pauses (aud
 	s = service.status(p.id, t);
 	assert.equal(s.level, 'warning');
 	assert.equal(hooks.length, 1, 'one warning notification');
-	assert.equal((hooks[0] as { detection: { level: string } }).detection.level, 'warning');
+	assert.equal((hooks[0] as { data: { detection: { level: string } } }).data.detection.level, 'warning');
 	assert.ok(((hooks[0] as { image: { base64: string } }).image.base64.length) > 100, 'annotated frame attached');
 	assert.ok(s.last && s.last.boxes.length === 3 && s.last.width === 320);
 	assert.ok(Math.abs(s.last.boxes[0].box[0] - 100 / 320) < 1e-9, 'boxes as fractions of the frame');
@@ -365,7 +351,7 @@ test('service: frames while printing, warning notifies once, failure pauses (aud
 	assert.equal(s.level, 'failure');
 	assert.equal(op.pauses, 1, 'paused once');
 	assert.equal(hooks.length, 2);
-	assert.equal((hooks[1] as { detection: { action: string } }).detection.action, 'paused');
+	assert.equal((hooks[1] as { data: { detection: { action: string } } }).data.detection.action, 'paused');
 	const audit = store.searchAudit({ action: 'job.pause' });
 	assert.equal(audit.length, 1);
 	assert.equal(audit[0].userEmail, 'octo·modern detector');

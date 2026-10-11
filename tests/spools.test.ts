@@ -14,7 +14,7 @@ const asg = await import('../src/lib/server/spools/assignments.ts');
 const usage = await import('../src/lib/server/spools/usage.ts');
 const check = await import('../src/lib/server/spools/check.ts');
 const costs = await import('../src/lib/server/costs.ts');
-const notify = await import('../src/lib/server/history/notify.ts');
+const notify = await import('../src/lib/server/notify/settings.ts');
 const { afterPrint } = await import('../src/lib/server/spools/after-print.ts');
 const { aggregate, toCsv } = await import('../src/lib/server/history/stats.ts');
 const { adminOnlyApi, controlApi } = await import('../src/lib/server/access.ts');
@@ -48,7 +48,8 @@ before(async () => {
 		});
 	});
 	await new Promise<void>((r) => hookServer.listen(HOOK_PORT, '127.0.0.1', () => r()));
-	notify.saveChannels([{ kind: 'webhook', name: 'hook', on: ['spool.low', 'maintenance.due'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/` } }], null);
+	const hookChannel = notify.createChannel({ type: 'webhook', name: 'hook', secrets: { url: `http://127.0.0.1:${HOOK_PORT}/` } });
+	notify.saveSettings({ publicUrl: null, rules: [{ name: 'hook', printers: 'all', events: ['spool.low', 'maintenance.due'], channels: [hookChannel.id] }] });
 });
 
 after(async () => {

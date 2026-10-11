@@ -385,15 +385,22 @@ test('service: power on → auto-connect; off needs confirming when hot, twice w
 	assert.equal(svc.info(printer.id), null);
 });
 
-test('notifications: power events reach channels subscribed to them', async () => {
-	const notify = await import('../src/lib/server/history/notify.ts');
-	const n = { event: 'power.off' as const, title: 'Power off: MK4', message: 'MK4 was powered off by octo·modern.', printer: { id: 'p1', name: 'MK4' }, print: null, at: '2026-10-10T12:00:00.000Z', url: null };
-	const ntfy = JSON.parse(notify.buildRequest('ntfy', { topic: 't' }, {}, n).body);
-	assert.deepEqual(ntfy.tags, ['electric_plug', 'octo-modern']);
-	const hook = JSON.parse(notify.buildRequest('webhook', {}, { url: 'http://127.0.0.1:9/x' }, n).body);
+test('notifications: power events go through notify() to the channels whose rules want them', async () => {
+	const settings = await import('../src/lib/server/notify/settings.ts');
+	const { render } = await import('../src/lib/server/notify/render.ts');
+	const { webhookPayload } = await import('../src/lib/server/notify/channels/webhook.ts');
+	const { ntfyTags } = await import('../src/lib/server/notify/channels/ntfy.ts');
+	const { routeEvent } = await import('../src/lib/server/notify/routing.ts');
+	const m = render({ kind: 'power.off', printerId: 'p1', printerName: 'MK4', title: 'Power off: MK4', message: 'MK4 was powered off by octo·modern.' }, { publicUrl: null });
+	assert.equal(m.title, 'Power off: MK4');
+	assert.deepEqual(ntfyTags(m), ['electric_plug', 'octo-modern']);
+	const hook = webhookPayload(m);
 	assert.equal(hook.event, 'power.off');
 	assert.equal(hook.print, null);
-	const saved = notify.saveChannels([{ kind: 'webhook', name: 'h', on: ['failed', 'power.on', 'bogus'], secrets: { url: 'http://127.0.0.1:9/x' } }], null);
-	assert.deepEqual(saved[0].on, ['failed', 'power.on']);
-	notify.saveChannels([], null);
+	const c = settings.createChannel({ type: 'webhook', name: 'h', secrets: { url: 'http://127.0.0.1:9/x' } });
+	const s = settings.saveSettings({ rules: [{ name: 'power', printers: 'all', events: ['print.failed', 'power.on', 'bogus'], channels: [c.id] }] });
+	assert.deepEqual(s.rules[0].events, ['print.failed', 'power.on']);
+	assert.deepEqual(routeEvent(s.rules, 'power.on', 'p1'), [c.id]);
+	assert.deepEqual(routeEvent(s.rules, 'power.off', 'p1'), []);
+	settings.deleteChannel(c.id);
 });

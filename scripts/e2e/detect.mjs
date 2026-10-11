@@ -259,7 +259,7 @@ async function main() {
 	const ml = mockMlApi(ocp);
 	const hooks = [];
 	const hookServer = createServer(async (req, res) => {
-		hooks.push(JSON.parse(await readBody(req)));
+		hooks.push(((b) => ({ ...b, detection: b.data?.detection }))(JSON.parse(await readBody(req))));
 		res.end('ok');
 	});
 	await Promise.all([listen(ocp.server, OP_PORT), listen(ml.server, ML_PORT), listen(hookServer, HOOK_PORT)]);
@@ -327,7 +327,9 @@ async function main() {
 	assert.equal((await admin.put('/api/settings/detection', { mlApiUrl: 'file:///etc' })).status, 400);
 
 	// The webhook hears about suspected failures.
-	const saved = await admin.put('/api/settings/notifications', { channels: [{ kind: 'webhook', name: 'e2e hook', on: ['failure.suspected'], secrets: { url: `http://127.0.0.1:${HOOK_PORT}/detect` } }] });
+	const hookChannel = await admin.post('/api/settings/notifications/channels', { type: 'webhook', name: 'e2e hook', config: { includeImage: true }, secrets: { url: `http://127.0.0.1:${HOOK_PORT}/detect` } });
+	assert.equal(hookChannel.status, 201, JSON.stringify(hookChannel.data));
+	const saved = await admin.put('/api/settings/notifications', { publicUrl: APP, rules: [{ name: 'Detections', printers: 'all', events: ['failure.suspected'], channels: [hookChannel.data.channel.id] }] });
 	assert.equal(saved.status, 200, JSON.stringify(saved.data));
 
 	// --- browser: admin sets up the ML API --------------------------------------------------------

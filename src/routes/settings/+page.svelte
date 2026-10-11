@@ -40,14 +40,23 @@
 	// --- backup & restore ------------------------------------------------------
 
 	const MIN_PASSPHRASE = 12;
-	type Category = 'printers' | 'users' | 'settings';
+	type Category = 'printers' | 'users' | 'settings' | 'notifications' | 'queue' | 'filament' | 'history';
 	const CATEGORIES: { key: Category; label: string; hint: string }[] = [
-		{ key: 'printers', label: 'Printers', hint: 'OctoPrint servers with their API keys' },
+		{ key: 'printers', label: 'Printers', hint: 'OctoPrint servers with their API keys and smart plugs' },
 		{ key: 'users', label: 'Users', hint: 'roles, password hashes, SSO links, printer access' },
-		{ key: 'settings', label: 'Settings', hint: 'single sign-on' }
+		{ key: 'settings', label: 'Settings', hint: 'single sign-on, failure detection' },
+		{ key: 'notifications', label: 'Notifications', hint: 'channels with their tokens, rules, quiet hours' },
+		{ key: 'queue', label: 'Print queue', hint: 'jobs and printer tags; files uploaded to the queue aren’t included' },
+		{ key: 'filament', label: 'Spools & maintenance', hint: 'Spoolman connection, costs, spool per printer, maintenance tasks and log' },
+		{ key: 'history', label: 'Print history', hint: 'every entry; can make the file large' }
 	];
 
-	let exp = $state({ passphrase: '', confirm: '', include: { printers: true, users: true, settings: true } as Record<Category, boolean> });
+	let exp = $state({
+		passphrase: '',
+		confirm: '',
+		include: { printers: true, users: true, settings: true, notifications: true, queue: true, filament: true, history: false } as Record<Category, boolean>,
+		historyImages: false
+	});
 	let exporting = $state(false);
 	const exportProblem = $derived(
 		exp.passphrase.length < MIN_PASSPHRASE
@@ -67,7 +76,7 @@
 			const res = await fetch('/api/backup', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ passphrase: exp.passphrase, include: exp.include })
+				body: JSON.stringify({ passphrase: exp.passphrase, include: { ...exp.include, historyImages: exp.include.history && exp.historyImages } })
 			});
 			if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? res.statusText);
 			const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'octo-modern-backup.ocmbackup';
@@ -89,22 +98,31 @@
 		createdAt: string;
 		appVersion: string;
 		contains: Record<Category, boolean>;
-		printers: { id: string; name: string; target: string; hasApiKey: boolean; status: 'new' | 'update' }[];
+		printers: { id: string; name: string; target: string; hasApiKey: boolean; plug?: string | null; status: 'new' | 'update' }[];
 		users: { email: string; name: string | null; role: string; status: 'new' | 'update' | 'self' }[];
 		grants: number;
 		settings: { label: string; detail: string; status: Status }[];
+		notifications: { channels: { name: string; type: string; status: 'new' | 'update' }[]; rules: number; replaces: number } | null;
+		history: { total: number; added: number; images: boolean } | null;
+		queue: { jobs: number; added: number; tags: number } | null;
+		filament: { spoolman: string | null; assignments: number; tasks: number; newTasks: number; log: number } | null;
 	};
 	type Result = {
 		printers: { added: number; updated: number };
 		users: { added: number; updated: number; skipped: number };
 		grants: number;
 		settings: boolean;
+		notifications: boolean;
+		history: { added: number; skipped: number };
+		queue: { added: number; skipped: number; tags: number };
+		filament: { assignments: number; tasks: number; log: number } | null;
 	};
 
+	const NONE: Record<Category, boolean> = { printers: false, users: false, settings: false, notifications: false, queue: false, filament: false, history: false };
 	let restoreFile = $state<File | null>(null);
 	let restorePass = $state('');
 	let preview = $state<Preview | null>(null);
-	let choose = $state<Record<Category, boolean>>({ printers: true, users: true, settings: true });
+	let choose = $state<Record<Category, boolean>>({ printers: true, users: true, settings: true, notifications: true, queue: true, filament: true, history: true });
 	let restoring = $state(false);
 	let fileInput = $state<HTMLInputElement>();
 
@@ -133,7 +151,7 @@
 		restoring = true;
 		try {
 			preview = (await sendRestore('preview')) as Preview;
-			choose = { ...preview.contains };
+			choose = { ...NONE, ...preview.contains };
 		} catch (err) {
 			preview = null;
 			toast('error', 'Can’t read that backup', errorMessage(err));
@@ -149,7 +167,11 @@
 			const parts = [
 				choose.printers && `${r.printers.added} printers added, ${r.printers.updated} updated`,
 				choose.users && `${r.users.added} users added, ${r.users.updated} updated`,
-				choose.settings && 'settings replaced'
+				choose.settings && 'settings replaced',
+				choose.notifications && r.notifications && 'notifications replaced',
+				choose.queue && r.queue && `${r.queue.added} queued jobs added`,
+				choose.filament && r.filament && `${r.filament.tasks} maintenance tasks added`,
+				choose.history && `${r.history.added} history entries added`
 			].filter(Boolean);
 			toast('success', 'Backup restored', parts.join(' · '));
 			await refreshPrinters();
@@ -240,7 +262,7 @@
 		<section class="card p-5">
 			<h2 class="flex items-center gap-2 text-sm font-semibold"><Archive class="size-4 text-primary" />Backup &amp; restore</h2>
 			<p class="mt-1 text-xs text-muted-foreground">
-				An encrypted file with octo·modern's own configuration, sealed with a passphrase you choose instead of the master key, so it also restores on a new install. The audit log and API tokens aren't included.
+				An encrypted file with octo·modern's own configuration, sealed with a passphrase you choose instead of the master key, so it also restores on a new install. The audit log and API tokens aren't included; the print history only when you tick it.
 			</p>
 
 			<div class="mt-4 grid gap-5 lg:grid-cols-2">
@@ -254,6 +276,12 @@
 								<span>{c.label} <span class="text-xs text-muted-foreground">· {c.hint}</span></span>
 							</label>
 						{/each}
+						{#if exp.include.history}
+							<label class="ml-6.5 flex items-start gap-2.5 text-[0.8125rem]">
+								<input type="checkbox" class="mt-0.5 size-4 accent-[var(--primary)]" bind:checked={exp.historyImages} />
+								<span>With pictures <span class="text-xs text-muted-foreground">· the snapshot kept with each print, up to 100 KB each</span></span>
+							</label>
+						{/if}
 					</fieldset>
 					<div class="grid gap-3 sm:grid-cols-2">
 						<div>
@@ -268,7 +296,7 @@
 					<div class="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs">
 						<TriangleAlert class="size-4 shrink-0 text-warning" />
 						<p class="text-muted-foreground">
-							<b class="font-medium text-foreground">The file contains your OctoPrint API keys</b> and SSO secret, protected only by this passphrase. Store it as carefully as a password manager export, and keep the passphrase somewhere else: it can't be recovered.
+							<b class="font-medium text-foreground">The file contains your OctoPrint API keys</b>, notification tokens and SSO secret, protected only by this passphrase. Store it as carefully as a password manager export, and keep the passphrase somewhere else: it can't be recovered.
 						</p>
 					</div>
 					<div class="mt-auto flex items-center gap-3">
@@ -338,7 +366,7 @@
 														<span class="badge {STATUS_CLASS[pr.status]} w-16 justify-center">{STATUS_LABEL[pr.status]}</span>
 														<span class="font-medium">{pr.name}</span>
 														<span class="truncate font-mono text-muted-foreground">{pr.target}</span>
-														{#if !pr.hasApiKey}<span class="badge badge-warning">no key</span>{/if}
+														{#if !pr.hasApiKey}<span class="badge badge-warning">no key</span>{/if}{#if pr.plug}<span class="badge">plug: {pr.plug}</span>{/if}
 													</li>
 												{:else}
 													<li class="text-muted-foreground">No printers</li>
@@ -357,6 +385,37 @@
 													</li>
 												{/each}
 											</ul>
+										</td>
+									{:else if c.key === 'notifications' && p.notifications}
+										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.notifications.channels.length} channels<br />{p.notifications.rules} rules</td>
+										<td class="px-4 py-3">
+											<p class="mb-1 text-xs text-muted-foreground">Replaced as a whole{p.notifications.replaces ? ` (${p.notifications.replaces} channels here now)` : ''}.</p>
+											<ul class="space-y-1 text-xs">
+												{#each p.notifications.channels as ch, i (i)}
+													<li class="flex items-center gap-2">
+														<span class="badge {STATUS_CLASS[ch.status]} w-16 justify-center">{STATUS_LABEL[ch.status]}</span>
+														<span class="font-medium">{ch.name}</span>
+														<span class="text-muted-foreground">{ch.type}</span>
+													</li>
+												{/each}
+											</ul>
+										</td>
+									{:else if c.key === 'queue' && p.queue}
+										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.queue.jobs} jobs<br />{p.queue.tags} printer tags</td>
+										<td class="px-4 py-3 text-xs">
+											<span class="badge {p.queue.added ? 'badge-success' : ''}">add {p.queue.added}</span>
+											<span class="ml-2 text-muted-foreground">{p.queue.jobs - p.queue.added} already here (kept); printer tags replaced</span>
+										</td>
+									{:else if c.key === 'filament' && p.filament}
+										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.filament.tasks} tasks<br />{p.filament.assignments} spools on printers</td>
+										<td class="px-4 py-3 text-xs text-muted-foreground">
+											Spoolman {p.filament.spoolman ?? 'not set'} and cost settings replaced; spool per printer replaced; <span class="badge {p.filament.newTasks ? 'badge-success' : ''}">add {p.filament.newTasks}</span> tasks, {p.filament.log} log entries merged
+										</td>
+									{:else if c.key === 'history' && p.history}
+										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.history.total} entries<br />{p.history.images ? 'with pictures' : 'no pictures'}</td>
+										<td class="px-4 py-3 text-xs">
+											<span class="badge {p.history.added ? 'badge-success' : ''}">add {p.history.added}</span>
+											<span class="ml-2 text-muted-foreground">{p.history.total - p.history.added} already here (kept)</span>
 										</td>
 									{:else}
 										<td class="px-2 py-3 whitespace-nowrap text-muted-foreground">{p.settings.length} groups<br />replaced as a whole</td>

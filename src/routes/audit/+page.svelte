@@ -82,7 +82,13 @@
 		'library.save': 'Saved to library',
 		'library.source.create': 'Added library source',
 		'library.source.update': 'Changed library source',
-		'library.source.delete': 'Removed library source'
+		'library.source.delete': 'Removed library source',
+		'settings.notifications': 'Changed notification settings',
+		'notifications.channel.create': 'Added notification channel',
+		'notifications.channel.update': 'Changed notification channel',
+		'notifications.channel.delete': 'Removed notification channel',
+		'notifications.test': 'Sent test notification',
+		'notifications.log.clear': 'Cleared delivery log'
 	};
 	const GROUPS = [
 		{ value: '', label: 'All actions' },
