@@ -131,6 +131,10 @@
 					onclick={() => openTab(t.id)}
 				>
 					<Icon class="size-4.5 shrink-0 sm:size-3.5" /><span class="max-w-full truncate">{t.label}</span>
+					{#if t.id === 'care' && data.updates > 0}
+						<!-- Updates for OctoPrint or its plugins (admins): Care › Plugins & updates. -->
+						<span class="absolute top-2 right-[calc(50%-1rem)] size-1.5 rounded-full bg-primary shadow-[0_0_6px_var(--primary)] sm:static sm:size-1.5" title="{data.updates} update{data.updates === 1 ? '' : 's'} available" data-testid="care-updates-dot"></span>
+					{/if}
 					{#if tab.id === t.id}<span class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary"></span>{/if}
 				</button>
 			{/each}
@@ -158,7 +162,7 @@
 	<div class="page-x min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 lg:py-5 {tab.id === 'control' && view === 'terminal' ? 'flex flex-col max-sm:py-2' : ''}">
 		{#key `${data.printer.id}:${tab.id}`}
 			{@const Section = TAB_COMPONENTS[tab.id]}
-			<Section {printer} {live} {canControl} tab={tab.id} {view} {views} {openView} />
+			<Section {printer} {live} {canControl} tab={tab.id} {view} {views} {openView} counts={{ plugins: data.updates }} />
 		{/key}
 	</div>
 

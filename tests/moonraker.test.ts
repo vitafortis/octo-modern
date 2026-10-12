@@ -221,7 +221,7 @@ test('control info: macros as buttons, a profile from the Klipper config, Mainsa
 });
 
 test('kind features: Klipper hides OctoPrint-only things, needs no key', () => {
-	assert.deepEqual([...hiddenTabs({ kind: 'moonraker' })], ['timelapse', 'bed']);
+	assert.deepEqual([...hiddenTabs({ kind: 'moonraker' })], ['timelapse', 'bed', 'plugins']);
 	assert.deepEqual([...hiddenTabs({ kind: 'octoprint' })], []);
 	assert.equal(features({ kind: 'moonraker' }).selectWithoutPrint, false);
 	assert.ok(canReach({ kind: 'moonraker', hasApiKey: false }));

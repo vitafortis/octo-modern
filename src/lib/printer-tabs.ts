@@ -13,8 +13,8 @@ export type TabId = 'dashboard' | 'files' | 'control' | 'camera' | 'jobs' | 'car
 export interface ViewMeta {
 	id: string;
 	label: string;
-	/** Only shown when the printer has this optional feature (e.g. an OctoPrint plugin). */
-	requires?: 'bedmesh';
+	/** Only shown when the printer has this optional feature (an OctoPrint plugin; `plugins`: OctoPrint printers, for admins). */
+	requires?: 'bedmesh' | 'plugins';
 	/** Shown as a segment of the tab's switcher; false for views opened from inside the tab (the toolpath preview, the full-height terminal). */
 	segment?: boolean;
 	/** Extra words the command palette matches. */
@@ -57,7 +57,8 @@ export const TAB_META: TabMeta[] = [
 		keywords: 'upkeep',
 		views: [
 			{ id: 'maintenance', label: 'Maintenance', keywords: 'nozzle belts reminders' },
-			{ id: 'bed', label: 'Bed mesh', requires: 'bedmesh', keywords: 'bed visualizer leveling mesh' }
+			{ id: 'bed', label: 'Bed mesh', requires: 'bedmesh', keywords: 'bed visualizer leveling mesh' },
+			{ id: 'plugins', label: 'Plugins & updates', requires: 'plugins', keywords: 'octoprint plugin manager install software update upgrade restart' }
 		]
 	}
 ];

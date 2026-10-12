@@ -22,6 +22,8 @@ export function adminOnlyApi(method: string, path: string): boolean {
 	if (path === '/api/history/import') return true;
 	// Pre-print settings per printer (starting prints through them is for operators).
 	if (/^\/api\/printers\/[^/]+\/preprint\/settings$/.test(path)) return true;
+	// OctoPrint plugins and updates (reading them too: they show OctoPrint's internals).
+	if (/^\/api\/printers\/[^/]+\/plugins(\/|$)/.test(path)) return true;
 	// Smart plug setup and tests (switching is for operators, see controlApi).
 	if (/^\/api\/printers\/[^/]+\/power\/(config|test)$/.test(path)) return true;
 	return false;

@@ -10,5 +10,6 @@ import './detect.ts';
 import './queue.ts';
 import './spools.ts';
 import './bedmesh.ts';
+import './plugins.ts';
 
 export {};

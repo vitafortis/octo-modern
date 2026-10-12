@@ -30,7 +30,8 @@
 		"e2e:klipper": "node scripts/e2e/klipper.mjs",
 		"e2e:preprint": "node scripts/e2e/preprint.mjs",
 		"e2e:install": "node scripts/e2e/install.mjs",
-		"e2e:android": "node scripts/e2e/android.mjs"
+		"e2e:android": "node scripts/e2e/android.mjs",
+		"e2e:plugins": "node scripts/e2e/plugins.mjs"
 	},
 	"devDependencies": {
 		"@fontsource-variable/geist": "^5.3.0",

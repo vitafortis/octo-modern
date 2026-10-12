@@ -17,8 +17,13 @@
 // first matching line with `Recv: Error:Probing failed` instead. `files: { 'a.gcode': text }`
 // adds downloadable files (/downloads/files/local/…, with Range) to the file list; a file
 // can be selected and then started with the job command `start`.
+//
+// `pluginManager: { plugins, repository, updates, … }` adds OctoPrint's Plugin Manager, Software
+// Update and system commands (see mock-pluginmanager.mjs); `version` sets OctoPrint's version.
+// While it restarts, every connection is reset.
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
+import { createPluginManager } from './mock-pluginmanager.mjs';
 
 const sendJson = (res, body, status = 200) => res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(body));
 const readBody = (req) =>
@@ -92,7 +97,7 @@ function wsAccept(req, socket) {
 	return { send, messages, socket };
 }
 
-export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powered = () => true, printSeconds = 8, coolPerSecond = 0.25, connectMs = 600, host = '127.0.0.1', push = false, bedVisualizer = null, files = null, levelMs = 1500, homeMs = 300, failOn = null } = {}) {
+export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powered = () => true, printSeconds = 8, coolPerSecond = 0.25, connectMs = 600, host = '127.0.0.1', push = false, bedVisualizer = null, files = null, levelMs = 1500, homeMs = 300, failOn = null, pluginManager = null, version = '1.11.2' } = {}) {
 	const s = {
 		/** 'Offline' | 'Connecting' | 'Operational' | 'Printing' | 'Offline after error' */
 		state: 'Offline',
@@ -129,7 +134,10 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 		executed: [],
 		/** The selected file (select without print). */
 		selected: null,
-		failOn
+		failOn,
+		version,
+		/** OctoPrint is restarting: every connection is reset. */
+		down: false
 	};
 	const fileMap = new Map(Object.entries(files ?? {}));
 	/** The serial queue: OctoPrint sends one line, waits for `ok`, then the next. */
@@ -171,6 +179,25 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 	const pushAll = (obj) => {
 		for (const ws of sockets) ws.send(obj);
 	};
+	const pm = pluginManager
+		? createPluginManager(pluginManager, {
+				push: (obj) => pushAll(obj),
+				version: () => s.version,
+				setVersion: (v) => (s.version = v),
+				printing: () => s.state === 'Printing',
+				url: () => `http://${host}:${server.address().port}`,
+				goDown: (ms, after) => {
+					s.down = true;
+					s.state = 'Offline';
+					s.job = null;
+					for (const ws of sockets) ws.socket.destroy();
+					setTimeout(() => {
+						s.down = false;
+						after?.();
+					}, ms).unref?.();
+				}
+			})
+		: null;
 	const bed = bedVisualizer?.bed ?? { type: 'rectangular', x_min: 10, x_max: 240, y_min: 10, y_max: 200, z_min: 0, z_max: 2 };
 
 	/** The probe coordinates the plugin's UI stores with a mesh (evenly over the bed, rounded). */
@@ -271,6 +298,7 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 	const server = createServer(async (req, res) => {
 		const url = new URL(req.url, 'http://x');
 		const body = await readBody(req);
+		if (s.down && !url.pathname.startsWith('/__mock/')) return void req.socket.destroy();
 		s.requests.push({ method: req.method, path: url.pathname });
 		if (url.pathname.startsWith('/__mock/')) {
 			if (url.pathname === '/__mock/print') {
@@ -296,7 +324,8 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 		}
 		if (req.headers['x-api-key'] !== apiKey) return sendJson(res, { error: 'Invalid API key' }, 403);
 		const p = url.pathname;
-		if (p === '/api/version') return sendJson(res, { api: '0.1', server: '1.11.2', text: 'OctoPrint 1.11.2' });
+		if (p === '/api/version') return sendJson(res, { api: '0.1', server: s.version, text: `OctoPrint ${s.version}` });
+		if (pm?.handle(req, p, url, body, res, (b, status) => sendJson(res, b, status))) return;
 		if (p === '/api/login') return push ? sendJson(res, { name: 'admin', session: 'mock-session' }) : sendJson(res, { error: 'no push in this mock' }, 403);
 		if (p === '/api/currentuser') return sendJson(res, { name: 'admin', permissions: [], groups: [] });
 		if (p === '/api/settings') {
@@ -422,7 +451,7 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 		sendJson(res, { error: 'Not found' }, 404);
 	});
 	server.on('upgrade', (req, socket) => {
-		if (!push || !req.url.startsWith('/sockjs/websocket')) return socket.destroy();
+		if (!push || s.down || !req.url.startsWith('/sockjs/websocket')) return socket.destroy();
 		const ws = wsAccept(req, socket);
 		sockets.add(ws);
 		s.pushClients = sockets.size;
@@ -431,7 +460,7 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 			s.pushClients = sockets.size;
 		});
 		socket.on('error', () => sockets.delete(ws));
-		ws.send({ connected: { version: '1.11.2', display_version: '1.11.2', apikey: null } });
+		ws.send({ connected: { version: s.version, display_version: s.version, apikey: null } });
 		// The first update right away, so the session counts as open.
 		setTimeout(() => ws.send({ current: currentFrame() }), 100);
 	});
@@ -440,6 +469,8 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 		url: `http://${host}:${server.address().port}`,
 		apiKey,
 		state: s,
+		/** The Plugin Manager / Software Update state (with `pluginManager`). */
+		pluginManager: pm?.state ?? null,
 		/** Sends a raw push message to every connected socket (e.g. a plugin message). */
 		push: pushAll,
 		close: () => {
