@@ -77,6 +77,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".widget.WidgetPinnedReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".widget.PrinterWidgetProvider"
             android:exported="true"
             android:label="@string/widget_label">

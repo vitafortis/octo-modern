@@ -141,13 +141,31 @@
 		$('s-linked').innerHTML = s.linked ? '<span class="badge badge-success">Linked</span>' : '<span class="badge">Not linked</span>';
 	}
 
+	// Everything is loaded before the page shows, so it doesn't jump around while you look.
 	async function settings() {
-		show('settings');
-		try {
-			state = await native('getState');
+		const [st, w] = await Promise.all([native('getState').catch((err) => ({ error: err })), native('widgetPrinters').catch(() => null)]);
+		if (st.error) note($('settings-error'), st.error.message || String(st.error));
+		else {
+			state = st;
 			renderSettings();
-		} catch (err) {
-			note($('settings-error'), err.message || String(err));
+		}
+		widgets(w);
+		show('settings');
+	}
+
+	function widgets(r) {
+		const list = $('widget-list');
+		$('widget-card').hidden = !r || !r.supported || !r.printers.length;
+		if ($('widget-card').hidden) return;
+		list.textContent = '';
+		for (const p of r.printers) {
+			const row = document.createElement('div');
+			row.className = 'setting';
+			row.innerHTML = '<div class="text"><div class="title"></div></div><button class="btn btn-secondary"><svg><use href="#i-plus" /></svg>Add</button>';
+			row.querySelector('.title').textContent = p.name;
+			row.querySelector('button').dataset.printer = p.id;
+			row.querySelector('button').addEventListener('click', () => native('pinWidget', { printerId: p.id }).catch((e) => note($('settings-error'), e.message)));
+			list.append(row);
 		}
 	}
 

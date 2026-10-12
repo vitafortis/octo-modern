@@ -1,23 +1,31 @@
 package io.github.vitafortis.octomodern
 
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.webkit.CookieManager
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import io.github.vitafortis.octomodern.core.ServerAddress
+import io.github.vitafortis.octomodern.data.AppSettings
 import io.github.vitafortis.octomodern.data.Tokens
 import io.github.vitafortis.octomodern.net.Api
 import io.github.vitafortis.octomodern.net.ServerCheck
 import io.github.vitafortis.octomodern.watch.Notifier
+import io.github.vitafortis.octomodern.watch.StatusSync
 import io.github.vitafortis.octomodern.watch.StatusWorker
 import io.github.vitafortis.octomodern.watch.Watch
+import io.github.vitafortis.octomodern.widget.PrinterWidgetProvider
+import io.github.vitafortis.octomodern.widget.WidgetPinnedReceiver
 
 /**
  * What the app's own pages (www/: setup and settings) can ask of the native side. Only
@@ -181,6 +189,39 @@ class OctoModernPlugin : Plugin() {
         activity.runOnUiThread { CookieManager.getInstance().removeAllCookies { done.countDown() } }
         done.await(3, java.util.concurrent.TimeUnit.SECONDS)
         CookieManager.getInstance().flush()
+    }
+
+    /** Printers for the "Add widget" list (from the last status round). */
+    @PluginMethod
+    fun widgetPrinters(call: PluginCall) {
+        if (!local(call)) return
+        val api = AppSettings.api(context) ?: return call.resolve(JSObject().put("printers", JSArray()))
+        Thread {
+            val round = try {
+                StatusSync.fetch(context, api)
+            } catch (e: Exception) {
+                StatusSync.cached(context)
+            }
+            val list = JSArray()
+            round?.printers?.forEach { list.put(JSObject().put("id", it.id).put("name", it.name)) }
+            val supported = AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported
+            call.resolve(JSObject().put("printers", list).put("supported", supported))
+        }.start()
+    }
+
+    /** Asks the launcher to add a printer widget (Android shows its own confirmation). */
+    @PluginMethod
+    fun pinWidget(call: PluginCall) {
+        if (!local(call)) return
+        val printerId = call.getString("printerId") ?: return call.reject("No printer")
+        val mgr = AppWidgetManager.getInstance(context)
+        if (!mgr.isRequestPinAppWidgetSupported) return call.reject("This launcher can’t add widgets for apps; long-press the home screen and choose Widgets.")
+        val cb = Intent(context, WidgetPinnedReceiver::class.java)
+            .putExtra(WidgetPinnedReceiver.EXTRA_PRINTER, printerId)
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+        val pi = PendingIntent.getBroadcast(context, printerId.hashCode(), cb, flags)
+        val ok = mgr.requestPinAppWidget(ComponentName(context, PrinterWidgetProvider::class.java), null, pi)
+        call.resolve(JSObject().put("requested", ok))
     }
 
     @PluginMethod
