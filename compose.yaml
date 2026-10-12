@@ -23,10 +23,10 @@ services:
       # Optional: create the first admin here instead of in the setup wizard.
       # OCM_ADMIN_EMAIL: you@example.com
       # OCM_ADMIN_PASSWORD: ${OCM_ADMIN_PASSWORD}
-      # Optional: manage the API-key encryption key yourself.
+      # Optional: manage the encryption key for stored credentials (API keys, tokens) yourself.
       # Otherwise a random key is generated at /data/secret.key — back it up.
       # OCM_SECRET_KEY: change-me-to-a-long-random-string
-      # Single sign-on can be set up in the UI (Integrations); these are optional:
+      # Single sign-on can be set up in the UI (Settings → Integrations); these are optional:
       # OCM_OIDC_ISSUER: https://auth.example.com/application/o/octo-modern/
       # OCM_OIDC_CLIENT_ID: octo-modern
       # OCM_OIDC_CLIENT_SECRET: ${OCM_OIDC_CLIENT_SECRET}
@@ -34,9 +34,11 @@ services:
       # OCM_OIDC_AUTO_CREATE: "*@example.com"
       # OCM_OIDC_ADMIN_EMAILS: you@example.com
       # OCM_OIDC_DEFAULT_ROLE: viewer
-      # Behind a TLS reverse proxy, uncomment so secure cookies and SSO callbacks work:
-      # PROTOCOL_HEADER: x-forwarded-proto
-      # HOST_HEADER: x-forwarded-host
+      # Behind a TLS reverse proxy (see the README's "Reverse proxy"): the public address,
+      # used for links in notifications, and the real client address for the audit log.
+      # ORIGIN: https://print.example.com
+      # ADDRESS_HEADER: X-Forwarded-For
+      # XFF_DEPTH: 1
     volumes:
       - octo-modern-data:/data
       # Library (print G-code from your NAS): mount a share (see volumes below), then add

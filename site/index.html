@@ -3,12 +3,12 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-		<title>octo·modern: a modern, self-hosted UI for OctoPrint</title>
+		<title>octo·modern: a modern, self-hosted UI for OctoPrint and Klipper</title>
 		<meta
 			name="description"
-			content="A self-hosted, containerized web UI for one or more OctoPrint servers. Live state, webcams, files and jobs for every printer in one place, with the API keys kept on the server."
+			content="A self-hosted, containerized web UI for your OctoPrint and Klipper printers. Live state, webcams, files, jobs, a print queue and history for every printer in one place, with the API keys kept on the server."
 		/>
-		<link rel="canonical" href="https://vitafortis.github.io/octo-modern/" />
+		<link rel="canonical" href="%SITE_URL%/" />
 		<meta name="color-scheme" content="dark light" />
 		<meta name="theme-color" content="#0d0b12" media="(prefers-color-scheme: dark)" />
 		<meta name="theme-color" content="#fcfbfe" media="(prefers-color-scheme: light)" />
@@ -25,23 +25,23 @@
 
 		<meta property="og:type" content="website" />
 		<meta property="og:site_name" content="octo·modern" />
-		<meta property="og:title" content="octo·modern: a modern, self-hosted UI for OctoPrint" />
+		<meta property="og:title" content="octo·modern: a modern, self-hosted UI for OctoPrint and Klipper" />
 		<meta
 			property="og:description"
-			content="Every OctoPrint printer in one place: live temperatures, webcams, files, jobs, roles and SSO. One Docker container; API keys never reach the browser."
+			content="Every OctoPrint and Klipper printer in one place: live temperatures, webcams, files, jobs, a queue, history, roles and SSO. One Docker container; API keys never reach the browser."
 		/>
-		<meta property="og:url" content="https://vitafortis.github.io/octo-modern/" />
-		<meta property="og:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+		<meta property="og:url" content="%SITE_URL%/" />
+		<meta property="og:image" content="%SITE_URL%/og.png" />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
 		<meta property="og:image:alt" content="octo·modern logo next to its printer dashboard" />
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="octo·modern: a modern, self-hosted UI for OctoPrint" />
+		<meta name="twitter:title" content="octo·modern: a modern, self-hosted UI for OctoPrint and Klipper" />
 		<meta
 			name="twitter:description"
-			content="Every OctoPrint printer in one place: live temperatures, webcams, files, jobs, roles and SSO. One Docker container."
+			content="Every OctoPrint and Klipper printer in one place: live temperatures, webcams, files, jobs, roles and SSO. One Docker container."
 		/>
-		<meta name="twitter:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+		<meta name="twitter:image" content="%SITE_URL%/og.png" />
 	</head>
 	<body>
 		<a class="btn btn-primary skip" href="#main">Skip to content</a>
@@ -91,7 +91,7 @@
 						<span class="badge badge-primary"><span class="dot dot-live"></span>Self-hosted · one Docker container</span>
 						<h1>octo<span class="text-primary">·</span>modern</h1>
 						<p class="pitch">
-							A modern web UI for one or more OctoPrint servers. Live state, webcams, files and jobs for every printer
+							A modern web UI for your OctoPrint and Klipper printers. Live state, webcams, files and jobs for every printer
 							in one place, with the API keys kept on the server.
 						</p>
 						<div class="cta">
@@ -195,6 +195,13 @@
 							</div>
 						</article>
 						<article class="card feature">
+							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="M2 12h4"/><circle cx="12" cy="12" r="4"/><path d="M18 12h4"/><path d="m16.24 7.76 2.83-2.83"/><path d="M12 18v4"/></svg></span>
+							<div>
+								<h3>Klipper, too</h3>
+								<p>Klipper printers through Moonraker sit next to OctoPrint ones: live status, jobs, files with slicer thumbnails, macros as buttons, the terminal, webcams, history, the queue and notifications. Auto-detected when you add one.</p>
+							</div>
+						</article>
+						<article class="card feature">
 							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M6.376 18.91a6 6 0 0 1 11.249.003"/><circle cx="12" cy="11" r="4"/></svg></span>
 							<div>
 								<h3>Roles, SSO &amp; audit log</h3>
@@ -226,7 +233,7 @@
 							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span>
 							<div>
 								<h3>Encrypted backup &amp; restore</h3>
-								<p>Printers, keys, users and SSO settings in one passphrase-sealed file that restores on a fresh install.</p>
+								<p>Printers, keys, users, settings, notifications, the queue and optionally the print history in one passphrase-sealed file that restores on a fresh install.</p>
 							</div>
 						</article>
 						<article class="card feature">
@@ -345,7 +352,7 @@
 							<span class="icon-tile"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></span>
 							<div>
 								<h3>Android app</h3>
-								<p>Your octo·modern in an app: live print progress in the notification shade with Pause and Cancel, a finished-print notice with the snapshot, a home-screen widget per printer and an optional fingerprint lock. No Google account or Firebase; install the APK from GitHub Releases.</p>
+								<p>Your octo·modern in an app: live print progress in the notification shade with Pause and Cancel, a finished-print notice with the snapshot, a home-screen widget per printer and an optional fingerprint lock. No Google account or Firebase; install the APK from <a href="https://github.com/vitafortis/octo-modern/releases/tag/android-v0.1.0">GitHub Releases</a>.</p>
 							</div>
 						</article>
 					</div>
@@ -368,6 +375,10 @@
 						<a class="shot" href="screenshots/printer.png" data-caption="Dashboard: live webcam, job and temperatures">
 							<span class="thumb"><img src="screenshots/printer.png" width="1440" height="900" loading="lazy" decoding="async" alt="Printer dashboard with webcam, job progress and temperature chart" /></span>
 							<span class="cap">Dashboard<small>Webcam, job, temperatures</small></span>
+						</a>
+						<a class="shot" href="screenshots/dashboard-klipper.png" data-caption="A Klipper printer through Moonraker, next to the OctoPrint ones">
+							<span class="thumb"><img src="screenshots/dashboard-klipper.png" width="1440" height="900" loading="lazy" decoding="async" alt="Dashboard of a Klipper printer with its job, temperatures and webcam" /></span>
+							<span class="cap">Klipper<small>Through Moonraker</small></span>
 						</a>
 						<a class="shot" href="screenshots/queue.png" data-caption="Queue: jobs for any printer, copies, tags and the bed-clear check">
 							<span class="thumb"><img src="screenshots/queue.png" width="1440" height="900" loading="lazy" decoding="async" alt="Print queue with two printers, one waiting for its bed to be cleared, and five jobs" /></span>
@@ -565,7 +576,7 @@ volumes:
 						<div class="step-col">
 							<div class="card step">
 								<h3 class="step-title">Create the admin</h3>
-								<p>Open <code>http://&lt;your-host&gt;:3040</code>. A short setup wizard creates the admin account and offers any OctoPrint servers it found in Docker or over mDNS.</p>
+								<p>Open <code>http://&lt;your-host&gt;:3040</code>. A short setup wizard creates the admin account (there is no default password, so do this first) and offers any OctoPrint servers it found in Docker or over mDNS.</p>
 							</div>
 							<div class="card step">
 								<h3 class="step-title">Add your printer</h3>
@@ -587,7 +598,7 @@ volumes:
 										</ol>
 									</div>
 								</div>
-								<p>More in the <a href="docs.html#printers">docs</a>: reverse proxies, self-signed certificates and Docker networking.</p>
+								<p>More in the docs: <a href="docs.html#printers">adding printers</a> (self-signed certificates, Docker networking), <a href="docs.html#klipper">Klipper</a>, a <a href="docs.html#reverse-proxy">reverse proxy</a> and <a href="docs.html#upgrading">upgrading</a>.</p>
 							</div>
 						</div>
 					</div>
@@ -669,20 +680,26 @@ volumes:
 						<details>
 							<summary>Can people watch printers without an account?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
 							<div class="answer">
-								<p>Yes. Under <strong>Settings → Sign-in</strong>, make sign-in optional: visitors become guests who can either watch or control printers, while admin pages still need an admin account.</p>
+								<p>Yes. Under <strong>Settings → General → Sign-in</strong>, make sign-in optional: visitors become guests who can either watch or control printers, while admin pages still need an admin account.</p>
 								<p><code>OCM_AUTH=disabled</code> goes further and gives everyone full access; only use it on a trusted network.</p>
 							</div>
 						</details>
 						<details>
 							<summary>Does it replace OctoPrint?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
 							<div class="answer">
-								<p>No. Each printer keeps running OctoPrint; octo·modern is a front end that talks to its API. Nothing gets installed on the Pi, and OctoPrint's own UI keeps working.</p>
+								<p>No. Each printer keeps running OctoPrint (or Klipper with Moonraker); octo·modern is a front end that talks to its API. Nothing gets installed on the Pi, and OctoPrint's, Mainsail's or Fluidd's own UI keeps working.</p>
 							</div>
 						</details>
 						<details>
 							<summary>Can it run behind a reverse proxy?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
 							<div class="answer">
-								<p>Yes. Behind TLS, set <code>PROTOCOL_HEADER=x-forwarded-proto</code> and <code>HOST_HEADER=x-forwarded-host</code> so secure cookies and SSO callbacks work, and raise the proxy's upload limit (nginx: <code>client_max_body_size</code>) for big G-code files.</p>
+								<p>Yes, on its own host name. Set <code>ORIGIN</code> to the public <code>https://</code> address (or let the proxy send <code>X-Forwarded-Proto</code>), <code>ADDRESS_HEADER=X-Forwarded-For</code> for real client addresses, and raise the proxy's upload limit (nginx: <code>client_max_body_size</code>) for big G-code files. See <a href="docs.html#reverse-proxy">Reverse proxy</a>.</p>
+							</div>
+						</details>
+						<details>
+							<summary>How do I upgrade?<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+							<div class="answer">
+								<p>Pull the new image and recreate the container: in Arcane, pull or redeploy the project; with Compose, <code>docker compose pull &amp;&amp; docker compose up -d</code>. Everything is kept in the <code>/data</code> volume and migrations run on start. octo·modern never updates itself.</p>
 							</div>
 						</details>
 					</div>
@@ -711,7 +728,7 @@ volumes:
 							<img src="logo.svg" width="28" height="28" alt="" />
 							<span>octo<span class="text-primary">·</span>modern</span>
 						</a>
-						<p style="margin-top: 6px">A modern, self-hosted web UI for one or more OctoPrint servers.</p>
+						<p style="margin-top: 6px">A modern, self-hosted web UI for OctoPrint and Klipper printers.</p>
 						<div class="badges">
 							<a href="https://github.com/vitafortis/octo-modern/pkgs/container/octo-modern"><img src="https://img.shields.io/github/package-json/v/vitafortis/octo-modern?label=version&amp;color=7c3aed" width="88" height="20" alt="Version from package.json" loading="lazy" /></a>
 							<a href="https://github.com/vitafortis/octo-modern/actions/workflows/image.yml"><img src="https://img.shields.io/github/actions/workflow/status/vitafortis/octo-modern/image.yml?branch=main&amp;label=image" width="104" height="20" alt="Container image build status" loading="lazy" /></a>

@@ -6,9 +6,9 @@
 		<title>Docs · octo·modern</title>
 		<meta
 			name="description"
-			content="Adding printers, Discover, users and roles, configuration variables, the status API for Homepage, Glance and Home Assistant, and the security model of octo·modern."
+			content="Installing, upgrading and running octo·modern behind a reverse proxy, adding OctoPrint and Klipper printers, Discover, users and roles, configuration variables, the status API, the Android app and the security model."
 		/>
-		<link rel="canonical" href="https://vitafortis.github.io/octo-modern/docs.html" />
+		<link rel="canonical" href="%SITE_URL%/docs.html" />
 		<meta name="color-scheme" content="dark light" />
 		<meta name="theme-color" content="#0d0b12" media="(prefers-color-scheme: dark)" />
 		<meta name="theme-color" content="#fcfbfe" media="(prefers-color-scheme: light)" />
@@ -26,13 +26,13 @@
 		<meta property="og:type" content="article" />
 		<meta property="og:site_name" content="octo·modern" />
 		<meta property="og:title" content="octo·modern docs" />
-		<meta property="og:description" content="Install, configure and secure octo·modern, a self-hosted UI for OctoPrint." />
-		<meta property="og:url" content="https://vitafortis.github.io/octo-modern/docs.html" />
-		<meta property="og:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+		<meta property="og:description" content="Install, configure and secure octo·modern, a self-hosted UI for OctoPrint and Klipper printers." />
+		<meta property="og:url" content="%SITE_URL%/docs.html" />
+		<meta property="og:image" content="%SITE_URL%/og.png" />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:image" content="https://vitafortis.github.io/octo-modern/og.png" />
+		<meta name="twitter:image" content="%SITE_URL%/og.png" />
 	</head>
 	<body>
 		<a class="btn btn-primary skip" href="#main">Skip to content</a>
@@ -78,7 +78,7 @@
 				<div class="wrap">
 					<span class="eyebrow">Documentation</span>
 					<h1>Set up and run octo·modern</h1>
-					<p>Everything beyond <a href="./#install">the quick start</a>: adding printers, discovery, roles, configuration, dashboards and the security model.</p>
+					<p>Everything beyond <a href="./#install">the quick start</a>: reverse proxies and upgrades, adding printers, discovery, roles, configuration, dashboards and the security model.</p>
 				</div>
 			</div>
 
@@ -89,11 +89,15 @@
 							<summary>On this page<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
 							<ul>
 								<li><a href="#navigation">Finding your way around</a></li>
+								<li><a href="#reverse-proxy">Reverse proxy</a></li>
+								<li><a href="#upgrading">Upgrading and backups</a></li>
 								<li><a href="#printers">Adding a printer</a></li>
 								<li><a href="#klipper">Klipper (Moonraker)</a></li>
 								<li><a href="#discover">Printers &amp; Discover</a></li>
 								<li><a href="#roles">Users and roles</a></li>
 								<li><a href="#configuration">Configuration</a></li>
+								<li><a href="#library">Library</a></li>
+								<li><a href="#history">Print history and timelapses</a></li>
 								<li><a href="#queue">Print queue</a></li>
 								<li><a href="#slicers">Slicer uploads</a></li>
 								<li><a href="#status-api">Status API</a></li>
@@ -123,8 +127,43 @@
 					<section id="navigation">
 						<h2>Finding your way around</h2>
 						<p>The <strong>sidebar</strong> holds the everyday pages, <strong>Overview</strong> (with more than one printer), <strong>Queue</strong>, <strong>Library</strong>, <strong>History</strong> and <strong>Cameras</strong>, then your printers. <strong>Filament</strong> appears once Spoolman is set up and <strong>Maintenance</strong> once there is a task (or one is overdue; its badge counts them). Admins get one <strong>Settings</strong> entry. ⌘K / Ctrl+K searches every page, printer and tab.</p>
-						<p><strong>Settings</strong> has its own sub-navigation (a rail, or a strip of sections on a phone): <strong>General</strong>, <strong>Printers &amp; Discover</strong>, <strong>Users</strong>, <strong>Notifications</strong>, <strong>Integrations</strong> and <strong>Audit log</strong>, plus <strong>Filament</strong> and <strong>Maintenance</strong> under <em>Set up</em> until they are in the sidebar. Their addresses are unchanged (<code>/settings</code>, <code>/discover</code>, <code>/users</code>, <code>/notifications</code>, <code>/integrations</code>, <code>/audit</code>). <strong>History</strong> has <strong>Prints</strong> and <strong>Stats</strong> (<code>/history/stats</code>; <code>/stats</code> redirects there).</p>
+						<p><strong>Settings</strong> has its own sub-navigation (a rail, or a strip of sections on a phone): <strong>General</strong> (sign-in and guests, security, backup &amp; restore, failure detection, before each print), <strong>Printers &amp; Discover</strong>, <strong>Users</strong>, <strong>Notifications</strong>, <strong>Integrations</strong> and <strong>Audit log</strong>, plus <strong>Filament</strong> and <strong>Maintenance</strong> under <em>Set up</em> until they are in the sidebar. Their addresses are unchanged (<code>/settings</code>, <code>/discover</code>, <code>/users</code>, <code>/notifications</code>, <code>/integrations</code>, <code>/audit</code>). <strong>History</strong> has <strong>Prints</strong> and <strong>Stats</strong> (<code>/history/stats</code>; <code>/stats</code> redirects there).</p>
 						<p>Each <strong>printer</strong> has six tabs: <strong>Dashboard</strong>; <strong>Files</strong>, where <strong>Preview</strong> opens a toolpath (<code>?tab=files&amp;view=preview</code>); <strong>Control</strong>, with the <strong>Terminal</strong> as a panel underneath that <strong>Expand</strong> gives the whole tab (<code>?view=terminal</code>); <strong>Camera</strong>: <strong>Live</strong>, <strong>Timelapses</strong> (OctoPrint) and <strong>Failure detection</strong>; <strong>Jobs</strong>: the printer's <strong>History</strong> and <strong>Queue</strong>; and <strong>Care</strong>: <strong>Maintenance</strong>, <strong>Bed mesh</strong> with the Bed Visualizer plugin, and <strong>Plugins &amp; updates</strong> (OctoPrint printers, admins). Links to the old tabs (<code>?tab=terminal</code>, <code>?tab=bed</code>…) open the matching tab and view.</p>
+					</section>
+
+					<section id="reverse-proxy">
+						<h2>Reverse proxy</h2>
+						<p>octo·modern speaks plain HTTP on port 3000 inside the container. Put it behind your usual proxy (Caddy, Traefik, nginx, Nginx Proxy Manager) for HTTPS, which browser push and installing the app need.</p>
+						<ul>
+							<li><strong>Public address</strong>: set <code>ORIGIN=https://print.example.com</code>. Without it, octo·modern trusts the proxy's <code>X-Forwarded-Proto</code> for secure cookies and the SSO callback. Notification links use the public URL under <strong>Settings → Notifications → Options</strong>, else <code>ORIGIN</code>.</li>
+							<li><strong>Client addresses</strong>: <code>ADDRESS_HEADER=X-Forwarded-For</code> and <code>XFF_DEPTH=1</code> let the audit log and the login throttle see the real address.</li>
+							<li><strong>Live updates and webcams</strong> are long-lived HTTP responses (Server-Sent Events and MJPEG), no websockets. octo·modern sends <code>X-Accel-Buffering: no</code> for nginx; elsewhere, turn response buffering off and allow long read timeouts.</li>
+							<li><strong>Uploads</strong>: raise the proxy's body limit for big G-code (nginx: <code>client_max_body_size 4g;</code>). A sub-path isn't supported; give octo·modern its own host name.</li>
+						</ul>
+						<div class="code">
+							<div class="code-head"><span>nginx</span></div>
+							<pre><code>location / {
+    proxy_pass http://octo-modern:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 1h;
+    client_max_body_size 4g;
+}</code></pre>
+						</div>
+					</section>
+
+					<section id="upgrading">
+						<h2>Upgrading and backups</h2>
+						<p>octo·modern doesn't update itself. Pull the new image and recreate the container: in Arcane, pull or redeploy the project; with Compose, <code>docker compose pull &amp;&amp; docker compose up -d</code>. Database migrations run on start, and the sidebar shows the version. <code>:latest</code> follows <code>main</code>; pin a <code>0.1.&lt;build&gt;</code> tag to choose when you move (see <a href="#images">Images</a>).</p>
+						<p>Everything lives in the <code>/data</code> volume (<code>octo-modern-data</code>): the SQLite database, <code>secret.key</code> and files uploaded to the print queue. Back it up with <a href="#backup">Backup &amp; restore</a> (a passphrase-protected file), or copy the volume while the container is stopped:</p>
+						<div class="code">
+							<div class="code-head"><span>shell</span></div>
+							<pre><code data-lang="sh">docker compose stop
+docker run --rm -v octo-modern-data:/data -v "$PWD":/backup alpine tar czf /backup/octo-modern-data.tgz -C /data .
+docker compose start</code></pre>
+						</div>
+						<p>Keep <code>secret.key</code> with it (or set <code>OCM_SECRET_KEY</code>): without it, the saved API keys and passwords can't be decrypted.</p>
 					</section>
 
 					<section id="printers">
@@ -182,7 +221,7 @@
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro</code></pre>
 						</div>
-						<p>More Docker hosts? Run a proxy on each and list them all: <code>OCM_DOCKER_HOSTS=tcp://docker-proxy:2375,tcp://nas.lan:2375</code>.</p>
+						<p>More Docker hosts? Run a proxy on each and list them all: <code>OCM_DOCKER_HOSTS=tcp://docker-proxy:2375,tcp://nas.lan:2375</code>, or add them under <strong>Settings → Printers &amp; Discover → Docker</strong>.</p>
 
 						<h3>mDNS needs the LAN</h3>
 						<p>Multicast only reaches one network segment: inside Docker's default bridge network, nothing answers. Run octo·modern with <code>network_mode: host</code>, or attach it to a macvlan/ipvlan network on your LAN. On a bridge network, use the subnet scan instead.</p>
@@ -198,28 +237,44 @@
 								<tr><th scope="col">Can</th><th scope="col">Admin</th><th scope="col">Operator</th><th scope="col">Viewer</th></tr>
 							</thead>
 							<tbody>
-								<tr><td>Watch printers: state, temperatures, webcam, files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
-								<tr><td>Start, pause, resume, cancel prints</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Set temperatures, connect/disconnect, G-code, emergency stop</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Watch printers: state, temperatures, webcam, smart plug state; browse and download their files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
 								<tr><td>G-code preview (printer and library files), camera wall</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
-								<tr><td>Upload, print and delete files</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Choose a printer's active spool; add, edit and complete maintenance tasks</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>See bed meshes, their history and comparisons</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
-								<tr><td>Update the bed mesh, drift alerts and reference, delete meshes</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Browser push on their own devices: turn on/off, remove, send a test</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
-								<tr><td>Spoolman connection, cost settings</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Turn failure detection on per printer, sensitivity, action; mark a false alarm</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Add, reorder and remove queued jobs, confirm a bed is clear</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Printer tags, slicer upload keys</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Add, edit and remove printers (and their API keys)</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>OctoPrint plugins and updates: install, enable/disable, uninstall, update OctoPrint and plugins, restart OctoPrint</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Users, Integrations, Audit log, Settings (including the ML API), backups</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Start, pause, resume, cancel prints</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Set temperatures, jog/home, connect/disconnect, G-code and the terminal, emergency stop; test a saved printer's connection</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Power printers on and off (smart plug), “Keep on”</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Upload, print and delete files; create folders</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Browse and download the library (sources open to the printers they can see)</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Send library files to printers, save printer files to the library; follow and cancel their own transfers</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Watch the print queue</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Add (including uploads), reorder, edit and remove queued jobs; pause the queue or one printer's; confirm a bed is clear</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Printer tags (for the queue)</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Watch the print history, its Stats and timelapses, export CSV</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Notes on prints, print again; render and delete timelapses (and unrendered ones)</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Watch failure detection (score, last frame)</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Failure detection per printer: on/off, sensitivity, action, interval; mark a false alarm</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>See spools, print costs and maintenance tasks</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Choose a printer's active spool; add, edit, complete and delete maintenance tasks</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>See bed meshes, their history, comparisons and drift settings</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Update the bed mesh (probe), drift alerts and reference mesh, delete meshes</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Start prints through the pre-print steps (automatic), see the plan, skip them for one print, cancel a preparation</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Pre-print settings: the defaults and each printer's</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Spoolman connection, cost settings, recalculating costs</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Timelapse settings, delete history entries, import history</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>My account: name, email, password</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Browser push on their own devices: turn on/off, list, remove, send a test (signed-in accounts, not guests)</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Android app: progress notifications and widgets, sign their own phones out; Pause/Resume/Cancel and stopping a preparation as for prints above (the app's token never starts prints or does admin work, even an admin's)</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="yes" data-label="Viewer">✓</td></tr>
+								<tr><td>Notifications: channels, rules, quiet hours, delivery log, tests; how many devices are subscribed</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Set up smart plugs and their automations, test them</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Add, edit and remove printers (and their API keys); Discover</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>OctoPrint plugins and updates: list, install, enable/disable, uninstall, update OctoPrint and plugins, restart OctoPrint</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Integrations: single sign-on, status API tokens, slicer upload keys</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Settings: General (sign-in and guests, the ML API, backups), Users, Audit log, library sources</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 							</tbody>
 						</table>
-						<p style="margin-top: 16px">Operators and viewers see every printer, or only the ones you pick under <strong>Users → Printers</strong>. Roles are enforced on the server for every route, not just hidden in the UI.</p>
+						<p style="margin-top: 16px">Admins always see every printer. Operators and viewers see every printer, or only the ones you pick under <strong>Settings → Users</strong> (the <strong>Printers</strong> column); printers someone hasn't been given don't exist as far as they can tell, and the history, stats and queued jobs of removed printers are for admins only. Guests act as viewers or operators on every printer, but can't use browser push or link the Android app. Status API tokens and slicer upload keys aren't users: a status token reads every printer, an upload key only uploads to the one place it was made for. Roles are enforced on the server for every route, not just hidden in the UI.</p>
 						<p>Dangerous actions ask for confirmation, and the server insists on it too: cancelling a print, deleting a file, an emergency stop, disconnecting during a print, sending G-code while printing, uninstalling a plugin, installing one from a URL, updating or restarting OctoPrint, and G-code that stops the machine or touches stored settings and firmware.</p>
 						<h3>Guests and single sign-on</h3>
-						<p>Under <strong>Settings → Sign-in</strong> you can make sign-in optional: visitors use it as guests who can either watch or control printers, while admin pages still need an admin account. Single sign-on works with any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …); register <code>&lt;your-url&gt;/auth/oidc/callback</code> as the redirect URI.</p>
+						<p>Under <strong>Settings → General → Sign-in</strong> you can make sign-in optional: visitors use it as guests who can either watch or control printers, while admin pages still need an admin account. Single sign-on works with any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …); register <code>&lt;your-url&gt;/auth/oidc/callback</code> as the redirect URI and set it up under <strong>Settings → Integrations</strong> (or with the <code>OCM_OIDC_*</code> variables).</p>
 					</section>
 
 					<section id="configuration">
@@ -230,37 +285,63 @@
 								<tr><th scope="col">Variable</th><th scope="col">Default</th><th scope="col">What it does</th></tr>
 							</thead>
 							<tbody>
-								<tr><td class="var"><code>OCM_DATA_DIR</code></td><td data-label="Default"><code>/data</code> in the image</td><td data-label="What it does">Encrypted SQLite store and key file</td></tr>
-								<tr><td class="var"><code>OCM_SECRET_KEY</code></td><td data-label="Default">—</td><td data-label="What it does">Master secret. Unset means a random key is generated in <code>secret.key</code></td></tr>
-								<tr><td class="var"><code>OCM_ADMIN_EMAIL</code>, <code>OCM_ADMIN_PASSWORD</code>, <code>OCM_ADMIN_NAME</code></td><td data-label="Default">—</td><td data-label="What it does">Create the first admin on start instead of using the setup wizard</td></tr>
-								<tr><td class="var"><code>OCM_AUTH</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> skips sign-in and gives everyone admin access (trusted networks only). For guests, use <strong>Settings → Sign-in</strong> instead</td></tr>
-								<tr><td class="var"><code>OCM_LOCAL_LOGIN</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> hides the email/password form (SSO only); <code>enabled</code> forces it back on</td></tr>
-								<tr><td class="var"><code>OCM_ML_API_URL</code></td><td data-label="Default">—</td><td data-label="What it does">Obico's ML API for failure detection, e.g. <code>http://ml_api:3333</code> (Settings → Failure detection overrides it)</td></tr>
-								<tr><td class="var"><code>OCM_ML_API_TOKEN</code></td><td data-label="Default">—</td><td data-label="What it does">The ml_api container's <code>ML_API_TOKEN</code>, sent as a Bearer token</td></tr>
-								<tr><td class="var"><code>OCM_DETECT_PUBLIC_URL</code></td><td data-label="Default">—</td><td data-label="What it does">octo·modern's address as the ML container reaches it, e.g. <code>http://octo-modern:3000</code></td></tr>
-								<tr><td class="var"><code>OCM_OIDC_ISSUER</code></td><td data-label="Default">—</td><td data-label="What it does">OIDC issuer URL; enables SSO (or configure it under Integrations)</td></tr>
+								<tr><td class="var"><code>OCM_DATA_DIR</code></td><td data-label="Default"><code>./data</code> (<code>/data</code> in the image)</td><td data-label="What it does">Encrypted SQLite store and key file</td></tr>
+								<tr><td class="var"><code>OCM_SECRET_KEY</code></td><td data-label="Default">—</td><td data-label="What it does">Master secret that seals every stored credential (API keys, SSO secret, notification tokens, the ML API token, the VAPID key). Unset means a random key is generated in <code>secret.key</code></td></tr>
+								<tr><td class="var"><code>OCM_ADMIN_EMAIL</code>, <code>OCM_ADMIN_PASSWORD</code>, <code>OCM_ADMIN_NAME</code></td><td data-label="Default">—</td><td data-label="What it does">Create the first admin on start instead of using the setup wizard (only while there are no users; the password needs 8+ characters)</td></tr>
+								<tr><td class="var"><code>OCM_AUTH</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> skips sign-in entirely and gives everyone admin access (trusted networks only). To keep admin accounts but let guests watch or control printers, use <strong>Settings → General → Sign-in</strong> instead</td></tr>
+								<tr><td class="var"><code>OCM_LOCAL_LOGIN</code></td><td data-label="Default">—</td><td data-label="What it does"><code>disabled</code> hides the email/password form (SSO only; ignored while SSO isn't set up); <code>enabled</code> forces it back on</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_ISSUER</code></td><td data-label="Default">—</td><td data-label="What it does">OIDC issuer URL; enables SSO. When set, the <code>OCM_OIDC_*</code> variables replace the SSO settings under <strong>Settings → Integrations</strong></td></tr>
 								<tr><td class="var"><code>OCM_OIDC_CLIENT_ID</code>, <code>OCM_OIDC_CLIENT_SECRET</code></td><td data-label="Default">—</td><td data-label="What it does">Client credentials from your identity provider</td></tr>
 								<tr><td class="var"><code>OCM_OIDC_NAME</code></td><td data-label="Default"><code>SSO</code></td><td data-label="What it does">Login button label</td></tr>
 								<tr><td class="var"><code>OCM_OIDC_SCOPES</code></td><td data-label="Default"><code>openid email profile</code></td><td data-label="What it does">Requested scopes</td></tr>
-								<tr><td class="var"><code>OCM_OIDC_AUTO_CREATE</code></td><td data-label="Default">—</td><td data-label="What it does">Emails that get an account on first login: <code>*@example.com</code>, <code>bob@gmail.com</code>, <code>*</code></td></tr>
+								<tr><td class="var"><code>OCM_OIDC_AUTO_CREATE</code></td><td data-label="Default">—</td><td data-label="What it does">Emails that get an account on first login: <code>*@example.com</code>, <code>bob@example.org</code>, <code>*</code></td></tr>
 								<tr><td class="var"><code>OCM_OIDC_ADMIN_EMAILS</code></td><td data-label="Default">—</td><td data-label="What it does">Auto-created accounts matching these become admins</td></tr>
-								<tr><td class="var"><code>OCM_OIDC_DEFAULT_ROLE</code></td><td data-label="Default"><code>viewer</code></td><td data-label="What it does">Role for other auto-created accounts (<code>viewer</code> or <code>operator</code>)</td></tr>
+								<tr><td class="var"><code>OCM_OIDC_DEFAULT_ROLE</code></td><td data-label="Default"><code>viewer</code></td><td data-label="What it does">Role for other auto-created accounts (<code>viewer</code>, <code>operator</code> or <code>admin</code>)</td></tr>
 								<tr><td class="var"><code>OCM_OIDC_REDIRECT_URI</code></td><td data-label="Default"><code>&lt;origin&gt;/auth/oidc/callback</code></td><td data-label="What it does">Override when the public URL can't be inferred</td></tr>
-								<tr><td class="var"><code>OCM_DOCKER_HOSTS</code></td><td data-label="Default">the local socket, if present</td><td data-label="What it does">Docker endpoints for Discover, e.g. <code>tcp://docker-proxy:2375</code>; <code>none</code> turns it off</td></tr>
+								<tr><td class="var"><code>OCM_DOCKER_HOSTS</code></td><td data-label="Default"><code>DOCKER_HOST</code>, else the local socket if present</td><td data-label="What it does">Docker endpoints for Discover, e.g. <code>tcp://docker-proxy:2375,tcp://nas.lan:2375</code>; <code>none</code> turns it off</td></tr>
 								<tr><td class="var"><code>OCM_SELF_CONTAINER</code></td><td data-label="Default">—</td><td data-label="What it does">octo·modern's own container name, when Discover can't find it by hostname or IP</td></tr>
-								<tr><td class="var"><code>OCM_ARCANE_URL</code>, <code>OCM_ARCANE_API_KEY</code>, <code>OCM_ARCANE_NAME</code></td><td data-label="Default">—</td><td data-label="What it does">An Arcane instance for Discover (or connect one in the UI)</td></tr>
-								<tr><td class="var"><code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code></td><td data-label="Default">generated, stored encrypted</td><td data-label="What it does">The browser push key pair (base64url, as <code>npx web-push generate-vapid-keys</code> prints them); set both or neither</td></tr>
+								<tr><td class="var"><code>OCM_ARCANE_URL</code>, <code>OCM_ARCANE_API_KEY</code>, <code>OCM_ARCANE_NAME</code></td><td data-label="Default">—, —, <code>Arcane</code></td><td data-label="What it does">An Arcane instance for Discover (or connect one in the UI)</td></tr>
+								<tr><td class="var"><code>OCM_ML_API_URL</code></td><td data-label="Default">—</td><td data-label="What it does">Obico's ML API for failure detection, e.g. <code>http://ml_api:3333</code></td></tr>
+								<tr><td class="var"><code>OCM_ML_API_TOKEN</code></td><td data-label="Default">—</td><td data-label="What it does">The ml_api container's <code>ML_API_TOKEN</code>, sent as <code>Authorization: Bearer …</code></td></tr>
+								<tr><td class="var"><code>OCM_DETECT_PUBLIC_URL</code></td><td data-label="Default">—</td><td data-label="What it does">octo·modern's address as the ML container reaches it, e.g. <code>http://octo-modern:3000</code>. Values saved under <strong>Settings → General → Failure detection</strong> override these three</td></tr>
+								<tr><td class="var"><code>ORIGIN</code></td><td data-label="Default">—</td><td data-label="What it does">octo·modern's public address, e.g. <code>https://print.example.com</code> (adapter-node); also the default for links in notifications and push</td></tr>
+								<tr><td class="var"><code>PROTOCOL_HEADER</code>, <code>HOST_HEADER</code></td><td data-label="Default">—</td><td data-label="What it does">Optional behind a reverse proxy: <code>x-forwarded-proto</code> / <code>x-forwarded-host</code> (see <a href="#reverse-proxy">Reverse proxy</a>)</td></tr>
+								<tr><td class="var"><code>ADDRESS_HEADER</code>, <code>XFF_DEPTH</code></td><td data-label="Default">—</td><td data-label="What it does">Behind a reverse proxy, <code>X-Forwarded-For</code> and <code>1</code> (the number of proxies), so the audit log and the login throttle see the real client address</td></tr>
+								<tr><td class="var"><code>OCM_PUSHOVER_API</code></td><td data-label="Default">Pushover's API</td><td data-label="What it does">Where Pushover messages go (tests point it at a mock)</td></tr>
+								<tr><td class="var"><code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code></td><td data-label="Default">generated, stored encrypted</td><td data-label="What it does">The <a href="#push">browser push</a> key pair (base64url, as <code>npx web-push generate-vapid-keys</code> prints them); set both or neither</td></tr>
 								<tr><td class="var"><code>VAPID_SUBJECT</code></td><td data-label="Default">the public https URL, else <code>mailto:</code> the first admin</td><td data-label="What it does">Contact the push services may use (<code>mailto:…</code> or <code>https://…</code>)</td></tr>
-								<tr><td class="var"><code>OCM_PUSH_ENDPOINTS</code></td><td data-label="Default">—</td><td data-label="What it does">Extra push service URL prefixes besides the browsers' own (a self-hosted push service)</td></tr>
-								<tr><td class="var"><code>OCM_POLL_INTERVAL_MS</code></td><td data-label="Default"><code>10000</code></td><td data-label="What it does">Status poll for printers nobody is watching live</td></tr>
-								<tr><td class="var"><code>OCM_REQUEST_TIMEOUT_MS</code></td><td data-label="Default"><code>10000</code></td><td data-label="What it does">Timeout for each request to OctoPrint</td></tr>
-								<tr><td class="var"><code>OCM_PUSH_THROTTLE</code></td><td data-label="Default"><code>2</code></td><td data-label="What it does">Live updates arrive every 500 ms × this</td></tr>
-								<tr><td class="var"><code>OCM_TEMP_HISTORY_MINUTES</code></td><td data-label="Default"><code>30</code></td><td data-label="What it does">Temperature history kept in memory per printer</td></tr>
-								<tr><td class="var"><code>BODY_SIZE_LIMIT</code></td><td data-label="Default"><code>4G</code> in the image</td><td data-label="What it does">Largest upload</td></tr>
-								<tr><td class="var"><code>TZ</code></td><td data-label="Default"><code>UTC</code></td><td data-label="What it does">Time zone for logs</td></tr>
-								<tr><td class="var"><code>PROTOCOL_HEADER</code>, <code>HOST_HEADER</code></td><td data-label="Default">—</td><td data-label="What it does">Set to <code>x-forwarded-proto</code> / <code>x-forwarded-host</code> behind a TLS reverse proxy</td></tr>
+								<tr><td class="var"><code>OCM_PUSH_ENDPOINTS</code></td><td data-label="Default">—</td><td data-label="What it does">Extra push service URL prefixes besides the browsers' own, comma-separated (a self-hosted push service; the tests use a mock)</td></tr>
+								<tr><td class="var"><code>OCM_POLL_INTERVAL_MS</code></td><td data-label="Default"><code>10000</code></td><td data-label="What it does">Status poll for printers nobody is watching live (2000–600000)</td></tr>
+								<tr><td class="var"><code>OCM_REQUEST_TIMEOUT_MS</code></td><td data-label="Default"><code>10000</code></td><td data-label="What it does">Timeout for each request to a printer (1000–120000)</td></tr>
+								<tr><td class="var"><code>OCM_PUSH_THROTTLE</code></td><td data-label="Default"><code>2</code></td><td data-label="What it does">Live updates arrive every 500 ms × this (1–20)</td></tr>
+								<tr><td class="var"><code>OCM_TEMP_HISTORY_MINUTES</code></td><td data-label="Default"><code>30</code></td><td data-label="What it does">Temperature history kept in memory per printer (5–240)</td></tr>
+								<tr><td class="var"><code>BODY_SIZE_LIMIT</code></td><td data-label="Default"><code>4G</code> in the image</td><td data-label="What it does">Largest upload (adapter-node's default outside the image is 512 KB)</td></tr>
+								<tr><td class="var"><code>PORT</code></td><td data-label="Default"><code>3000</code> in the image</td><td data-label="What it does">The port inside the container; the compose file publishes it as <code>3040</code></td></tr>
+								<tr><td class="var"><code>TZ</code></td><td data-label="Default">UTC in the image</td><td data-label="What it does">Time zone for logs and ETAs, and for Stats buckets when the browser doesn't send its own</td></tr>
 							</tbody>
 						</table>
+					</section>
+
+					<section id="library">
+						<h2>Library</h2>
+						<p>The <strong>Library</strong> shows G-code on your NAS, so you don't upload it to each printer first: browse and search it with slicer thumbnails, print time, filament, layer height and temperatures, then <strong>Send</strong> or <strong>Send &amp; print</strong> to any printer, streamed without a copy in between. Each printer's <strong>Files</strong> tab has <strong>From library</strong>, and the queue takes library files too.</p>
+						<ul>
+							<li><strong>Sources</strong> (admins, <strong>Library → Sources</strong>): a <strong>Folder</strong> inside the container (an NFS or SMB share mounted as a Docker volume, the recommended route), an <strong>SMB share</strong> (SMB 2.1/3, user and password), <strong>SFTP</strong> (password or key, pinnable host key) or <strong>WebDAV</strong>. Each can be limited to some printers; credentials are sealed and never sent to a browser.</li>
+							<li><strong>Read-only by default</strong>: <strong>Allow writing</strong> enables <strong>Save to library</strong> on a printer's files. Folder sources refuse <code>..</code> and symlinks that lead outside.</li>
+							<li><strong>Slicer details</strong> come from the file's comments (PrusaSlicer, SuperSlicer, OrcaSlicer/Bambu Studio, Cura, <code>.bgcode</code>), reading only its start and end, and are cached.</li>
+						</ul>
+						<p>The container runs as uid 1000, so a mounted share must be readable by it (and writable for Save to library). The <a href="https://github.com/vitafortis/octo-modern/blob/main/compose.yaml">compose.yaml</a> has commented NFS and CIFS volumes to start from.</p>
+					</section>
+
+					<section id="history">
+						<h2>Print history and timelapses</h2>
+						<p>octo·modern records every print on every printer itself, whether or not a browser is open: file, start and end, duration, result, filament, who started it (prints started elsewhere say “OctoPrint”), a webcam picture of how it ended, notes and cost. The <strong>History</strong> page covers all printers, with filters, success rate, CSV export and <strong>Print again</strong>; each printer's <strong>Jobs → History</strong> shows its own, and <a href="#stats">Stats</a> sums it all up.</p>
+						<ul>
+							<li><strong>Importing</strong>: the first time a printer is reachable, its earlier prints come in once, from the PrintJobHistory plugin if installed, else OctoPrint's file statistics, or Moonraker's job history on Klipper. Admins can import again from the History page; nothing is duplicated.</li>
+							<li><strong>Restarts</strong>: an entry open when octo·modern restarts continues, or is closed with the printer's record of how it ended.</li>
+							<li><strong>Timelapses</strong> (OctoPrint, <strong>Camera → Timelapses</strong>): play them in the browser with seeking, download and delete them, render unrendered ones; admins change the timelapse settings. OctoPrint needs a snapshot URL and ffmpeg to record them.</li>
+						</ul>
+						<p>Every print started, paused or cancelled, temperature change, upload, deletion, G-code command and settings change is also in the <strong>Audit log</strong> (<strong>Settings → Audit log</strong>), with who did it and from where.</p>
 					</section>
 
 					<section id="queue">
@@ -283,7 +364,7 @@
 							<div class="code-head"><span>slicer host</span></div>
 							<pre><code>http://octo-modern.lan:3040/octoprint</code></pre>
 						</div>
-						<p>Create a key under <strong>Integrations → Slicer upload keys</strong> and choose where its uploads go: the print queue (a printer, or any printer with given tags), a folder in a writable library source, or one printer (optionally allowed to start the print). The key is an <code>ocm_…</code> token that opens <code>/octoprint/api/…</code> only.</p>
+						<p>Create a key under <strong>Settings → Integrations → Slicer upload keys</strong> and choose where its uploads go: the print queue (a printer, or any printer with given tags), a folder in a writable library source, or one printer (optionally allowed to start the print). The key is an <code>ocm_…</code> token that opens <code>/octoprint/api/…</code> only.</p>
 						<ul>
 							<li><strong>PrusaSlicer</strong>: Physical printer → Host type <em>OctoPrint</em>, URL as above, API key = the key → Test.</li>
 							<li><strong>OrcaSlicer</strong>: printer Connection → Host type <em>Octo/Klipper</em>, URL as above, API key = the key → Test.</li>
@@ -293,7 +374,7 @@
 
 					<section id="status-api">
 						<h2>Status API for dashboards</h2>
-						<p>Create a token under <strong>Integrations → Status API tokens</strong> (admins). It's shown once; only its SHA-256 is stored. Tokens open these routes only, and only for <code>GET</code>.</p>
+						<p>Create a token under <strong>Settings → Integrations → Status API tokens</strong> (admins). It's shown once; only its SHA-256 is stored. Tokens open these routes only, and only for <code>GET</code> (plus the bed-clear <code>POST</code> for tokens allowed to).</p>
 						<table class="table stack">
 							<thead>
 								<tr><th scope="col">Route</th><th scope="col">Returns</th></tr>
@@ -411,7 +492,7 @@
 						<p>Admins set them up under <strong>Settings → Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
 						<ul>
 							<li><strong>Channels</strong>: browser push (<a href="#push">below</a>), ntfy, Discord, Slack (incoming webhook, Block Kit), Telegram (bot token and chat ID, the snapshot as a photo), Pushover, Gotify, Matrix (homeserver, room ID, access token), email over SMTP (STARTTLS or TLS, snapshot inline), Home Assistant (webhook trigger and/or a <code>notify.*</code> service) and generic JSON webhooks.</li>
-							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.off</code>, <code>bed.drift</code>, <code>octoprint.updates</code> and <code>print.prestart_failed</code> from other features.</li>
+							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.on</code>, <code>power.off</code>, <code>bed.drift</code>, <code>octoprint.updates</code> and <code>print.prestart_failed</code> from other features.</li>
 							<li><strong>Messages</strong>: printer, file, elapsed and estimated time, filament, who started it, a link back (set the public URL, or <code>ORIGIN</code>) and the webcam snapshot. Slack, Gotify and Home Assistant show pictures only by link: turn on <strong>Share snapshots by link</strong> (unguessable links, 48 hours).</li>
 							<li><strong>Rules, quiet hours, limits</strong>: rules pick printers × events → channels; quiet hours per channel can still let errors through; the same event goes to a channel once per 10 minutes and at most 20 messages per 10 minutes, so flapping printers stay quiet. <strong>Recent deliveries</strong> shows the last 100 with their status.</li>
 						</ul>
@@ -422,8 +503,8 @@
 						<h2>Browser push</h2>
 						<p>Notifications on phones and computers through the browsers' own push services (Web Push), no app or third-party account needed.</p>
 						<ul>
-							<li><strong>Set up</strong>: an admin adds a <strong>Browser push</strong> channel under Notifications (everyone who can see the printer, operators and admins, or admins only) and a rule for it. Then everyone opens <strong>My account → Browser push → Enable notifications on this device</strong> on each phone or computer.</li>
-							<li><strong>HTTPS only</strong>: browsers offer push on secure origins only, so open octo·modern at its <code>https://</code> address.</li>
+							<li><strong>Set up</strong>: an admin adds a <strong>Browser push</strong> channel under <strong>Settings → Notifications</strong> (everyone who can see the printer, operators and admins, or admins only) and a rule for it. Then everyone opens <strong>My account → Browser push → Enable notifications on this device</strong> on each phone or computer.</li>
+							<li><strong>HTTPS only</strong>: browsers offer push on secure origins only, so open octo·modern at its <code>https://</code> address (see <a href="#reverse-proxy">Reverse proxy</a>).</li>
 							<li><strong>iPhone and iPad</strong> (iOS 16.4+): add octo·modern to the Home Screen first (Share → Add to Home Screen, see <a href="#phone-app">Phone app</a>), open it from there, then enable notifications.</li>
 							<li><strong>Who gets what</strong>: people only get printers they have access to; each person sees and removes only their own devices, admins see how many are subscribed. Devices the push service reports gone (404/410) are forgotten. A click opens the printer's page.</li>
 							<li><strong>Keys</strong>: a VAPID key pair is generated on first use and stored encrypted, or set <code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code> and <code>VAPID_SUBJECT</code>. Messages are end-to-end encrypted to each browser (RFC 8291).</li>
@@ -434,11 +515,12 @@
 						<h2>Android app</h2>
 						<p>The octo·modern web UI in an Android app (Android 8+), loaded from your own server, plus live print progress in the notification shade, a home-screen widget and an app lock.</p>
 						<ul>
-							<li><strong>Install</strong>: download <code>octo-modern-&lt;version&gt;.apk</code> from the repository's Releases (tags <code>android-v…</code>) on the phone and open it; allow installing unknown apps for your browser or file manager when Android asks. Enter your server's address (https, or http on your own network with a warning); the app checks it's octo·modern, then you sign in as usual.</li>
+							<li><strong>Install</strong>: on the phone, download <code>octo-modern-&lt;version&gt;.apk</code> from the <a href="https://github.com/vitafortis/octo-modern/releases/tag/android-v0.1.0">Android app release</a> (or the newest <code>android-v…</code> release under <a href="https://github.com/vitafortis/octo-modern/releases">Releases</a>) and open it; allow installing unknown apps for your browser or file manager when Android asks. Enter your server's address (https, or http on your own network with a warning); the app checks it's octo·modern, then you sign in as usual.</li>
 							<li><strong>Device token</strong>: after you sign in, the app links itself to your account (<strong>My account → Android app</strong> lists it). Notifications and widgets use that token, with your role and printer access; it only opens the few API routes the app needs, and signing out in the app or on My account revokes it.</li>
 							<li><strong>Print progress</strong>: an ongoing notification per printer while it prints or prepares, with percent, time left and height, and Pause/Resume and Cancel (Cancel asks first) for operators and admins. A notification with the snapshot when it finishes, fails or is cancelled.</li>
 							<li><strong>Widget</strong>: a printer's state, progress, time left and webcam snapshot; 2×2 or larger; tap to open the printer.</li>
 							<li><strong>App lock</strong>: optional fingerprint, face or screen lock after the app has been in the background for a while.</li>
+							<li><strong>Permissions</strong>: network, notifications, a foreground service for the progress notification, an optional battery-optimisation exemption and biometrics for the app lock. No location, camera, contacts or storage access; it only talks to the server you enter.</li>
 							<li><strong>Limits</strong>: there's no Firebase push, so a print started elsewhere shows up when you open the app or at the next background check (every 15 minutes at best, later when the phone dozes; starting live progress from that check needs the app exempt from battery optimisation on Android 12+). Browser push doesn't work inside the app; it keeps working in Chrome on the same phone.</li>
 						</ul>
 					</section>
@@ -448,7 +530,7 @@
 						<p>octo·modern watches printing printers with Obico's failure-detection model (the "Spaghetti Detective"), in your own <code>ml_api</code> container from <a href="https://github.com/TheSpaghettiDetective/obico-server">obico-server</a>; no Obico account or cloud. Add it with <code>compose.detect.yaml</code> from the repository:</p>
 						<pre><code>echo "ML_API_TOKEN=$(openssl rand -hex 32)" &gt;&gt; .env
 docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
-						<p>Check <strong>Settings → Failure detection</strong> (ML API URL, token, and octo·modern's address as the container sees it, usually <code>http://octo-modern:3000</code>), press <strong>Test</strong> for a full round trip, then turn detection on under a printer's <strong>Camera → Failure detection</strong>.</p>
+						<p>Check <strong>Settings → General → Failure detection</strong> (ML API URL, token, and octo·modern's address as the container sees it, usually <code>http://octo-modern:3000</code>), press <strong>Test</strong> for a full round trip, then turn detection on under a printer's <strong>Camera → Failure detection</strong>.</p>
 						<ul>
 							<li><strong>Frames</strong>: after the first minutes of a print (default 5), a webcam snapshot every 10 s goes to <code>GET /p/?img=&lt;url&gt;</code>; the container downloads it and answers boxes and confidences. That's the ML API's only interface: it takes no image bytes, so octo·modern serves each frame through a single-use, 30-second link.</li>
 							<li><strong>Score</strong>: Obico's own algorithm: the frame's confidences summed, smoothed over 12 frames, minus a long-term baseline per printer, times the sensitivity. Warning from 33 %, failure from 67 % on Obico's 0–100 % scale.</li>
@@ -459,7 +541,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 
 					<section id="spools">
 						<h2>Spools, costs and maintenance</h2>
-						<p>The <strong>Filament</strong> page shows which <a href="https://github.com/Donkie/Spoolman">Spoolman</a> spool is on which printer and holds the admin settings; each printer's dashboard has a <strong>Filament</strong> card with the active spool per extruder. The page joins the sidebar once Spoolman is set up; until then admins open it from <strong>Settings → Set up</strong>.</p>
+						<p>The <strong>Filament</strong> page shows which <a href="https://github.com/Donkie/Spoolman">Spoolman</a> spool is on which printer and holds the admin settings; each printer's dashboard has a <strong>Filament</strong> card with the active spool per extruder. The page joins the sidebar once Spoolman is set up; until then admins open it from the Settings sub-navigation, under <em>Set up</em>.</p>
 						<ul>
 							<li><strong>Connecting</strong> (admins): Spoolman's address, e.g. <code>http://spoolman.lan:7912</code>, and optionally an auth header for a reverse proxy in front of it (stored encrypted, never sent back to the browser). Only the server talks to Spoolman.</li>
 							<li><strong>Choosing a spool</strong> (operators): search Spoolman's spools by name, vendor, material or location, with the colour and what's left. One spool per extruder; a spool sits on one tool at a time.</li>
@@ -510,7 +592,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 
 					<section id="preprint">
 						<h2>Before each print</h2>
-						<p><strong>Settings → Before each print</strong> (admins) sets bed leveling and a pre-print G-code snippet to run before every print octo·modern starts; each printer’s settings dialog picks <strong>Default</strong> (labelled on or off, as the default is), <strong>On for this printer</strong> or <strong>None</strong>, separately for each. The default is off until you switch it on, so <strong>Default (off)</strong> runs nothing. Everything is off until you turn it on.</p>
+						<p><strong>Settings → General → Before each print</strong> (admins) sets bed leveling and a pre-print G-code snippet to run before every print octo·modern starts; each printer’s settings dialog picks <strong>Default</strong> (labelled on or off, as the default is), <strong>On for this printer</strong> or <strong>None</strong>, separately for each. The default is off until you switch it on, so <strong>Default (off)</strong> runs nothing. Everything is off until you turn it on.</p>
 						<ul>
 							<li><strong>Leveling</strong>: <code>G28</code> + <code>G29</code> on OctoPrint, <code>G28</code> + <code>BED_MESH_CALIBRATE</code> on Klipper, or your own command. Optionally heat the bed first, to the file’s first bed temperature (or a start macro’s <code>BED_TEMP=</code>), else a temperature you set, waiting with <code>M190</code>.</li>
 							<li><strong>Already in the file?</strong> octo·modern reads the start of the file (up to its first layer change, at most 1 MB) and compares commands with comments, case and spacing ignored. Leveling is skipped when the file runs <code>G29</code>, <code>G80</code> or <code>BED_MESH_CALIBRATE</code>; <code>M420 S1</code> and <code>BED_MESH_PROFILE LOAD</code> only load a mesh and don’t count. The snippet is skipped when all its commands are there, in order (with or without their parameters). An optional pattern (<code>START_PRINT</code>, or <code>/regex/flags</code>) covers start macros that do it inside.</li>
@@ -549,7 +631,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 								<tr><th scope="col">Tag</th><th scope="col">Tracks</th></tr>
 							</thead>
 							<tbody>
-								<tr><td class="var"><code>ghcr.io/vitafortis/octo-modern:latest</code></td><td data-label="Tracks">The latest build of <code>main</code></td></tr>
+								<tr><td class="var"><code>ghcr.io/vitafortis/octo-modern:latest</code>, <code>:main</code></td><td data-label="Tracks">The latest build of <code>main</code></td></tr>
 								<tr><td class="var"><code>ghcr.io/vitafortis/octo-modern:0.1.&lt;run&gt;</code></td><td data-label="Tracks">Every build of <code>main</code> (the version shown in the sidebar)</td></tr>
 								<tr><td class="var"><code>:1</code>, <code>:1.2</code>, <code>:1.2.3</code></td><td data-label="Tracks">Releases (<code>v*</code> tags)</td></tr>
 							</tbody>
@@ -563,7 +645,8 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 							<li><strong>The browser never talks to OctoPrint.</strong> Status, the push connection, webcam images and streams, thumbnails and uploads all go through octo·modern. Camera URLs of relayed cameras aren't sent to the browser either.</li>
 							<li><strong>Least privilege</strong>: an OctoPrint Application Key acts as the user who approved it. Use a key of a user with only the permissions you want octo·modern to have; <strong>Test connection</strong> lists what it lacks.</li>
 							<li><strong>Access</strong> is checked on the server for every printer-scoped page and API call. Confirmations for dangerous actions are enforced by the server.</li>
-							<li><strong>API tokens</strong> (<code>ocm_</code> + 32 random bytes, SHA-256 hashed at rest) only work on <code>GET /api/status…</code>; they never become sessions, and repeated bad tokens from one address are throttled.</li>
+							<li><strong>API tokens</strong> (<code>ocm_</code> + 32 random bytes, SHA-256 hashed at rest) never become sessions, and repeated bad tokens from one address are throttled. Status tokens only work on <code>GET /api/status…</code> (and the bed-clear <code>POST</code> if allowed); slicer upload keys only on <code>/octoprint/api/…</code>, for their one destination.</li>
+							<li><strong>Device tokens</strong> (the Android app, <code>ocd_</code> + 32 random bytes, hashed at rest) act as their user with the user's current role and printer access, only as an <code>Authorization: Bearer</code> header, and only open the routes the app needs (printer list and state, snapshots, pause/resume/cancel, stopping a preparation, the device's own record). Disabling the account or signing the phone out stops them at once.</li>
 							<li><strong>Sign-in</strong> is by OIDC or local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies that end when the user is disabled or their role changes. Writes from another origin are rejected.</li>
 							<li><strong>Discovery</strong> is admin-only and read-only: Docker and Arcane are only read, a socket proxy keeps writes blocked, and subnet scans are capped at 4096 addresses and audited.</li>
 							<li><strong>Failure detection frames</strong> are served at <code>/api/detect/frame/&lt;token&gt;</code>: a random 256-bit, single-use token, valid 30 s, for one captured frame (never the camera). It's the only path besides the status API that works without a session, and only for <code>GET</code>.</li>
@@ -573,7 +656,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 
 					<section id="backup">
 						<h2>Backup &amp; restore</h2>
-						<p>Under <strong>Settings → Backup &amp; restore</strong>, admins download an encrypted file with printers (and their API keys), users, settings (including failure detection), notification channels and rules, the print queue (not files uploaded to it), Spoolman, costs and maintenance and, when ticked, the print history with or without its pictures. It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; history entries and queued jobs already present are kept, nothing is deleted. The audit log and API tokens aren't included.</p>
+						<p>Under <strong>Settings → General → Backup &amp; restore</strong>, admins download an encrypted file with printers (and their API keys), users, settings (including failure detection), notification channels and rules, the print queue (not files uploaded to it), Spoolman, costs and maintenance and, when ticked, the print history with or without its pictures. It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; history entries and queued jobs already present are kept, nothing is deleted. The audit log and API tokens aren't included.</p>
 						<p>Something missing? The <a href="https://github.com/vitafortis/octo-modern#readme">README</a> has every detail, and <a href="https://github.com/vitafortis/octo-modern/issues">issues</a> are welcome.</p>
 					</section>
 				</div>
