@@ -202,6 +202,16 @@ function mockOctoPrint({ printing, printMinutes, file, frame }) {
 		const send = (o, status = 200) => res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(o));
 		const u = new URL(req.url, 'http://x');
 		if (u.pathname === '/webcam/' && u.searchParams.get('action') === 'snapshot') return res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'no-store' }).end(frame);
+		if (u.pathname === '/webcam/' && u.searchParams.get('action') === 'stream') {
+			// MJPEG: the same frame, twice a second, until the client goes away.
+			res.writeHead(200, { 'content-type': 'multipart/x-mixed-replace; boundary=frame', 'cache-control': 'no-store' });
+			const send = () => res.write(Buffer.concat([Buffer.from(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`), frame, Buffer.from('\r\n')]));
+			send();
+			const t = setInterval(send, 500);
+			req.on('close', () => clearInterval(t));
+			s.streams = (s.streams ?? 0) + 1;
+			return;
+		}
 		if (req.headers['x-api-key'] !== OP_KEY) return send({ error: 'Forbidden' }, 403);
 		const active = s.state !== 'Operational';
 		if (u.pathname === '/api/version') return send({ api: '0.1', server: '1.11.2', text: 'OctoPrint 1.11.2' });
@@ -237,7 +247,7 @@ function mockOctoPrint({ printing, printMinutes, file, frame }) {
 			} else return send({ error: 'Printer is not printing' }, 409);
 			return res.writeHead(204).end();
 		}
-		if (u.pathname === '/api/settings') return send({ webcam: { webcamEnabled: true, streamUrl: null, snapshotUrl: '/webcam/?action=snapshot' }, feature: {}, temperature: { profiles: [] } });
+		if (u.pathname === '/api/settings') return send({ webcam: { webcamEnabled: true, streamUrl: null, snapshotUrl: '/webcam/?action=snapshot', streamUrl: '/webcam/?action=stream' }, feature: {}, temperature: { profiles: [] } });
 		if (u.pathname.startsWith('/api/files')) return send({ files: [], free: 1e10, total: 2e10 });
 		if (u.pathname === '/api/printerprofiles') return send({ profiles: {} });
 		if (u.pathname === '/api/connection') return send({ current: { state: s.state, port: 'VIRTUAL', baudrate: 115200, printerProfile: '_default' }, options: { ports: ['VIRTUAL'], baudrates: [115200], printerProfiles: [] } });
@@ -304,14 +314,17 @@ async function main() {
 	const admin = client();
 	assert.equal((await admin.post('/api/auth/login', ADMIN)).status, 200);
 	const OP = (port) => `http://127.0.0.1:${port}`;
-	const printer = (await admin.post('/api/printers', { name: 'Prusa MK4', baseUrl: OP(PORT_BASE + 1), apiKey: OP_KEY, color: 'violet', webcamUrl: `${OP(PORT_BASE + 1)}/webcam/?action=snapshot` })).data;
-	(await admin.post('/api/printers', { name: 'Voron 2.4', baseUrl: OP(PORT_BASE + 2), apiKey: OP_KEY, color: 'cyan', webcamUrl: `${OP(PORT_BASE + 2)}/webcam/?action=snapshot` })).data;
+	const printer = (await admin.post('/api/printers', { name: 'Prusa MK4', baseUrl: OP(PORT_BASE + 1), apiKey: OP_KEY, color: 'violet' })).data;
+	(await admin.post('/api/printers', { name: 'Voron 2.4', baseUrl: OP(PORT_BASE + 2), apiKey: OP_KEY, color: 'cyan' })).data;
 	await waitFor(async () => (await admin.get('/api/printers/status')).data.find((s) => s.id === printer.id)?.state === 'printing', 'the MK4 printing');
 
 	// --- install, fresh -----------------------------------------------------------------------
 	log(`installing ${APK.split('/').pop()} on ${SERIAL}`);
 	adb('install', '-r', '-t', APK);
 	sh(`pm clear ${PKG}`);
+	// A clean home screen (widgets from earlier runs go with the launcher's data).
+	const launcher = sh('cmd package resolve-activity --brief -c android.intent.category.HOME -a android.intent.action.MAIN').trim().split('\n').pop().split('/')[0];
+	if (/launcher/i.test(launcher)) sh(`pm clear ${launcher}`);
 	sh(`pm grant ${PKG} android.permission.POST_NOTIFICATIONS`);
 	sh('cmd uimode night yes');
 	for (const k of ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale']) sh(`settings put global ${k} 0`);
@@ -358,6 +371,32 @@ async function main() {
 	await sleep(1500);
 	screenshot('app');
 
+	log('the WebView: MJPEG, server-sent events, downloads, file chooser');
+	const mjpeg = await page(`new Promise((r) => { const i = new Image(); i.onload = () => r(i.naturalWidth); i.onerror = () => r(0); i.src = '/api/printers/${printer.id}/webcam/stream'; setTimeout(() => r(-1), 8000); })`);
+	assert.equal(mjpeg, 640, 'the MJPEG stream decodes in the WebView');
+	assert.ok(mk4.s.streams >= 1, 'the stream reached the camera');
+	const sse = await page(`new Promise((r) => { const es = new EventSource('/api/printers/${printer.id}/events'); es.addEventListener('snapshot', (e) => { es.close(); r(JSON.parse(e.data).snapshot.state); }); setTimeout(() => r('timeout'), 8000); })`);
+	assert.equal(sse, 'printing', 'server-sent events arrive');
+	sh('rm -f /sdcard/Download/octo-modern-history*.csv');
+	await page(`(() => { const a = Object.assign(document.createElement('a'), { href: '/api/history/export.csv', download: '' }); document.body.append(a); a.click(); return true; })()`);
+	await waitFor(() => /\.csv/.test(sh('ls /sdcard/Download/ 2>/dev/null')), 'the CSV in Downloads', { tries: 40 });
+	await page(`(() => { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(['hello from a blob'], { type: 'text/plain' })), download: 'blob-test.txt' }); a.click(); return true; })()`);
+	await waitFor(() => sh('cat /sdcard/Download/blob-test.txt 2>/dev/null').includes('hello from a blob'), 'the blob download saved', { tries: 30 });
+	await page(`(() => { const i = Object.assign(document.createElement('input'), { type: 'file', id: 'e2e-file' }); Object.assign(i.style, { position: 'fixed', inset: '0', width: '100vw', height: '100vh', opacity: '0.01', zIndex: 99999 }); document.body.append(i); return true; })()`);
+	sh('input tap 540 1200');
+	await waitFor(() => /documentsui|DocumentsActivity|PickActivity/i.test(sh('dumpsys activity activities | grep -E "topResumedActivity|ResumedActivity" | head -3')), 'the system file picker', { tries: 20 });
+	sh('input keyevent KEYCODE_BACK');
+	await sleep(800);
+	await page(`document.getElementById('e2e-file')?.remove(); true`);
+	await waitFor(async () => new URL(await url()).pathname === '/', 'back on the dashboard', { tries: 10 });
+
+	log('other origins (here: OctoPrint’s own UI, local) open in the browser, not the app');
+	await page(`location.href = 'http://10.0.2.2:${PORT_BASE + 1}/'; true`);
+	await waitFor(() => /com\.android\.chrome|org\.chromium/.test(sh('dumpsys activity activities | grep -E "topResumedActivity" | head -1')), 'the browser opened', { tries: 20 });
+	assert.ok(new URL(await url()).hostname === '10.0.2.2', 'the app stayed on the server');
+	sh('am force-stop com.android.chrome');
+	sh(`am start -W -n ${PKG}/.MainActivity`);
+
 	// --- progress notification ----------------------------------------------------------------
 	log('a print is running: the app starts the progress notification');
 	const progress = () => notifications().find((n) => n.title?.startsWith('Prusa MK4 ·'));
@@ -372,6 +411,13 @@ async function main() {
 	await waitFor(() => (progress()?.progress ?? 0) > first.progress, 'the progress moving on', { tries: 60, every: 1000 });
 	assert.ok(sh('dumpsys activity services ' + PKG).includes('PrintWatchService'), 'the watcher runs as a foreground service');
 
+	// Clear the download notices from earlier, so ours is the one on top (ongoing ones stay).
+	sh('cmd statusbar expand-notifications');
+	await sleep(1000);
+	try {
+		tapNode((n) => n.text === 'Clear all' && n.pkg === 'com.android.systemui', 'Clear all');
+	} catch {}
+	await sleep(800);
 	sh('cmd statusbar expand-notifications');
 	await sleep(1500);
 	screenshot('notification');

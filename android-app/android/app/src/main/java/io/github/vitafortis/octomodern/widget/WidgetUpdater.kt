@@ -1,8 +1,11 @@
 package io.github.vitafortis.octomodern.widget
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.SizeF
@@ -37,7 +40,12 @@ object WidgetUpdater {
     }
 
     fun update(context: Context, mgr: AppWidgetManager, widgetId: Int, round: StatusSync.Round? = StatusSync.cached(context)) {
-        val printerId = AppSettings(context).widgetPrinter(widgetId) ?: return
+        val printerId = AppSettings(context).widgetPrinter(widgetId)
+        if (printerId == null) {
+            // Not set up (or the app's data was cleared): ask for a printer.
+            mgr.updateAppWidget(widgetId, unconfigured(context, widgetId))
+            return
+        }
         val printer = round?.byId?.get(printerId)
         val status = round?.statuses?.firstOrNull { it.id == printerId }
         val cachedAt = AppSettings(context).cachedAt
@@ -52,6 +60,22 @@ object WidgetUpdater {
             if (w >= 200 && h >= 180) large else small
         }
         mgr.updateAppWidget(widgetId, views)
+    }
+
+    private fun unconfigured(context: Context, widgetId: Int): RemoteViews {
+        val v = RemoteViews(context.packageName, R.layout.widget_small)
+        v.setTextViewText(R.id.name, "octo·modern")
+        v.setTextViewText(R.id.state, "Tap to choose a printer")
+        v.setViewVisibility(R.id.progress, View.GONE)
+        v.setViewVisibility(R.id.detail, View.GONE)
+        v.setViewVisibility(R.id.snapshot, View.GONE)
+        v.setViewVisibility(R.id.snapshot_empty, View.VISIBLE)
+        val i = Intent(context, WidgetConfigActivity::class.java)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            .setData(Uri.parse("octomodern://widget/$widgetId"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 600_000 + widgetId, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        return v
     }
 
     private fun render(
