@@ -8,7 +8,7 @@
 //   E2E_KEEP=1 pnpm e2e:install        # leave the app and mocks running afterwards
 //   E2E_SKIP_BUILD=1 pnpm e2e:install  # reuse ./build
 //
-// Ports 5800–5802: app 5800, OctoPrint 5801–5802. Screenshots land in docs/screenshots/.
+// Ports 5800–5802 (E2E_PORT_BASE moves them): app 5800, OctoPrint 5801–5802. Screenshots land in docs/screenshots/.
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,7 +19,8 @@ import { startMockOctoPrint } from './mock-octoprint.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const SHOTS = join(ROOT, 'docs/screenshots');
-const APP_PORT = 5800;
+const PORT_BASE = Number(process.env.E2E_PORT_BASE ?? 5800);
+const APP_PORT = PORT_BASE;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const ADMIN = { email: 'admin@example.com', name: 'Ada Admin', password: 'e2e-admin-password' };
 const ANDROID = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36';
@@ -84,8 +85,8 @@ function fireEarly(outcome) {
 async function main() {
 	mkdirSync(SHOTS, { recursive: true });
 	log('starting two mock OctoPrint servers');
-	const mk4Op = await startMockOctoPrint({ port: 5801, apiKey: 'mk4-e2e-key', printSeconds: 600 });
-	const voronOp = await startMockOctoPrint({ port: 5802, apiKey: 'voron-e2e-key', printSeconds: 600 });
+	const mk4Op = await startMockOctoPrint({ port: PORT_BASE + 1, apiKey: 'mk4-e2e-key', printSeconds: 600 });
+	const voronOp = await startMockOctoPrint({ port: PORT_BASE + 2, apiKey: 'voron-e2e-key', printSeconds: 600 });
 	closers.push(mk4Op.close, voronOp.close);
 	for (const [op, key] of [
 		[mk4Op, 'mk4-e2e-key'],

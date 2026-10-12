@@ -247,7 +247,7 @@ async function main() {
 	await signIn(dark, VIEWER);
 	await dark.goto(`${APP}/p/${mk4.id}?tab=files`);
 	await dark.locator('a[aria-label="Preview spool-hub_orca.gcode"]').first().click();
-	await dark.waitForURL(/tab=preview/);
+	await dark.waitForURL(/tab=files&view=preview/);
 	await dark.waitForSelector('[data-testid=gcode-layer]', { timeout: 30_000 });
 	assert.equal(await layerText(dark), 'Layer 41 / 41 · Z 8.00');
 	for (const f of ['Outer wall', 'Inner wall', 'Sparse infill', 'Solid infill', 'Top / bottom', 'Skirt / brim']) assert.ok(await dark.locator(`[aria-label="Feature types"] button:has-text("${f}")`).count(), `legend: ${f}`);
@@ -290,6 +290,10 @@ async function main() {
 	await dark.click('button[aria-label="Reset view"]');
 	await sleep(400);
 	await dark.screenshot({ path: join(SHOTS, 'gcode-preview.png') });
+	// The preview is a view of the Files tab: Back returns to the list.
+	await dark.click('[data-testid=preview-back]');
+	await dark.waitForURL((u) => u.searchParams.get('tab') === 'files' && !u.searchParams.has('view') && !u.searchParams.has('file'));
+	await dark.locator('a[aria-label="Preview spool-hub_orca.gcode"]').first().waitFor();
 
 	log('preview: 2D layer view with travel moves, light theme, library file (Cura flavour)');
 	const light = await newPage('light');
@@ -361,7 +365,7 @@ async function main() {
 	};
 	log(`performance: the ${BIG_MB} MB file`);
 	results.bigLibrary = await perf(dark, `${APP}/library/preview?source=${lib.id}&path=${encodeURIComponent(`Brackets/big-${BIG_MB}mb.gcode`)}`, 'library (folder source), desktop');
-	results.bigOctoPrint = await perf(dark, `${APP}/p/${voron.id}?tab=preview&file=${encodeURIComponent(`big-${BIG_MB}mb.gcode`)}&v=1`, 'OctoPrint (proxied), desktop');
+	results.bigOctoPrint = await perf(dark, `${APP}/p/${voron.id}?tab=files&view=preview&file=${encodeURIComponent(`big-${BIG_MB}mb.gcode`)}&v=1`, 'OctoPrint (proxied), desktop');
 	assert.ok(results.bigLibrary.wallMs < 60_000);
 
 	const phone = await newPage('dark', { phone: true });
@@ -460,7 +464,9 @@ async function main() {
 
 	// --- phones -------------------------------------------------------------------------------
 	log('phone: preview and camera wall at 390 px');
+	// The old Preview tab's link: the current job's toolpath, now under Files.
 	await phone.goto(`${APP}/p/${mk4.id}?tab=preview`);
+	await phone.waitForURL(/tab=files&view=preview/);
 	await phone.waitForSelector('[data-testid=gcode-printing]', { timeout: 30_000 });
 	const pw = await phone.evaluate(() => document.documentElement.scrollWidth);
 	assert.ok(pw <= 390, `no horizontal scroll (${pw})`);

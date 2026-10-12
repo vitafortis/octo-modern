@@ -427,6 +427,9 @@ async function main() {
 	// Maintenance: mark the bolts done with a note.
 	await dark.goto(`${APP}/maintenance`);
 	await dark.waitForSelector('[data-task="Check frame bolts"][data-status="overdue"]');
+	// In use now: Spoolman is set up and there are tasks, so both join the sidebar.
+	assert.equal(await dark.locator('aside nav a[href="/filament"]').count(), 1, 'Filament in the sidebar once Spoolman is set up');
+	assert.equal(await dark.locator('aside nav a[href="/maintenance"]').count(), 1, 'Maintenance in the sidebar once there are tasks');
 	await sleep(600);
 	await shot(dark, 'maintenance');
 	await dark.click('button[aria-label="Mark Check frame bolts done"]');
@@ -442,8 +445,8 @@ async function main() {
 	assert.equal(logEntry.taskName, 'Check frame bolts');
 	assert.ok((await admin.get('/api/audit?action=maintenance.done')).data.length === 1, 'audited');
 
-	// Printer tab and history with costs.
-	await dark.goto(`${APP}/p/${mk4.id}?tab=maintenance`);
+	// The printer's Care tab and history with costs.
+	await dark.goto(`${APP}/p/${mk4.id}?tab=care`);
 	await dark.waitForSelector('[data-task="Change nozzle"]');
 	await dark.goto(`${APP}/history`);
 	await dark.waitForSelector('tr[data-print="bracket.gcode"] td[data-cost]');

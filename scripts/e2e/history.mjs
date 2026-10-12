@@ -315,7 +315,7 @@ async function main() {
 	};
 	const dark = await newPage('dark');
 	await signIn(dark, ADMIN);
-	await dark.goto(`${APP}/p/${voron.id}?tab=history`);
+	await dark.goto(`${APP}/p/${voron.id}?tab=jobs`);
 	await dark.waitForSelector('select[aria-label="Result"]');
 	await sleep(1500);
 	log('browser watching: a print to completion, then one cancelled from the header button');
@@ -431,7 +431,7 @@ async function main() {
 		await page.screenshot({ path: join(SHOTS, `${name}.png`) });
 		log(`  screenshot ${name}.png`);
 	};
-	await dark.goto(`${APP}/p/${mk4.id}?tab=timelapse`);
+	await dark.goto(`${APP}/p/${mk4.id}?tab=camera&view=timelapse`);
 	await dark.waitForSelector(`[data-timelapse="${video.name}"] img`);
 	await sleep(800);
 	await shot(dark, 'timelapse');
@@ -454,7 +454,9 @@ async function main() {
 	await shot(dark, 'timelapse-player');
 	const lightTl = await newPage('light');
 	await signIn(lightTl, ADMIN);
+	// The old Timelapse tab's link lands on Camera › Timelapses.
 	await lightTl.goto(`${APP}/p/${mk4.id}?tab=timelapse`);
+	await lightTl.waitForURL(/tab=camera&view=timelapse/);
 	await lightTl.waitForSelector(`[data-timelapse="${video.name}"] img`);
 	await sleep(800);
 	await shot(lightTl, 'timelapse-light');
@@ -505,7 +507,7 @@ async function main() {
 	await waitFor(async () => (await admin.get('/api/printers/status')).data.find((s) => s.id === voron.id)?.state === 'operational', 'the Voron ready again in octo·modern', { tries: 40 });
 
 	// Admin deletes an entry from the UI.
-	await dark.goto(`${APP}/p/${voron.id}?tab=history`);
+	await dark.goto(`${APP}/p/${voron.id}?tab=jobs`);
 	await dark.waitForSelector('tr[data-print="watched-cancel.gcode"]');
 	await sleep(600);
 	await shot(dark, 'printer-history');

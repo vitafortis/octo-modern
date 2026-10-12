@@ -324,9 +324,13 @@ async function main() {
 	log('browser: admin, 12 months, dark and light');
 	const dark = await newPage('dark');
 	await signIn(dark, ADMIN);
-	await dark.goto(`${APP}/stats`);
+	// Stats is a tab of History.
+	await dark.goto(`${APP}/history`);
+	await dark.click('[data-testid=segmented] a:has-text("Stats")');
+	await dark.waitForURL(`${APP}/history/stats`);
 	await ready(dark);
-	assert.ok(await dark.locator('nav a[href="/stats"]').first().isVisible(), 'the Stats nav entry');
+	assert.ok(await dark.locator('aside nav a[href="/history"][aria-current], aside nav a[href="/history"][class*="bg-accent"]').first().isVisible(), 'History is highlighted in the sidebar');
+	assert.equal(await dark.locator('aside nav a[href="/stats"]').count(), 0, 'no separate Stats entry');
 	await dark.click('role=radio[name="12 months"]');
 	await dark.waitForURL((u) => u.searchParams.get('range') === '12m');
 	await ready(dark);
@@ -362,7 +366,9 @@ async function main() {
 
 	const light = await newPage('light');
 	await signIn(light, ADMIN);
+	// The old /stats links redirect, keeping the range.
 	await light.goto(`${APP}/stats?range=90d`);
+	await light.waitForURL(`${APP}/history/stats?range=90d`);
 	await ready(light);
 	await shot(light, 'stats-light');
 
@@ -374,7 +380,7 @@ async function main() {
 	log('browser: phone');
 	const phone = await newPage('dark', 390, 844);
 	await signIn(phone, ADMIN);
-	await phone.goto(`${APP}/stats?range=12m`);
+	await phone.goto(`${APP}/history/stats?range=12m`);
 	await ready(phone);
 	const overflow = await phone.evaluate(() => {
 		const el = document.querySelector('.h-full.overflow-y-auto');
@@ -390,7 +396,7 @@ async function main() {
 	log('browser: viewer');
 	const vpage = await newPage('dark');
 	await signIn(vpage, VIEWER);
-	await vpage.goto(`${APP}/stats?range=all`);
+	await vpage.goto(`${APP}/history/stats?range=all`);
 	await ready(vpage);
 	assert.equal(await vpage.locator('select[aria-label=Printer]').count(), 0, 'one printer: no picker');
 	assert.equal(await vpage.locator('text=Voron 2.4').count(), 0);

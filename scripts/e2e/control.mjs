@@ -273,9 +273,13 @@ async function main() {
 	await sleep(4000); // let the toasts fade
 	await shot(dark, 'control');
 
-	log('browser: Terminal tab');
-	await dark.goto(`${APP}/p/${p.id}?tab=terminal`);
-	await dark.waitForSelector('[data-testid=terminal-log] [data-line]');
+	log('browser: the terminal, a panel under the controls; Expand gives it the tab');
+	await dark.goto(`${APP}/p/${p.id}?tab=control`);
+	await dark.waitForSelector('[data-testid=terminal-panel] [data-testid=terminal-log] [data-line]');
+	await dark.click('[data-testid=terminal-panel] button:has-text("Expand")');
+	await dark.waitForURL(/tab=control&view=terminal/);
+	await dark.waitForSelector('[data-testid=terminal-expanded] [data-testid=terminal-log] [data-line]');
+	assert.equal(await dark.locator('[data-testid=jog-pad]').count(), 0, 'expanded: the terminal has the tab to itself');
 	const input = dark.locator('[data-testid=terminal-input]');
 	await input.click();
 	await input.type('m10');
@@ -340,7 +344,9 @@ async function main() {
 	await light.waitForSelector('text=E2E IDEX');
 	await sleep(1500);
 	await shot(light, 'control-light');
+	// The old Terminal tab's link opens the expanded terminal.
 	await light.goto(`${APP}/p/${p.id}?tab=terminal`);
+	await light.waitForURL(/tab=control&view=terminal/);
 	await light.waitForSelector('[data-testid=terminal-log] [data-line]');
 	await light.fill('input[aria-label="Search the log"]', 'G0');
 	await sleep(800);
@@ -353,8 +359,8 @@ async function main() {
 	await view.waitForSelector('[data-testid=viewer-hint]');
 	assert.ok(await view.locator('button[aria-label="X+ (right)"]').isDisabled());
 	assert.ok(await view.locator('button:has-text("Home all")').isDisabled());
-	await view.goto(`${APP}/p/${p.id}?tab=terminal`);
-	await view.waitForSelector('[data-testid=viewer-hint]');
+	await view.goto(`${APP}/p/${p.id}?tab=control&view=terminal`);
+	await view.waitForSelector('[data-testid=terminal-expanded] [data-testid=viewer-hint]');
 	assert.equal(await view.locator('[data-testid=terminal-input]').count(), 0);
 	assert.equal(await view.locator('button:has-text("Emergency stop")').count(), 0);
 

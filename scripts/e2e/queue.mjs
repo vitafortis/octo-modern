@@ -368,7 +368,7 @@ async function main() {
 	await dark.waitForSelector('[data-testid="queue-job"]');
 	await dark.waitForTimeout(800);
 	await shot(dark, 'queue');
-	await dark.goto(`${APP}/p/${mk4.id}?tab=queue`);
+	await dark.goto(`${APP}/p/${mk4.id}?tab=jobs&view=queue`);
 	await dark.locator('button:has-text("Bed is clear")').first().waitFor();
 	await dark.waitForTimeout(800);
 	await shot(dark, 'queue-bed-clear');
