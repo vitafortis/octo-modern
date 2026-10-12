@@ -2,7 +2,8 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { visiblePrinters } from '#lib/server/permissions.ts';
 import { ADMIN_PAGES } from '#lib/server/access.ts';
-import { overdueCount } from '#lib/server/maintenance.ts';
+import { listTasks } from '#lib/server/maintenance.ts';
+import { spoolmanConfigured } from '#lib/server/spools/spoolman.ts';
 import type { Viewer } from '#lib/types.ts';
 
 export const load: LayoutServerLoad = ({ locals, url }) => {
@@ -14,12 +15,16 @@ export const load: LayoutServerLoad = ({ locals, url }) => {
 
 	const viewer: Viewer | null = user ? { email: user.email, name: user.name, role: user.role, hasPassword: user.hasPassword, sso: user.sso } : null;
 	const printers = visiblePrinters(user);
+	const tasks = user ? listTasks(printers.map((p) => p.id)) : [];
 	return {
 		auth: locals.auth,
 		version: __APP_VERSION__,
 		viewer,
 		printers,
-		/** Overdue maintenance tasks, for the sidebar badge. */
-		maintenanceOverdue: user ? overdueCount(printers.map((p) => p.id)) : 0
+		/** Maintenance tasks on the printers this user sees (the sidebar lists Maintenance once there are any), and how many are overdue (its badge). */
+		maintenanceTasks: tasks.length,
+		maintenanceOverdue: tasks.filter((t) => t.status === 'overdue').length,
+		/** Spoolman is set up: the sidebar lists Filament. */
+		spoolman: !!user && spoolmanConfigured()
 	};
 };

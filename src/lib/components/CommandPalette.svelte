@@ -2,7 +2,8 @@
 	import type { Component } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { LayoutDashboard, LogOut, Moon, PanelLeft, Plug, Plus, Printer, ScrollText, Search, Settings, Sun, UserRound, Users, AppWindow, LibraryBig, History, Cctv, ChartColumn } from '@lucide/svelte';
+	import { LayoutDashboard, LogOut, Moon, PanelLeft, Plug, Plus, Printer, ScrollText, Search, Settings, Sun, UserRound, Users, AppWindow, LibraryBig, History, Cctv, ChartColumn, ListOrdered, Disc3, Wrench, Radar, BellRing } from '@lucide/svelte';
+	import { SETTINGS_PATHS } from '#lib/nav.ts';
 	import { fuzzyRank } from '#lib/fuzzy.ts';
 	import { api } from '#lib/client/api.ts';
 	import { editor, isAdmin, printers, setTheme, statuses, theme } from '#lib/client/state.svelte.ts';
@@ -60,7 +61,7 @@
 		const ctx = palette.printer;
 		const current = ctx ? printers.list.find((p) => p.id === ctx.printerId) : undefined;
 		if (ctx && current) {
-			for (const t of ctx.tabs) out.push({ key: `tab:${t.id}`, group: 'Tabs', title: t.label, subtitle: current.name, icon: AppWindow, run: () => ctx.openTab(t.id) });
+			for (const t of ctx.tabs) out.push({ key: `tab:${t.id}`, group: 'Tabs', title: t.label, subtitle: current.name, icon: AppWindow, keywords: t.keywords, run: () => ctx.openTab(t.id) });
 		}
 		if (isAdmin()) out.push({ key: 'act:new-printer', group: 'Actions', title: 'Add printer', icon: Plus, keywords: 'new server octoprint', run: () => void (editor.target = 'new') });
 		out.push(
@@ -72,20 +73,26 @@
 			const s = statuses[p.id];
 			out.push({ key: `printer:${p.id}`, group: 'Printers', title: p.name, subtitle: s ? STATE_LABEL[s.state] : undefined, icon: Printer, keywords: p.baseUrl, run: () => goto(`/p/${p.id}`) });
 		}
-		const pages: [string, string, Component, boolean][] = [
+		const admin = isAdmin();
+		const pages: [string, string, Component, boolean, string?][] = [
 			['/', 'Overview', LayoutDashboard, printers.list.length !== 1],
+			['/queue', 'Queue', ListOrdered, true],
 			['/library', 'Library', LibraryBig, true],
-			['/library/sources', 'Library sources', LibraryBig, isAdmin()],
-			['/history', 'History', History, true],
-			['/stats', 'Stats', ChartColumn, true],
-			['/cameras', 'Cameras', Cctv, true],
-			['/users', 'Users', Users, isAdmin()],
-			['/integrations', 'Integrations', Plug, isAdmin()],
-			['/audit', 'Audit log', ScrollText, isAdmin()],
-			['/settings', 'Settings', Settings, isAdmin()],
+			['/library/sources', 'Library sources', LibraryBig, admin],
+			['/history', 'History', History, true, 'prints'],
+			['/history/stats', 'Stats', ChartColumn, true, 'history statistics charts'],
+			['/cameras', 'Cameras', Cctv, true, 'webcams'],
+			['/filament', 'Filament', Disc3, true, 'spoolman spools costs'],
+			['/maintenance', 'Maintenance', Wrench, true, 'reminders'],
+			['/settings', 'Settings', Settings, admin, 'general security backup'],
+			['/discover', 'Printers & Discover', Radar, admin, 'add printer scan docker arcane network'],
+			['/users', 'Users', Users, admin],
+			['/notifications', 'Notifications', BellRing, admin, 'alerts channels rules'],
+			['/integrations', 'Integrations', Plug, admin, 'sso oidc api tokens'],
+			['/audit', 'Audit log', ScrollText, admin],
 			['/account', 'My account', UserRound, true]
 		];
-		for (const [href, title, icon, ok] of pages) if (ok) out.push({ key: `page:${href}`, group: 'Pages', title, icon, run: () => goto(href) });
+		for (const [href, title, icon, ok, keywords] of pages) if (ok) out.push({ key: `page:${href}`, group: 'Pages', title, subtitle: SETTINGS_PATHS.includes(href) && href !== '/settings' ? 'Settings' : undefined, icon, keywords, run: () => goto(href) });
 		return out;
 	});
 
