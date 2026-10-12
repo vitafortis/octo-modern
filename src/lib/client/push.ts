@@ -10,8 +10,8 @@ export type Support =
 	/** `ios-home`: iOS/iPadOS only offers push to home-screen apps. */
 	| { ok: false; reason: 'insecure' | 'ios-home' | 'unsupported' };
 
-const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+export const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+export const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 export function support(): Support {
 	if (!window.isSecureContext) return { ok: false, reason: 'insecure' };

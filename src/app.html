@@ -17,6 +17,11 @@
 				if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
 			} catch {}
 			// The browser/status bar follows the app's theme, not the system's.
+			// Chromium offers installing once, possibly before the app has started: keep the offer.
+			addEventListener('beforeinstallprompt', (e) => {
+				e.preventDefault();
+				window.__ocmInstall = e;
+			});
 			document.querySelector('meta[name=theme-color]').content = document.documentElement.dataset.theme === 'light' ? '#fbfaff' : '#0b0a10';
 		</script>
 		%sveltekit.head%

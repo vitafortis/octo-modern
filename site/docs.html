@@ -98,6 +98,7 @@
 								<li><a href="#status-api">Status API</a></li>
 								<li><a href="#power">Smart plugs</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
+								<li><a href="#phone-app">Phone app</a></li>
 								<li><a href="#notifications">Notifications</a></li>
 								<li><a href="#push">Browser push</a></li>
 								<li><a href="#detection">Failure detection</a></li>
@@ -383,6 +384,16 @@
 						<p>Uploads go to OctoPrint's local storage and are streamed as they arrive, so memory use doesn't grow with the file; the image allows up to 4 GB (<code>BODY_SIZE_LIMIT</code>). A reverse proxy in front may have its own limit (nginx: <code>client_max_body_size</code>).</p>
 					</section>
 
+					<section id="phone-app">
+						<h2>Phone app</h2>
+						<p>octo·modern installs as a web app: its own icon, full screen without the browser around it, and notifications through <a href="#push">browser push</a>. Nothing to download from a store; it updates with the server. Installing needs HTTPS (or <code>localhost</code>).</p>
+						<ul>
+							<li><strong>Android</strong> (Chrome, Edge, Samsung Internet): tap <strong>Install app</strong> at the bottom of the menu or on <strong>My account</strong>, or use Chrome's <strong>⋮ → Install app</strong> (older versions: <strong>Add to Home screen</strong>). Chrome on a computer offers the same.</li>
+							<li><strong>iPhone and iPad</strong> (Safari): <strong>Install app</strong> shows the steps: <strong>Share → Add to Home Screen → Add</strong>, then open octo·modern from the Home Screen. On iOS 16.4+ that's also what <a href="#push">push</a> needs.</li>
+							<li>The button only shows where it works: not inside the installed app, not after installing, not in browsers that can't install web apps. <strong>Not now</strong> hides it in that browser; My account keeps offering it.</li>
+						</ul>
+					</section>
+
 					<section id="notifications">
 						<h2>Notifications</h2>
 						<p>Admins set them up under <strong>Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
@@ -401,7 +412,7 @@
 						<ul>
 							<li><strong>Set up</strong>: an admin adds a <strong>Browser push</strong> channel under Notifications (everyone who can see the printer, operators and admins, or admins only) and a rule for it. Then everyone opens <strong>My account → Browser push → Enable notifications on this device</strong> on each phone or computer.</li>
 							<li><strong>HTTPS only</strong>: browsers offer push on secure origins only, so open octo·modern at its <code>https://</code> address.</li>
-							<li><strong>iPhone and iPad</strong> (iOS 16.4+): add octo·modern to the Home Screen first (Share → Add to Home Screen), open it from there, then enable notifications.</li>
+							<li><strong>iPhone and iPad</strong> (iOS 16.4+): add octo·modern to the Home Screen first (Share → Add to Home Screen, see <a href="#phone-app">Phone app</a>), open it from there, then enable notifications.</li>
 							<li><strong>Who gets what</strong>: people only get printers they have access to; each person sees and removes only their own devices, admins see how many are subscribed. Devices the push service reports gone (404/410) are forgotten. A click opens the printer's page.</li>
 							<li><strong>Keys</strong>: a VAPID key pair is generated on first use and stored encrypted, or set <code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code> and <code>VAPID_SUBJECT</code>. Messages are end-to-end encrypted to each browser (RFC 8291).</li>
 						</ul>
