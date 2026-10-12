@@ -107,6 +107,7 @@
 								<li><a href="#spools">Spools, costs and maintenance</a></li>
 								<li><a href="#stats">History stats</a></li>
 								<li><a href="#bedmesh">Bed mesh</a></li>
+								<li><a href="#plugins">Plugins &amp; updates</a></li>
 								<li><a href="#preprint">Before each print</a></li>
 								<li><a href="#preview">G-code preview</a></li>
 								<li><a href="#cameras">Camera wall</a></li>
@@ -123,7 +124,7 @@
 						<h2>Finding your way around</h2>
 						<p>The <strong>sidebar</strong> holds the everyday pages, <strong>Overview</strong> (with more than one printer), <strong>Queue</strong>, <strong>Library</strong>, <strong>History</strong> and <strong>Cameras</strong>, then your printers. <strong>Filament</strong> appears once Spoolman is set up and <strong>Maintenance</strong> once there is a task (or one is overdue; its badge counts them). Admins get one <strong>Settings</strong> entry. ⌘K / Ctrl+K searches every page, printer and tab.</p>
 						<p><strong>Settings</strong> has its own sub-navigation (a rail, or a strip of sections on a phone): <strong>General</strong>, <strong>Printers &amp; Discover</strong>, <strong>Users</strong>, <strong>Notifications</strong>, <strong>Integrations</strong> and <strong>Audit log</strong>, plus <strong>Filament</strong> and <strong>Maintenance</strong> under <em>Set up</em> until they are in the sidebar. Their addresses are unchanged (<code>/settings</code>, <code>/discover</code>, <code>/users</code>, <code>/notifications</code>, <code>/integrations</code>, <code>/audit</code>). <strong>History</strong> has <strong>Prints</strong> and <strong>Stats</strong> (<code>/history/stats</code>; <code>/stats</code> redirects there).</p>
-						<p>Each <strong>printer</strong> has six tabs: <strong>Dashboard</strong>; <strong>Files</strong>, where <strong>Preview</strong> opens a toolpath (<code>?tab=files&amp;view=preview</code>); <strong>Control</strong>, with the <strong>Terminal</strong> as a panel underneath that <strong>Expand</strong> gives the whole tab (<code>?view=terminal</code>); <strong>Camera</strong>: <strong>Live</strong>, <strong>Timelapses</strong> (OctoPrint) and <strong>Failure detection</strong>; <strong>Jobs</strong>: the printer's <strong>History</strong> and <strong>Queue</strong>; and <strong>Care</strong>: <strong>Maintenance</strong>, and <strong>Bed mesh</strong> with the Bed Visualizer plugin. Links to the old tabs (<code>?tab=terminal</code>, <code>?tab=bed</code>…) open the matching tab and view.</p>
+						<p>Each <strong>printer</strong> has six tabs: <strong>Dashboard</strong>; <strong>Files</strong>, where <strong>Preview</strong> opens a toolpath (<code>?tab=files&amp;view=preview</code>); <strong>Control</strong>, with the <strong>Terminal</strong> as a panel underneath that <strong>Expand</strong> gives the whole tab (<code>?view=terminal</code>); <strong>Camera</strong>: <strong>Live</strong>, <strong>Timelapses</strong> (OctoPrint) and <strong>Failure detection</strong>; <strong>Jobs</strong>: the printer's <strong>History</strong> and <strong>Queue</strong>; and <strong>Care</strong>: <strong>Maintenance</strong>, <strong>Bed mesh</strong> with the Bed Visualizer plugin, and <strong>Plugins &amp; updates</strong> (OctoPrint printers, admins). Links to the old tabs (<code>?tab=terminal</code>, <code>?tab=bed</code>…) open the matching tab and view.</p>
 					</section>
 
 					<section id="printers">
@@ -150,7 +151,7 @@
 							<li><strong>Live</strong>: Moonraker's JSON-RPC websocket (<code>printer.objects.subscribe</code>), reconnecting with backoff and polled over HTTP meanwhile.</li>
 						</ul>
 						<p>What works: live status, temperatures, progress and ETA; start, pause, resume, cancel; files with folders, uploads, thumbnails and slicer estimates; G-code preview; jog, home, extrude, fan, feed and flow rate (as G-code); Klipper macros as buttons; Mainsail's temperature presets; the terminal; emergency stop (<code>printer.emergency_stop</code>) and firmware restart; webcams from <code>server.webcams.list</code>; history, including Moonraker's own job history; the queue, failure detection, notifications, smart plugs, spools and maintenance.</p>
-						<p>What doesn't (OctoPrint-only): loading a file without printing it, the SD card, serial connect/disconnect settings, OctoPrint's timelapse (hidden under Camera), and Care → Bed mesh (it reads OctoPrint’s Bed Visualizer plugin).</p>
+						<p>What doesn't (OctoPrint-only): loading a file without printing it, the SD card, serial connect/disconnect settings, OctoPrint's timelapse (hidden under Camera), Care → Bed mesh (it reads OctoPrint’s Bed Visualizer plugin) and Care → Plugins &amp; updates (OctoPrint’s Plugin Manager and Software Update).</p>
 					</section>
 
 					<section id="discover">
@@ -211,11 +212,12 @@
 								<tr><td>Add, reorder and remove queued jobs, confirm a bed is clear</td><td class="yes" data-label="Admin">✓</td><td class="yes" data-label="Operator">✓</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Printer tags, slicer upload keys</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Add, edit and remove printers (and their API keys)</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>OctoPrint plugins and updates: install, enable/disable, uninstall, update OctoPrint and plugins, restart OctoPrint</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Users, Integrations, Audit log, Settings (including the ML API), backups</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 							</tbody>
 						</table>
 						<p style="margin-top: 16px">Operators and viewers see every printer, or only the ones you pick under <strong>Users → Printers</strong>. Roles are enforced on the server for every route, not just hidden in the UI.</p>
-						<p>Dangerous actions ask for confirmation, and the server insists on it too: cancelling a print, deleting a file, an emergency stop, disconnecting during a print, sending G-code while printing, and G-code that stops the machine or touches stored settings and firmware.</p>
+						<p>Dangerous actions ask for confirmation, and the server insists on it too: cancelling a print, deleting a file, an emergency stop, disconnecting during a print, sending G-code while printing, uninstalling a plugin, installing one from a URL, updating or restarting OctoPrint, and G-code that stops the machine or touches stored settings and firmware.</p>
 						<h3>Guests and single sign-on</h3>
 						<p>Under <strong>Settings → Sign-in</strong> you can make sign-in optional: visitors use it as guests who can either watch or control printers, while admin pages still need an admin account. Single sign-on works with any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …); register <code>&lt;your-url&gt;/auth/oidc/callback</code> as the redirect URI.</p>
 					</section>
@@ -409,7 +411,7 @@
 						<p>Admins set them up under <strong>Settings → Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
 						<ul>
 							<li><strong>Channels</strong>: browser push (<a href="#push">below</a>), ntfy, Discord, Slack (incoming webhook, Block Kit), Telegram (bot token and chat ID, the snapshot as a photo), Pushover, Gotify, Matrix (homeserver, room ID, access token), email over SMTP (STARTTLS or TLS, snapshot inline), Home Assistant (webhook trigger and/or a <code>notify.*</code> service) and generic JSON webhooks.</li>
-							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.off</code>, <code>bed.drift</code> and <code>print.prestart_failed</code> from other features.</li>
+							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.off</code>, <code>bed.drift</code>, <code>octoprint.updates</code> and <code>print.prestart_failed</code> from other features.</li>
 							<li><strong>Messages</strong>: printer, file, elapsed and estimated time, filament, who started it, a link back (set the public URL, or <code>ORIGIN</code>) and the webcam snapshot. Slack, Gotify and Home Assistant show pictures only by link: turn on <strong>Share snapshots by link</strong> (unguessable links, 48 hours).</li>
 							<li><strong>Rules, quiet hours, limits</strong>: rules pick printers × events → channels; quiet hours per channel can still let errors through; the same event goes to a channel once per 10 minutes and at most 20 messages per 10 minutes, so flapping printers stay quiet. <strong>Recent deliveries</strong> shows the last 100 with their status.</li>
 						</ul>
@@ -491,6 +493,19 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 							<li><strong>History</strong>: every distinct mesh is kept with when it was seen, including ones probed from OctoPrint. Compare any two as a difference map (different probe counts are interpolated), follow flatness over time, choose a reference mesh, delete bad runs.</li>
 							<li><strong>Drift alerts</strong>: a flatness limit and/or a limit on how far any point moved from the reference; a new mesh past them sends <code>bed.drift</code> (<strong>Bed mesh drift</strong> in notification rules).</li>
 						</ul>
+					</section>
+
+					<section id="plugins">
+						<h2>Plugins &amp; updates</h2>
+						<p>OctoPrint printers have <strong>Plugins &amp; updates</strong> in the printer's <strong>Care</strong> tab, for admins only. It drives OctoPrint's own Plugin Manager and Software Update, with the same rules as OctoPrint's settings dialog.</p>
+						<ul>
+							<li><strong>OctoPrint</strong>: the running version and the newer one with its release notes and <strong>Update OctoPrint</strong>; <strong>Check now</strong> asks upstream right away.</li>
+							<li><strong>Installed</strong>: every plugin with version, author, description and flags (bundled, disabled, safe mode, incompatible, waiting for a restart); search, filter, enable or disable, and uninstall third-party plugins, optionally with their settings and data.</li>
+							<li><strong>Get more</strong>: search the official plugin repository with OctoPrint's compatibility verdict and install in one click, or install an archive from a URL after a warning (plugins run with OctoPrint's full rights on its host).</li>
+							<li><strong>Updates</strong>: OctoPrint and plugin updates, one at a time or <strong>Update all</strong>. Installs and updates show pip's output live; after an update OctoPrint restarts, and the view waits for it and shows the new version.</li>
+							<li><strong>Restart OctoPrint</strong> with the restart command set in OctoPrint (Settings → Server → Commands); a <strong>Restart needed</strong> banner stays while plugin changes wait for one.</li>
+						</ul>
+						<p>All of it is refused while the printer prints or is paused; uninstalling, installing from a URL, updating and restarting ask first, and everything is in the audit log. The printer's API key must be an OctoPrint admin's; with another key the view says so. Twice a day octo·modern reads each OctoPrint's update check: a dot on the Care tab shows new versions, and <code>octoprint.updates</code> (<strong>OctoPrint updates available</strong> in notification rules) sends one message per new set of versions.</p>
 					</section>
 
 					<section id="preprint">
