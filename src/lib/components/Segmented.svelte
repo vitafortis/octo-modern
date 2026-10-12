@@ -20,7 +20,7 @@
 	let { items, active, onselect, label, class: cls = '' }: { items: Segment[]; active: string; onselect?: (id: string) => void; label: string; class?: string } = $props();
 </script>
 
-<div class="scrollbar-none flex max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1 max-sm:w-full {cls}" role="tablist" aria-label={label} data-testid="segmented">
+<div class="scrollbar-none flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1 max-sm:w-full {cls}" role="tablist" aria-label={label} data-testid="segmented">
 	{#each items as s (s.id)}
 		{@const on = s.id === active}
 		{@const cl = `flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium whitespace-nowrap transition-colors max-sm:flex-1 max-sm:px-2 touch:h-11 ${on ? 'bg-card text-foreground shadow-surface' : 'text-muted-foreground hover:text-foreground'}`}
