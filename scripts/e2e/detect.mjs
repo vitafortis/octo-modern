@@ -428,10 +428,12 @@ async function main() {
 	assert.ok(st.events.some((e) => e.kind === 'paused'));
 
 	// --- the panel ---------------------------------------------------------------------------------
-	log('browser: the Failure detection tab (dark, light, phone, viewer)');
+	log('browser: Camera › Failure detection (dark, light, phone, viewer)');
 	// Back to the recommended interval for the pictures (it's paused, so nothing changes).
 	assert.equal((await operator.put(`/api/printers/${mk4.id}/detect`, { intervalS: 10, skipMinutes: 5 })).status, 200);
+	// The old Failure detection tab's link lands on Camera › Failure detection.
 	await dark.goto(`${APP}/p/${mk4.id}?tab=detection`);
+	await dark.waitForURL(/tab=camera&view=detection/);
 	await dark.waitForSelector('[data-testid=detection-panel][data-level=failure]');
 	await dark.waitForFunction(() => document.querySelector('[data-testid=detection-frame]')?.complete);
 	await sleep(600);
@@ -439,7 +441,7 @@ async function main() {
 
 	const light = await newPage('light');
 	await signIn(light, ADMIN);
-	await light.goto(`${APP}/p/${mk4.id}?tab=detection`);
+	await light.goto(`${APP}/p/${mk4.id}?tab=camera&view=detection`);
 	await light.waitForSelector('[data-testid=detection-panel][data-level=failure]');
 	await light.waitForFunction(() => document.querySelector('[data-testid=detection-frame]')?.complete);
 	await sleep(600);
@@ -447,7 +449,7 @@ async function main() {
 
 	const phone = await newPage('dark', { width: 390, height: 844 });
 	await signIn(phone, OPERATOR);
-	await phone.goto(`${APP}/p/${mk4.id}?tab=detection`);
+	await phone.goto(`${APP}/p/${mk4.id}?tab=camera&view=detection`);
 	await phone.waitForSelector('[data-testid=detection-panel]');
 	await phone.waitForFunction(() => document.querySelector('[data-testid=detection-frame]')?.complete);
 	await sleep(600);
@@ -457,7 +459,7 @@ async function main() {
 
 	const vpage = await newPage('dark');
 	await signIn(vpage, VIEWER);
-	await vpage.goto(`${APP}/p/${mk4.id}?tab=detection`);
+	await vpage.goto(`${APP}/p/${mk4.id}?tab=camera&view=detection`);
 	await vpage.waitForSelector('[data-testid=detection-panel]');
 	assert.equal(await vpage.locator('[data-testid=false-alarm]').count(), 0, 'viewers get no false-alarm button');
 	assert.equal(await vpage.locator('button[role=switch][aria-label="Enable failure detection"]').isDisabled(), true);

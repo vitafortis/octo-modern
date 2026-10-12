@@ -162,6 +162,8 @@ async function main() {
 			OCM_ADMIN_EMAIL: ADMIN.email,
 			OCM_ADMIN_PASSWORD: ADMIN.password,
 			OCM_ADMIN_NAME: ADMIN.name,
+			// The Discover page browses mDNS on load: ask a closed local port, not the LAN.
+			OCM_MDNS_TARGET: `127.0.0.1:${APP_PORT + 9}`,
 			NODE_OPTIONS: '--disable-warning=ExperimentalWarning'
 		}
 	});
@@ -218,19 +220,23 @@ async function main() {
 		[P(mk4.id), 'dashboard'],
 		[P(mk4.id, 'files'), 'files'],
 		[P(mk4.id, 'control'), 'control'],
-		[P(mk4.id, 'terminal'), 'terminal'],
-		[P(mk4.id, 'webcam'), 'webcam'],
-		[P(mk4.id, 'timelapse'), 'timelapse'],
-		[P(mk4.id, 'history'), 'printer history'],
+		[P(mk4.id, 'control&view=terminal'), 'terminal'],
+		[P(mk4.id, 'camera'), 'camera'],
+		[P(mk4.id, 'camera&view=timelapse'), 'timelapse'],
+		[P(mk4.id, 'camera&view=detection'), 'failure detection'],
+		[P(mk4.id, 'jobs'), 'printer history'],
+		[P(mk4.id, 'jobs&view=queue'), 'printer queue'],
+		[P(mk4.id, 'care'), 'care'],
 		[P(voron.id), 'idle printer'],
 		['/library', 'library'],
 		['/library/sources', 'library sources'],
 		['/history', 'history'],
-		['/stats', 'stats'],
+		['/history/stats', 'stats'],
 		['/discover', 'discover'],
 		['/users', 'users'],
 		['/audit', 'audit'],
 		['/integrations', 'integrations'],
+		['/notifications', 'notifications'],
 		['/settings', 'settings'],
 		['/account', 'account']
 	];
@@ -280,6 +286,20 @@ async function main() {
 	await waitFor(async () => !(await drawer.evaluate((d) => d.open)), 'the drawer closes on navigation');
 	assert.equal(await page.getByTestId('topbar-title').textContent(), 'History');
 
+	log('settings: one drawer entry, a strip of sections');
+	await page.getByRole('button', { name: 'Open menu' }).tap();
+	assert.equal(await drawer.getByRole('link', { name: 'Users' }).count(), 0, 'the admin pages sit behind Settings');
+	await drawer.getByRole('link', { name: 'Settings' }).tap();
+	await page.waitForURL(`${APP}/settings`);
+	const settingsStrip = page.getByTestId('settings-strip');
+	await settingsStrip.getByRole('link', { name: 'Notifications' }).scrollIntoViewIfNeeded();
+	await tappable(settingsStrip.getByRole('link', { name: 'Notifications' }), 'Notifications section');
+	await settingsStrip.getByRole('link', { name: 'Notifications' }).tap();
+	await page.waitForURL(`${APP}/notifications`);
+	assert.equal(await page.getByTestId('topbar-title').textContent(), 'Notifications');
+	await sleep(800);
+	await shot(page, 'mobile-settings-nav');
+
 	log('printer page: job bar, tabs, emergency stop asks first');
 	await page.goto(`${APP}${P(mk4.id)}`);
 	const bar = page.getByTestId('job-bar');
@@ -301,10 +321,18 @@ async function main() {
 	await sleep(500);
 	assert.equal((await admin.get('/api/printers/status')).data.find((s) => s.id === mk4.id).state, 'printing', 'still printing after backing out');
 	const strip = page.getByRole('navigation', { name: 'Printer sections' });
-	await strip.getByRole('button', { name: 'Timelapse' }).tap();
-	await page.waitForURL(/tab=timelapse/);
-	assert.ok(await strip.evaluate((n) => n.scrollWidth > n.clientWidth), 'the tab strip scrolls sideways');
-	await tappable(strip.getByRole('button', { name: 'Timelapse' }), 'Timelapse tab');
+	assert.ok(await strip.evaluate((n) => n.scrollWidth <= n.clientWidth), 'all six tabs fit, no sideways scrolling');
+	for (const name of ['Dashboard', 'Files', 'Control', 'Camera', 'Jobs', 'Care']) {
+		const b = await tappable(strip.getByRole('button', { name }), `${name} tab`);
+		assert.ok(b.x >= 0 && b.x + b.width <= 390, `${name} tab on screen`);
+	}
+	await strip.getByRole('button', { name: 'Camera' }).tap();
+	await page.waitForURL(/tab=camera/);
+	await tappable(page.getByTestId('segmented').getByRole('tab', { name: 'Timelapses' }), 'Timelapses view');
+	await page.getByTestId('segmented').getByRole('tab', { name: 'Timelapses' }).tap();
+	await page.waitForURL(/tab=camera&view=timelapse/);
+	await sleep(800);
+	await shot(page, 'mobile-printer-tabs');
 
 	log('files: a list with Print at hand and a menu for the rest');
 	await page.goto(`${APP}${P(voron.id, 'files')}`);
@@ -331,7 +359,7 @@ async function main() {
 	await shot(page, 'mobile-control');
 
 	log('terminal: fills the screen, prompt at the bottom');
-	await page.goto(`${APP}${P(voron.id, 'terminal')}`);
+	await page.goto(`${APP}${P(voron.id, 'control&view=terminal')}`);
 	const input = page.getByTestId('terminal-input');
 	const ib = await tappable(input, 'G-code prompt');
 	assert.ok(ib.y > 844 - 200, 'the prompt sits at the bottom of the screen');
@@ -344,7 +372,7 @@ async function main() {
 	await page.getByRole('dialog', { name: 'Line filters' }).waitFor();
 
 	log('terminal while printing: the keyboard pushes the job bar aside, the prompt stays above it');
-	await page.goto(`${APP}${P(mk4.id, 'terminal')}`);
+	await page.goto(`${APP}${P(mk4.id, 'control&view=terminal')}`);
 	await page.getByTestId('job-bar').waitFor();
 	await page.getByTestId('terminal-input').tap();
 	// What Android does when the keyboard opens (interactive-widget=resizes-content); iOS shrinks only

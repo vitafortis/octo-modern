@@ -421,6 +421,13 @@ async function main() {
 	await dark.waitForSelector('text=Voron 2.4');
 	await sleep(4000);
 	await shot(dark, 'overview');
+	// The sidebar: the everyday pages, then one Settings entry; Filament and Maintenance wait until they're in use.
+	const sideLinks = await dark.locator('aside nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+	assert.deepEqual(sideLinks, ['/', '/queue', '/library', '/history', '/cameras', '/settings'], `sidebar entries: ${sideLinks}`);
+	// Old paths still work: /stats moved into History.
+	const statsRedirect = await admin.get('/stats?range=90d&printer=x', { raw: true });
+	assert.equal(statsRedirect.status, 307);
+	assert.equal(statsRedirect.headers.get('location'), '/history/stats?range=90d&printer=x');
 
 	// Files tab: upload through the file picker, delete with confirmation, print from the list.
 	await dark.goto(`${APP}/p/${p1.id}?tab=files`);
@@ -443,10 +450,20 @@ async function main() {
 	await shot(dark, 'printer');
 	assert.ok(cam.stats.active >= 1, 'the dashboard shows the live stream');
 
-	await dark.goto(`${APP}/p/${p1.id}?tab=webcam`);
+	await dark.goto(`${APP}/p/${p1.id}?tab=camera`);
 	await dark.waitForSelector('img[alt="Webcam live"]');
 	await sleep(1500);
 	await shot(dark, 'webcam');
+	// Six tabs; Camera holds the live view, timelapses and failure detection.
+	const tabNames = await dark.locator('nav[aria-label="Printer sections"] button').allTextContents();
+	assert.deepEqual(tabNames.map((t) => t.trim()), ['Dashboard', 'Files', 'Control', 'Camera', 'Jobs', 'Care']);
+	assert.deepEqual((await dark.locator('[data-testid=segmented] [role=tab]').allTextContents()).map((t) => t.trim()), ['Live', 'Timelapses', 'Failure detection']);
+	await dark.goto(`${APP}/p/${p1.id}?tab=jobs`);
+	await dark.waitForSelector('[data-testid=segmented] [role=tab][aria-selected=true]:has-text("History")');
+	await sleep(1500);
+	await shot(dark, 'printer-tabs');
+	await dark.goto(`${APP}/p/${p1.id}?tab=camera`);
+	await dark.waitForSelector('img[alt="Webcam live"]');
 
 	// Cancel through the header button: the confirmation dialog must appear first.
 	await dark.click('header button:has-text("Cancel print")');
@@ -469,6 +486,16 @@ async function main() {
 	await waitFor(() => cam.stats.active === 0, 'browser camera streams to close after leaving the page', { tries: 20 });
 	await sleep(500);
 	await shot(dark, 'settings');
+	// One Settings area: a rail with the admin pages, which keep their paths.
+	const rail = dark.getByRole('navigation', { name: 'Settings', exact: true });
+	assert.deepEqual(await rail.locator('a').evaluateAll((as) => as.map((a) => a.getAttribute('href'))), ['/settings', '/discover', '/users', '/notifications', '/integrations', '/audit', '/filament', '/maintenance']);
+	assert.equal(await dark.locator('aside nav a[href="/settings"][class*="bg-accent"]').count(), 1, 'Settings is highlighted in the sidebar');
+	await rail.getByRole('link', { name: /Notifications/ }).click();
+	await dark.waitForURL(`${APP}/notifications`);
+	await dark.waitForSelector('h1:has-text("Notifications")');
+	assert.equal(await dark.locator('aside nav a[href="/settings"][class*="bg-accent"]').count(), 1, 'still under Settings on /notifications');
+	await sleep(800);
+	await shot(dark, 'settings-nav');
 	await dark.goto(`${APP}/users`);
 	await dark.waitForSelector('text=operator@example.com');
 	await shot(dark, 'users');

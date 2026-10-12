@@ -47,6 +47,7 @@ import { tagsMatch, type QueuePrinter } from '#lib/queue.ts';
 import { baseName } from '#lib/library.ts';
 import type { PrintRecord } from '#lib/history.ts';
 import type { Printer, User } from '#lib/types.ts';
+import { printerTabPath } from '#lib/printer-tabs.ts';
 
 // --- matching (pure) -----------------------------------------------------------------------
 
@@ -142,7 +143,7 @@ type Locals = { user: User | null; ip?: string };
  * replace `dispatcher.notify`. `spool.low`: a job was held for lack of filament.
  */
 export async function notifyQueueEvent(event: 'queue.bed_clear_needed' | 'spool.low', o: { title: string; message: string; printer: { id: string; name: string } }): Promise<void> {
-	const link = event === 'spool.low' ? '/queue' : `/p/${encodeURIComponent(o.printer.id)}?tab=queue`;
+	const link = event === 'spool.low' ? '/queue' : printerTabPath(o.printer.id, 'jobs', 'queue');
 	await notify({ kind: event, printerId: o.printer.id, printerName: o.printer.name, title: o.title, message: o.message, link, dedupeKey: o.message, ...(event === 'spool.low' ? { snapshot: false } : {}) });
 }
 

@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { ChartColumn, Download, History, LoaderCircle } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import HistoryTabs from '#lib/components/history/HistoryTabs.svelte';
 	import StackedBars, { type Column, type Series } from '#lib/components/stats/StackedBars.svelte';
 	import SpoolSwatch from '#lib/components/spools/SpoolSwatch.svelte';
 	import { bucketLabel, bucketTitle, hours, loadStats, statsCsvUrl } from '#lib/client/stats.ts';
@@ -42,7 +43,7 @@
 			if (range !== '30d') q.set('range', range);
 			if (printer) q.set('printer', printer);
 			const s = q.toString();
-			if (s !== page.url.searchParams.toString()) void goto(`/stats${s ? `?${s}` : ''}`, { replace: true, shallow: true });
+			if (s !== page.url.searchParams.toString()) void goto(`/history/stats${s ? `?${s}` : ''}`, { replace: true, shallow: true });
 			void load();
 		});
 	});
@@ -140,7 +141,7 @@
 <svelte:head><title>Stats · octo·modern</title></svelte:head>
 
 <div class="h-full overflow-y-auto">
-	<PageHeader title="Stats" description="How much your printers print, how often it works out, and what it uses.">
+	<PageHeader title="History" description="How much your printers print, how often it works out, and what it uses.">
 		{#snippet actions()}
 			{#if report && !empty}
 				<a class="btn btn-secondary btn-sm touch:h-11" href={statsCsvUrl(report, printer)} download data-testid="stats-csv"><Download />Export CSV</a>
@@ -148,6 +149,7 @@
 		{/snippet}
 	</PageHeader>
 	<div class="page-x space-y-4 pb-10">
+		<HistoryTabs active="stats" />
 		<!-- Filters, one row above everything they affect. -->
 		<div class="flex flex-wrap items-center gap-2">
 			<div class="flex gap-1 rounded-xl border border-border bg-surface p-1 max-sm:w-full" role="radiogroup" aria-label="Time range">

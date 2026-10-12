@@ -61,7 +61,7 @@ export const EVENT_INFO: Record<AnyKind, EventInfo> = {
 	'failure.suspected': { label: 'Failure suspected', group: 'Other features', severity: 'error', hint: 'Failure detection: a warning or a failure, with the annotated frame' },
 	'power.on': { label: 'Power on', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched on' },
 	'power.off': { label: 'Power off', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched off' },
-	'bed.drift': { label: 'Bed mesh drift', group: 'Other features', severity: 'warning', hint: 'A new bed mesh is less flat, or moved from the reference, beyond the limits set in the Bed tab' },
+	'bed.drift': { label: 'Bed mesh drift', group: 'Other features', severity: 'warning', hint: 'A new bed mesh is less flat, or moved from the reference, beyond the limits set under Care › Bed mesh' },
 	test: { label: 'Test', group: 'Other features', severity: 'info', hint: 'Send test' }
 };
 

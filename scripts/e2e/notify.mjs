@@ -232,7 +232,7 @@ async function main() {
 	await waitFor(() => kinds().includes('print.finished'), 'print.finished', { tries: 120 });
 	const fin = webhooks().find((w) => w.event === 'print.finished');
 	assert.equal(fin.printer.name, 'Prusa MK4');
-	assert.equal(fin.url, `${APP}/p/${printer.id}?tab=history`);
+	assert.equal(fin.url, `${APP}/p/${printer.id}?tab=jobs`);
 	assert.equal(fin.print.startedBy, OPERATOR.name);
 	assert.ok(fin.print.filamentMm > 0);
 	assert.equal(fin.image.contentType, 'image/jpeg', 'webhook: the snapshot inline');

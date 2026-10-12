@@ -162,7 +162,7 @@ test('payload: title, text, the printer page to open, a tag per printer and topi
 	const p = deliver.buildPayload(msg());
 	assert.equal(p.title, 'Print finished: benchy.gcode');
 	assert.match(p.body, /^MK4: benchy\.gcode finished after 1h/);
-	assert.equal(p.url, '/p/p-1?tab=history');
+	assert.equal(p.url, '/p/p-1?tab=jobs');
 	assert.equal(p.tag, 'ocm:p-1:print');
 	assert.equal(p.printerId, 'p-1');
 	assert.equal(p.severity, 'success');
@@ -288,7 +288,7 @@ test('delivery: encrypted, VAPID-signed, decrypted by the mock; 404/410 devices 
 	assert.equal(mock.payloadsFor('ok-viewer').length, 0);
 	const [p] = mock.payloadsFor('ok-admin');
 	assert.equal(p.title, 'Print finished: benchy.gcode');
-	assert.equal(p.url, `/p/${f.p2.id}?tab=history`);
+	assert.equal(p.url, `/p/${f.p2.id}?tab=jobs`);
 	const req = mock.received.find((x: { name: string }) => x.name === 'ok-admin')!;
 	assert.equal(req.error, null);
 	assert.equal(req.vapid.claims.sub, 'https://octo.example.com');

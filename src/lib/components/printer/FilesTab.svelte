@@ -45,9 +45,9 @@
 	const canLoad = $derived(features(printer).selectWithoutPrint);
 	const serverName = $derived(printer.kind === 'moonraker' ? 'Klipper' : 'OctoPrint');
 
-	/** The printer page's Preview tab for a file (the date busts the parsed-file cache after a re-upload). */
+	/** The Files tab's toolpath preview of a file (the date busts the parsed-file cache after a re-upload). */
 	const canPreview = (f: FileEntry) => f.type === 'machinecode' && f.origin === 'local' && !/\.bgcode$/i.test(f.name);
-	const previewHref = (f: FileEntry) => `?tab=preview&file=${encodeURIComponent(f.path)}&v=${f.date ?? ''}-${f.size ?? ''}`;
+	const previewHref = (f: FileEntry) => `?tab=files&view=preview&file=${encodeURIComponent(f.path)}&v=${f.date ?? ''}-${f.size ?? ''}`;
 
 	let listing = $state<FileListing | null>(null);
 	let error = $state('');

@@ -2,6 +2,7 @@
 	import { BellRing } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import HistoryView from '#lib/components/history/HistoryView.svelte';
+	import HistoryTabs from '#lib/components/history/HistoryTabs.svelte';
 	import { isAdmin } from '#lib/client/state.svelte.ts';
 </script>
 
@@ -15,7 +16,8 @@
 			{/if}
 		{/snippet}
 	</PageHeader>
-	<div class="page-x pb-10">
+	<div class="page-x space-y-4 pb-10">
+		<HistoryTabs active="prints" />
 		<HistoryView />
 	</div>
 </div>

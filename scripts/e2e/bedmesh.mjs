@@ -235,14 +235,20 @@ async function main() {
 		log(`  screenshot ${name}.png`);
 	};
 
-	log('browser: no Bed tab without the plugin; a hint in the printer settings');
+	log('browser: no Bed mesh view without the plugin; a hint in the printer settings');
 	const adminPage = await newPage('dark');
 	await signIn(adminPage, ADMIN);
 	await adminPage.goto(`${APP}/p/${ender.id}`);
 	await adminPage.waitForSelector('nav[aria-label="Printer sections"]');
-	assert.equal(await adminPage.locator('nav[aria-label="Printer sections"] button:has-text("Bed")').count(), 0);
+	await adminPage.click('nav[aria-label="Printer sections"] button:has-text("Care")');
+	await adminPage.waitForURL(/tab=care/);
+	await adminPage.waitForSelector('nav[aria-label="Printer sections"] [aria-current=page]:has-text("Care")');
+	await sleep(500);
+	assert.equal(await adminPage.locator('[data-testid=segmented] :text("Bed mesh")').count(), 0, 'no Bed mesh view without the plugin');
+	// The old ?tab=bed lands on Care (its Bed mesh view doesn't exist here).
 	await adminPage.goto(`${APP}/p/${ender.id}?tab=bed`);
-	await adminPage.waitForSelector('nav[aria-label="Printer sections"] [aria-current=page]:has-text("Dashboard")');
+	await adminPage.waitForSelector('nav[aria-label="Printer sections"] [aria-current=page]:has-text("Care")');
+	await adminPage.waitForURL((u) => u.searchParams.get('tab') === 'care' && !u.searchParams.has('view'));
 	await adminPage.click('button[aria-label="Edit server"]');
 	await adminPage.waitForSelector('dialog[open] [data-testid=bedmesh-hint]');
 	await adminPage.keyboard.press('Escape');
@@ -253,12 +259,13 @@ async function main() {
 	assert.equal(await adminPage.locator('dialog[open] [data-testid=bedmesh-hint]').count(), 0, 'no hint where the plugin is installed');
 	await adminPage.keyboard.press('Escape');
 
-	log('browser: the Bed tab, Update mesh with confirmation and progress');
+	log('browser: Care › Bed mesh, Update mesh with confirmation and progress');
 	const dark = await newPage('dark');
 	await signIn(dark, OPERATOR);
 	await dark.goto(`${APP}/p/${mk4.id}`);
-	await dark.click('nav[aria-label="Printer sections"] button:has-text("Bed")');
-	await dark.waitForURL(/tab=bed/);
+	await dark.click('nav[aria-label="Printer sections"] button:has-text("Care")');
+	await dark.click('[data-testid=segmented] button:has-text("Bed mesh")');
+	await dark.waitForURL(/tab=care&view=bed/);
 	await dark.waitForSelector('[data-testid=mesh-heatmap] [data-max]');
 	await dark.waitForSelector('[data-testid=mesh-surface] canvas');
 	const flat0 = await dark.textContent('[data-testid=mesh-flatness]');

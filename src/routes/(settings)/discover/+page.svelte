@@ -6,7 +6,10 @@
 	import CandidateRow from '#lib/components/discover/CandidateRow.svelte';
 	import AddDiscovered from '#lib/components/discover/AddDiscovered.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
-	import { editor, refreshPrinters, refreshStatuses, toast } from '#lib/client/state.svelte.ts';
+	import { editor, printers, refreshPrinters, refreshStatuses, statuses, toast } from '#lib/client/state.svelte.ts';
+	import StateDot from '#lib/components/printer/StateDot.svelte';
+	import { KIND_LABEL } from '#lib/printer-kind.ts';
+	import { Settings2 } from '@lucide/svelte';
 	import { joinNetworksSnippet, type ArcaneScan, type Candidate, type DiscoveryConfig, type DockerScan, type NetworkScan, type SelfNetworks } from '#lib/discovery.ts';
 	import type { Printer, TestResult } from '#lib/types.ts';
 
@@ -201,7 +204,7 @@
 {/snippet}
 
 <div class="h-full overflow-y-auto">
-	<PageHeader title="Discover" description="Find OctoPrint servers in Docker, in Arcane and on your network, and add them without copying API keys.">
+	<PageHeader title="Printers & Discover" description="Your printers, and OctoPrint servers to add from Docker, Arcane and your network without copying API keys.">
 		{#snippet actions()}
 			<button class="btn btn-ghost" onclick={() => (editor.target = 'new')}><Plus />Add manually</button>
 			<button class="btn btn-secondary" disabled={busy} onclick={rescan}>
@@ -211,6 +214,24 @@
 	</PageHeader>
 
 	<div class="page-x pb-16">
+		{#if printers.list.length}
+			<!-- The printers already added: edit them here, find more below. -->
+			<section class="card mb-6 overflow-hidden" data-testid="printer-list">
+				<h2 class="border-b border-border px-4 py-2.5 text-sm font-semibold">Your printers <span class="font-normal text-muted-foreground tabular-nums">{printers.list.length}</span></h2>
+				<ul class="divide-y divide-border">
+					{#each printers.list as p (p.id)}
+						<li class="flex items-center gap-3 px-4 py-2 text-[0.8125rem]">
+							<StateDot state={statuses[p.id]?.state} />
+							<a class="min-w-0 flex-1 truncate font-medium hover:underline" href="/p/{p.id}">{p.name}</a>
+							<span class="hidden min-w-0 truncate font-mono text-xs text-muted-foreground sm:block">{p.baseUrl.replace(/^https?:\/\//, '')}</span>
+							<span class="badge shrink-0">{KIND_LABEL[p.kind ?? 'octoprint']}</span>
+							<button class="btn btn-ghost btn-icon btn-sm shrink-0 touch:size-11" title="Edit {p.name}" aria-label="Edit {p.name}" onclick={() => (editor.target = p)}><Settings2 /></button>
+						</li>
+					{/each}
+				</ul>
+			</section>
+			<h2 class="mb-3 text-sm font-semibold">Find printers</h2>
+		{/if}
 		<div class="mb-5 flex flex-wrap items-center gap-3">
 			<div class="inline-flex rounded-lg border border-border bg-surface p-0.5" role="tablist">
 				{#each [{ id: 'docker', label: 'Docker', icon: Container, count: dockerCount, busy: loading.docker }, { id: 'arcane', label: 'Arcane', icon: Boxes, count: arcaneCount, busy: loading.arcane }, { id: 'network', label: 'Network', icon: Radar, count: networkCount, busy: loading.mdns || loading.subnet }] as t (t.id)}

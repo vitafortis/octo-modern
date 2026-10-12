@@ -3,7 +3,9 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { LayoutDashboard, Settings, Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Users, Plug, ScrollText, Search, Radar, LibraryBig, History, Menu, X, ListOrdered, Disc3, Wrench, BellRing, Cctv, ChartColumn } from '@lucide/svelte';
+	import { Plus, Moon, Sun, LogOut, LogIn, PanelLeftClose, PanelLeftOpen, Search, Menu, X } from '@lucide/svelte';
+	import { NAV_ICONS } from '#lib/client/nav-icons.ts';
+	import { navEntries, pageTitle } from '#lib/nav.ts';
 	import Logo from '#lib/components/Logo.svelte';
 	import Toaster from '#lib/components/Toaster.svelte';
 	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
@@ -50,26 +52,10 @@
 		return pollStatuses();
 	});
 
-	const nav = $derived([
-		...(single ? [] : [{ href: '/', label: 'Overview', icon: LayoutDashboard }]),
-		{ href: '/queue', label: 'Queue', icon: ListOrdered },
-		{ href: '/library', label: 'Library', icon: LibraryBig },
-		{ href: '/cameras', label: 'Cameras', icon: Cctv },
-		{ href: '/history', label: 'History', icon: History },
-		{ href: '/stats', label: 'Stats', icon: ChartColumn },
-		{ href: '/filament', label: 'Filament', icon: Disc3 },
-		{ href: '/maintenance', label: 'Maintenance', icon: Wrench, badge: data.maintenanceOverdue },
-		...(isAdmin()
-			? [
-					{ href: '/discover', label: 'Discover', icon: Radar },
-					{ href: '/users', label: 'Users', icon: Users },
-					{ href: '/integrations', label: 'Integrations', icon: Plug },
-					{ href: '/notifications', label: 'Notifications', icon: BellRing },
-					{ href: '/audit', label: 'Audit log', icon: ScrollText },
-					{ href: '/settings', label: 'Settings', icon: Settings }
-				]
-			: [])
-	]);
+	// Filament and Maintenance appear once in use; the admin pages sit behind one Settings entry.
+	const nav = $derived(
+		navEntries({ single, admin: isAdmin(), spoolman: data.spoolman, maintenanceTasks: data.maintenanceTasks, maintenanceOverdue: data.maintenanceOverdue }).map((e) => ({ ...e, icon: NAV_ICONS[e.icon] }))
+	);
 
 	async function logout() {
 		await api.post('/api/auth/logout');
@@ -141,9 +127,7 @@
 			const s = p ? statuses[p.id] : undefined;
 			return { title: p?.name ?? 'Printer', state: s?.state, pct: s ? progressPercent(s) : null, color: p ? (COLORS[p.color] ?? COLORS.violet) : null };
 		}
-		const extra: [string, string][] = [['/library/sources', 'Library sources'], ['/account', 'My account']];
-		const hit = extra.find(([h]) => path.startsWith(h)) ?? [...nav].reverse().map((n) => [n.href, n.label] as [string, string]).find(([h]) => (h === '/' ? path === '/' : path.startsWith(h)));
-		return { title: hit?.[1] ?? 'octo·modern', state: undefined, pct: null, color: null };
+		return { title: pageTitle(path, nav) ?? 'octo·modern', state: undefined, pct: null, color: null };
 	});
 </script>
 
@@ -205,7 +189,7 @@
 
 			<nav class="space-y-0.5 px-2 pt-1">
 				{#each nav as item (item.href)}
-					{@const active = item.href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(item.href)}
+					{@const active = item.match(page.url.pathname)}
 					<a
 						href={item.href}
 						title={item.label}
@@ -216,7 +200,7 @@
 						{#if active}<span class="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-primary"></span>{/if}
 						<item.icon class="size-4 shrink-0" />
 						{#if !rail}{item.label}{/if}
-						{#if 'badge' in item && item.badge}
+						{#if item.badge}
 							<span
 								class="{rail ? 'absolute top-1 right-1 size-2 p-0' : 'ml-auto h-4 min-w-4 px-1'} grid place-items-center rounded-full bg-danger text-[0.625rem] leading-none font-semibold text-white tabular-nums"
 								title="{item.badge} overdue maintenance task{item.badge === 1 ? '' : 's'}"

@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * The Bed tab (printers with the Bed Visualizer plugin): the current mesh as a heatmap and
+	 * Care › Bed mesh (printers with the Bed Visualizer plugin): the current mesh as a heatmap and
 	 * a 3D surface with its range and flatness, "Update mesh" (operators, asks first), the mesh
 	 * history with a difference map between any two, a flatness trend, and drift alerts.
 	 */

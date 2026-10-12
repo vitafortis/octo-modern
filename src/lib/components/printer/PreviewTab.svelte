@@ -9,10 +9,10 @@
 	import type { TabProps } from './tabs.ts';
 
 	/**
-	 * Toolpath preview on the printer page: the current job (following the print live via
+	 * Toolpath preview, a view of the Files tab: the current job (following the print live via
 	 * progress.filepos) or, with `?file=<path>`, any G-code file in OctoPrint's storage.
 	 */
-	let { printer, live }: TabProps = $props();
+	let { printer, live, openView }: TabProps = $props();
 
 	const s = $derived(live.snapshot);
 	const jobFile = $derived(s.job?.file ?? null);
@@ -34,12 +34,9 @@
 		goto(url, { replace: true, reset: false });
 	}
 
+	/** Back to the file list. */
 	function filesTab() {
-		const url = new URL(page.url.href);
-		url.searchParams.set('tab', 'files');
-		url.searchParams.delete('file');
-		url.searchParams.delete('v');
-		goto(url, { replace: true, reset: false });
+		openView?.(null, { file: null, v: null });
 	}
 </script>
 
@@ -47,14 +44,16 @@
 	<div class="card mx-auto max-w-md p-8 text-center">
 		<span class="mx-auto grid size-11 place-items-center rounded-xl bg-primary-soft text-primary"><FileCode2 class="size-5" /></span>
 		<p class="mt-3 text-sm font-semibold">Nothing to preview</p>
-		<p class="mt-1 text-[0.8125rem] text-muted-foreground">Load or print a file to see its toolpath here, or preview any file from the Files tab.</p>
-		<button class="btn btn-primary mt-4" onclick={filesTab}><FolderOpen />Open Files</button>
+		<p class="mt-1 text-[0.8125rem] text-muted-foreground">Load or print a file to see its toolpath here, or preview any file from the file list.</p>
+		<button class="btn btn-primary mt-4" onclick={filesTab}><FolderOpen />Back to files</button>
 	</div>
 {:else}
 	<div class="space-y-3">
 		<div class="flex flex-wrap items-center gap-2">
+			<button class="btn btn-ghost btn-sm -ml-2 touch:h-11" onclick={filesTab} data-testid="preview-back"><ArrowLeft />Files</button>
+			<span class="h-4 w-px bg-border"></span>
 			{#if picked && jobFile && !target.isJob}
-				<button class="btn btn-ghost btn-sm -ml-2" onclick={back}><ArrowLeft />Current job</button>
+				<button class="btn btn-ghost btn-sm touch:h-11" onclick={back}><Crosshair />Current job</button>
 			{/if}
 			<FileCode2 class="size-4 shrink-0 text-muted-foreground" />
 			<h2 class="min-w-0 truncate text-sm font-semibold" title={target.path}>{name}</h2>

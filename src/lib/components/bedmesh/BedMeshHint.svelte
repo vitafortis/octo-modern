@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * In the printer settings dialog: says where the Bed tab comes from when the Bed
+	 * In the printer settings dialog: says where Care › Bed mesh comes from when the Bed
 	 * Visualizer plugin isn't on this OctoPrint (nothing when it is, or when unknown).
 	 */
 	import { Grid3x3 } from '@lucide/svelte';
@@ -24,7 +24,7 @@
 		<Grid3x3 class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 		<p class="text-[0.6875rem] text-muted-foreground">
 			<span class="text-[0.8125rem] font-medium text-foreground">Bed mesh</span><br />
-			Install the <span class="font-medium text-foreground">Bed Visualizer</span> plugin (OctoPrint-BedLevelVisualizer) from OctoPrint’s Plugin Manager to get a Bed tab with the mesh, its history and drift alerts.
+			Install the <span class="font-medium text-foreground">Bed Visualizer</span> plugin (OctoPrint-BedLevelVisualizer) from OctoPrint’s Plugin Manager to get a Bed mesh section in the printer’s Care tab, with the mesh, its history and drift alerts.
 		</p>
 	</div>
 {/if}

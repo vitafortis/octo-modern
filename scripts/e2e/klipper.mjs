@@ -182,8 +182,18 @@ async function main() {
 	await waitFor(async () => (await admin.get('/api/printers/status')).data.find((s) => s.id === id)?.state === 'operational', 'Ready');
 	await dark.locator('text=live push').waitFor({ timeout: 15_000 });
 	assert.ok(mr.calls.some((c) => c.method === 'printer.objects.subscribe'), 'subscribed over JSON-RPC');
-	assert.ok(await dark.getByRole('button', { name: /Timelapse/ }).count() === 0, 'no Timelapse tab for Klipper');
 	await dark.getByRole('button', { name: /Files/ }).first().waitFor();
+	// Six tabs as for OctoPrint; the OctoPrint-only views (timelapse, bed mesh) stay hidden.
+	assert.equal(await dark.locator('nav[aria-label="Printer sections"] button').count(), 6);
+	await dark.goto(`${APP}/p/${id}?tab=camera`);
+	await dark.locator('[data-testid=segmented]').waitFor();
+	assert.deepEqual((await dark.locator('[data-testid=segmented] [role=tab]').allTextContents()).map((t) => t.trim()), ['Live', 'Failure detection'], 'no Timelapses view for Klipper');
+	await dark.goto(`${APP}/p/${id}?tab=timelapse`);
+	await dark.waitForURL((u) => u.searchParams.get('tab') === 'camera' && !u.searchParams.has('view'));
+	await dark.goto(`${APP}/p/${id}?tab=care`);
+	await dark.locator('nav[aria-label="Printer sections"] [aria-current=page]:has-text("Care")').waitFor();
+	await sleep(500);
+	assert.equal(await dark.locator('[data-testid=segmented]').count(), 0, 'Care is just maintenance on Klipper (no bed mesh view)');
 
 	log('heat up, then print a file from the Files tab');
 	assert.equal((await operator.post(`${base}/temperature`, { targets: { tool0: 215, bed: 60 } })).status, 200);

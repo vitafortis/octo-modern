@@ -5,6 +5,7 @@
 import { EVENT_INFO } from '#lib/notify.ts';
 import { formatDuration } from '#lib/printer.ts';
 import type { Message, NotifyEvent, PrintFacts } from './types.ts';
+import { printerTabPath } from '#lib/printer-tabs.ts';
 
 export const trimSlash = (s: string) => s.replace(/\/+$/, '');
 const pct = (n: number) => `${Math.round(n)}%`;
@@ -89,7 +90,7 @@ export function render(ev: NotifyEvent, opts: { publicUrl: string | null; printe
 		if (ev.link) url = `${base}${ev.link.startsWith('/') ? '' : '/'}${ev.link}`;
 		else if (ev.printerId) {
 			const ended = ev.kind === 'print.finished' || ev.kind === 'print.failed' || ev.kind === 'print.cancelled';
-			url = `${base}/p/${encodeURIComponent(ev.printerId)}${ended ? '?tab=history' : ''}`;
+			url = `${base}${ended ? printerTabPath(ev.printerId, 'jobs', 'history') : `/p/${encodeURIComponent(ev.printerId)}`}`;
 		} else url = base;
 	}
 	const fields = [...(name ? [{ label: 'Printer', value: name }] : []), ...printFields(ev.print, ev.kind), ...(ev.fields ?? [])]

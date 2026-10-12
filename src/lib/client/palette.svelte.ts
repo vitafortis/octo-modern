@@ -6,8 +6,9 @@
 /** What an open printer page (/p/[id]) lets the palette do. */
 export interface PrinterContext {
 	printerId: string;
+	/** Opens a tab (`camera`) or a tab's view (`camera/timelapse`). */
 	openTab: (tab: string) => void;
-	tabs: { id: string; label: string }[];
+	tabs: { id: string; label: string; keywords?: string }[];
 }
 
 export const palette = $state<{ open: boolean; printer: PrinterContext | null }>({ open: false, printer: null });
