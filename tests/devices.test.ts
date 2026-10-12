@@ -240,6 +240,9 @@ test('route allowlist', () => {
 	assert.ok(!dev.deviceRouteAllowed('PUT', '/api/printers/a/job'));
 	assert.ok(!dev.deviceRouteAllowed('POST', '/api/printers'));
 	assert.ok(!dev.deviceRouteAllowed('GET', '/api/printers/a/webcam/stream'));
+	assert.ok(dev.deviceRouteAllowed('DELETE', '/api/printers/a/preprint'), 'stopping a preparation');
+	assert.ok(!dev.deviceRouteAllowed('GET', '/api/printers/a/preprint/settings'));
+	assert.ok(!dev.deviceRouteAllowed('PUT', '/api/printers/a/preprint/settings'));
 	assert.ok(dev.deviceJobCommandAllowed({ command: 'cancel', confirm: true }));
 	assert.ok(!dev.deviceJobCommandAllowed({ command: 'start' }));
 	assert.ok(!dev.deviceJobCommandAllowed(null));

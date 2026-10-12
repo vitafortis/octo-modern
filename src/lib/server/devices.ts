@@ -8,9 +8,9 @@
  * - The token acts as its user: the user's current role and printer access apply on every
  *   request (read live, so role changes and disabling the account take effect at once).
  * - Scoped: it opens only the routes the app needs (DEVICE_ROUTES) — printer list and
- *   status, one printer's state and webcam snapshot, pause/resume/cancel, and the device's
- *   own record. Everything else answers 403, so a leaked token can't change settings,
- *   users, files or anything an admin could.
+ *   status, one printer's state and webcam snapshot, pause/resume/cancel, the device's
+ *   own record, and stopping a pre-print preparation. Everything else answers 403, so a
+ *   leaked token can't change settings, users, files or anything an admin could.
  * - Revocable from My account, and by the app itself when you sign out there.
  */
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -162,6 +162,8 @@ const DEVICE_ROUTES: { method: string; re: RegExp }[] = [
 	{ method: 'GET', re: /^\/api\/printers\/[^/]+\/state\/?$/ },
 	{ method: 'GET', re: /^\/api\/printers\/[^/]+\/webcam\/snapshot\/?$/ },
 	{ method: 'POST', re: /^\/api\/printers\/[^/]+\/job\/?$/ },
+	// Stopping a preparation (pre-print leveling/G-code) before the file starts.
+	{ method: 'DELETE', re: /^\/api\/printers\/[^/]+\/preprint\/?$/ },
 	{ method: 'GET', re: /^\/api\/account\/devices\/current\/?$/ },
 	{ method: 'DELETE', re: /^\/api\/account\/devices\/current\/?$/ }
 ];
