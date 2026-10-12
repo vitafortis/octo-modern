@@ -42,6 +42,10 @@
 	const summary = (on: boolean, what: string) => (on ? what : 'off');
 	const defLevel = $derived(defaults ? summary(defaults.leveling.enabled, commandLines(kindCommand === 'G28\nG29' ? defaults.leveling.octoprintCommand : defaults.leveling.klipperCommand).join(', ') || kindCommand) : '…');
 	const defSnippet = $derived(defaults ? summary(defaults.snippet.enabled && !!commandLines(defaults.snippet.gcode).length, `${commandLines(defaults.snippet.gcode).length} lines`) : '…');
+	// "Use the default" while the default is off does nothing: say so on the button and below it.
+	const levelDefOn = $derived(!!defaults?.leveling.enabled);
+	const snippetDefOn = $derived(!!defaults && defaults.snippet.enabled && !!commandLines(defaults.snippet.gcode).length);
+	const modeLabel = (m: PrepMode, defOn: boolean) => (m === 'default' && defaults ? `Default (${defOn ? 'on' : 'off'})` : m === 'custom' ? 'On for this printer' : MODE_LABEL[m]);
 	const enabledLabel = $derived(form ? [form.leveling.mode !== 'none' && (form.leveling.mode === 'custom' || defaults?.leveling.enabled) ? 'leveling' : null, form.snippet.mode !== 'none' && (form.snippet.mode === 'custom' || defaults?.snippet.enabled) ? 'G-code' : null].filter(Boolean).join(' + ') || 'nothing' : '');
 </script>
 
@@ -55,10 +59,15 @@
 				<legend class="label">Level the bed</legend>
 				<div class="grid grid-cols-3 gap-1 rounded-xl border border-border bg-surface p-1" role="radiogroup" aria-label="Level the bed">
 					{#each MODES as m (m)}
-						<button type="button" role="radio" aria-checked={form.leveling.mode === m} onclick={() => (form!.leveling.mode = m)} class="min-h-9 rounded-lg px-2 py-1.5 text-[0.75rem] font-medium transition touch:min-h-11 {form.leveling.mode === m ? 'bg-card text-foreground shadow-surface ring-1 ring-primary/40' : 'text-muted-foreground hover:text-foreground'}">{MODE_LABEL[m]}</button>
+						<button type="button" role="radio" aria-checked={form.leveling.mode === m} onclick={() => (form!.leveling.mode = m)} class="min-h-9 rounded-lg px-2 py-1.5 text-[0.75rem] font-medium transition touch:min-h-11 {form.leveling.mode === m ? 'bg-card text-foreground shadow-surface ring-1 ring-primary/40' : 'text-muted-foreground hover:text-foreground'}">{modeLabel(m, levelDefOn)}</button>
 					{/each}
 				</div>
-				{#if form.leveling.mode === 'default'}
+				{#if form.leveling.mode === 'default' && !levelDefOn}
+					<p class="text-[0.6875rem] text-warning" data-testid="printer-level-default-off">
+						The default is off (Settings → Before each print), so this printer won’t level.
+						<button type="button" class="font-medium underline underline-offset-2" onclick={() => (form!.leveling.mode = 'custom')}>Turn it on for this printer</button>
+					</p>
+				{:else if form.leveling.mode === 'default'}
 					<p class="text-[0.6875rem] text-muted-foreground">The default (Settings → Before each print): <span class="font-mono text-foreground/80">{defLevel}</span>.</p>
 				{:else if form.leveling.mode === 'custom'}
 					<label class="block">
@@ -77,7 +86,7 @@
 						{/if}
 					</div>
 				{:else}
-					<p class="text-[0.6875rem] text-muted-foreground">Never levels before a print on this printer.</p>
+					<p class="text-[0.6875rem] text-muted-foreground">Never levels before a print on this printer, whatever the default says.</p>
 				{/if}
 			</fieldset>
 
@@ -85,10 +94,12 @@
 				<legend class="label">Pre-print G-code</legend>
 				<div class="grid grid-cols-3 gap-1 rounded-xl border border-border bg-surface p-1" role="radiogroup" aria-label="Pre-print G-code">
 					{#each MODES as m (m)}
-						<button type="button" role="radio" aria-checked={form.snippet.mode === m} onclick={() => (form!.snippet.mode = m)} class="min-h-9 rounded-lg px-2 py-1.5 text-[0.75rem] font-medium transition touch:min-h-11 {form.snippet.mode === m ? 'bg-card text-foreground shadow-surface ring-1 ring-primary/40' : 'text-muted-foreground hover:text-foreground'}">{MODE_LABEL[m]}</button>
+						<button type="button" role="radio" aria-checked={form.snippet.mode === m} onclick={() => (form!.snippet.mode = m)} class="min-h-9 rounded-lg px-2 py-1.5 text-[0.75rem] font-medium transition touch:min-h-11 {form.snippet.mode === m ? 'bg-card text-foreground shadow-surface ring-1 ring-primary/40' : 'text-muted-foreground hover:text-foreground'}">{modeLabel(m, snippetDefOn)}</button>
 					{/each}
 				</div>
-				{#if form.snippet.mode === 'default'}
+				{#if form.snippet.mode === 'default' && !snippetDefOn}
+					<p class="text-[0.6875rem] text-muted-foreground">The default has no pre-print G-code, so none runs on this printer.</p>
+				{:else if form.snippet.mode === 'default'}
 					<p class="text-[0.6875rem] text-muted-foreground">The default: <span class="font-mono text-foreground/80">{defSnippet}</span>.</p>
 				{:else if form.snippet.mode === 'custom'}
 					<textarea class="input min-h-24 py-2 font-mono text-[0.8125rem]" rows="4" placeholder={'G28\nM420 S1'} aria-label="Pre-print G-code for this printer" bind:value={form.snippet.gcode} data-testid="printer-snippet"></textarea>

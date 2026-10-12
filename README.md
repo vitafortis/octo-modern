@@ -429,7 +429,7 @@ API: `GET /api/printers/<id>/bedmesh` (plugin status, the latest mesh, history, 
 
 ## Before each print (leveling and pre-print G-code)
 
-Some files level the bed in their start G-code and some don't; some printers need a `G28` and a saved mesh loaded, others a fresh `BED_MESH_CALIBRATE`. **Settings → Before each print** (admins) sets what runs before every print octo·modern starts, and each printer's settings dialog (**Before each print**) chooses **Use the default**, **Custom for this printer** or **None**, separately for leveling and for the G-code. Everything is off until you turn it on.
+Some files level the bed in their start G-code and some don't; some printers need a `G28` and a saved mesh loaded, others a fresh `BED_MESH_CALIBRATE`. **Settings → Before each print** (admins) sets what runs before every print octo·modern starts, and each printer's settings dialog (**Before each print**) chooses **Default** (labelled on or off, as the default is), **On for this printer** or **None**, separately for leveling and for the G-code. The default is off until you switch it on in Settings, so **Default (off)** runs nothing; the dialog says so and offers **Turn it on for this printer**. Everything is off until you turn it on.
 
 ![Before each print](docs/screenshots/preprint-settings.png)
 

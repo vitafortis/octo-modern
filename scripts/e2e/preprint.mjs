@@ -314,7 +314,7 @@ async function main() {
 		await section.scrollIntoViewIfNeeded();
 		await shot(page.getByRole('dialog'), 'preprint-printer');
 		// Change it in the dialog: the snippet back to the default; saved with the printer.
-		await section.getByRole('radio', { name: 'Use the default' }).nth(1).click();
+		await section.getByRole('radio', { name: /^Default/ }).nth(1).click();
 		await page.getByRole('button', { name: 'Save changes' }).click();
 		await waitFor(async () => (await admin.get(`/api/printers/${vor.id}/preprint/settings`)).data.settings.snippet.mode === 'default', 'saved from the dialog');
 		assert.ok((await audits('printer.preprint')).length >= 2);
