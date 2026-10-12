@@ -28,6 +28,8 @@ export interface TabProps {
 	views?: ViewMeta[];
 	/** Switch to another view of this tab (null: the default), setting or clearing extra params (preview's `file`/`v`). */
 	openView?: (view: string | null, params?: Record<string, string | null>) => void;
+	/** Small counts on view segments, by view id (e.g. available updates on Care › Plugins & updates). */
+	counts?: Record<string, number>;
 }
 
 export const TAB_ICONS: Record<TabId, Component> = {

@@ -1,6 +1,6 @@
 <script lang="ts" module>
 	import type { Component } from 'svelte';
-	import { Camera, Clapperboard, Grid3x3, History, ListOrdered, ScanEye, Wrench } from '@lucide/svelte';
+	import { Camera, Clapperboard, Grid3x3, History, ListOrdered, Puzzle, ScanEye, Wrench } from '@lucide/svelte';
 	import WebcamTab from './WebcamTab.svelte';
 	import TimelapseTab from './TimelapseTab.svelte';
 	import HistoryTab from './HistoryTab.svelte';
@@ -8,6 +8,7 @@
 	import QueueTab from './QueueTab.svelte';
 	import MaintenanceTab from './MaintenanceTab.svelte';
 	import BedMeshTab from './BedMeshTab.svelte';
+	import PluginsTab from './PluginsTab.svelte';
 	import type { TabProps } from './tabs.ts';
 
 	/** What renders each view of the Camera, Jobs and Care tabs, by `<tab>/<view>`. */
@@ -18,7 +19,8 @@
 		'jobs/history': { component: HistoryTab, icon: History },
 		'jobs/queue': { component: QueueTab, icon: ListOrdered },
 		'care/maintenance': { component: MaintenanceTab, icon: Wrench },
-		'care/bed': { component: BedMeshTab, icon: Grid3x3 }
+		'care/bed': { component: BedMeshTab, icon: Grid3x3 },
+		'care/plugins': { component: PluginsTab, icon: Puzzle }
 	};
 </script>
 
@@ -29,12 +31,12 @@
 
 	/** A tab made of views (Camera, Jobs, Care): a segmented switcher when there's more than one, then the open view. */
 	let props: TabProps = $props();
-	const { printer, tab, view, views = [], openView } = $derived(props);
+	const { printer, tab, view, views = [], openView, counts } = $derived(props);
 
 	const current = $derived(VIEWS[`${tab}/${view}`]);
 	// Jobs: how many are waiting for this printer, on the Queue segment.
 	const waiting = $derived(tab === 'jobs' ? queue.jobs.filter((j) => j.printerId === printer.id && isPending(j)).length : 0);
-	const items = $derived(views.filter((v) => v.segment !== false).map((v) => ({ id: v.id, label: v.label, icon: VIEWS[`${tab}/${v.id}`]?.icon, count: v.id === 'queue' ? waiting : undefined })));
+	const items = $derived(views.filter((v) => v.segment !== false).map((v) => ({ id: v.id, label: v.label, icon: VIEWS[`${tab}/${v.id}`]?.icon, count: v.id === 'queue' ? waiting : counts?.[v.id] })));
 </script>
 
 <div class="space-y-4">

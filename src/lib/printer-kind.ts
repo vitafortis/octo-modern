@@ -35,13 +35,15 @@ export interface KindFeatures {
 	bedMesh: boolean;
 	/** OctoPrint's GCODE scripts in custom controls. */
 	gcodeScripts: boolean;
+	/** OctoPrint's Plugin Manager and Software Update (Care › Plugins & updates). */
+	pluginManager: boolean;
 	/** Needs an API key (Moonraker may run on a trusted network without one). */
 	keyRequired: boolean;
 }
 
 export const FEATURES: Record<PrinterKind, KindFeatures> = {
-	octoprint: { serialConnection: true, firmwareRestart: false, sdCard: true, selectWithoutPrint: true, timelapse: true, bedMesh: true, gcodeScripts: true, keyRequired: true },
-	moonraker: { serialConnection: false, firmwareRestart: true, sdCard: false, selectWithoutPrint: false, timelapse: false, bedMesh: false, gcodeScripts: false, keyRequired: false }
+	octoprint: { serialConnection: true, firmwareRestart: false, sdCard: true, selectWithoutPrint: true, timelapse: true, bedMesh: true, gcodeScripts: true, pluginManager: true, keyRequired: true },
+	moonraker: { serialConnection: false, firmwareRestart: true, sdCard: false, selectWithoutPrint: false, timelapse: false, bedMesh: false, gcodeScripts: false, pluginManager: false, keyRequired: false }
 };
 
 export function kindOf(p: Pick<Printer, 'kind'> | null | undefined): PrinterKind {
@@ -52,12 +54,13 @@ export function features(p: Pick<Printer, 'kind'> | null | undefined): KindFeatu
 	return FEATURES[kindOf(p)];
 }
 
-/** Views of the printer page's tabs (Camera › Timelapses, Care › Bed mesh) that need a feature this kind lacks. */
+/** Views of the printer page's tabs (Camera › Timelapses, Care › Bed mesh, Care › Plugins & updates) that need a feature this kind lacks. */
 export function hiddenTabs(p: Pick<Printer, 'kind'> | null | undefined): Set<string> {
 	const f = features(p);
 	const out = new Set<string>();
 	if (!f.timelapse) out.add('timelapse');
 	if (!f.bedMesh) out.add('bed');
+	if (!f.pluginManager) out.add('plugins');
 	return out;
 }
 

@@ -1,0 +1,162 @@
+{
+  "environment": {
+    "supported": true,
+    "versions": [
+      {
+        "current": "3.10.18",
+        "minimum": "3.7",
+        "name": "Python"
+      },
+      {
+        "current": "23.0.1",
+        "minimum": "20.3",
+        "name": "pip"
+      },
+      {
+        "current": "65.5.1",
+        "minimum": "40.8",
+        "name": "setuptools"
+      }
+    ]
+  },
+  "information": {
+    "file_check": {
+      "compatible": true,
+      "disabled": false,
+      "displayName": "File Check Plugin",
+      "displayVersion": "2025.7.23",
+      "error": "network",
+      "information": {
+        "local": {
+          "name": "?",
+          "value": "?"
+        },
+        "needs_online": true,
+        "remote": {
+          "name": "?",
+          "release_notes": null,
+          "value": "?"
+        }
+      },
+      "online": true,
+      "releaseChannels": {
+        "available": [
+          {
+            "channel": "master",
+            "name": "Stable"
+          },
+          {
+            "channel": "devel",
+            "name": "Prerelease"
+          }
+        ],
+        "current": "master",
+        "stable": "master"
+      },
+      "releaseNotes": null,
+      "updateAvailable": false,
+      "updatePossible": false
+    },
+    "firmware_check": {
+      "compatible": true,
+      "disabled": false,
+      "displayName": "Firmware Check Plugin",
+      "displayVersion": "2025.7.23",
+      "error": "network",
+      "information": {
+        "local": {
+          "name": "?",
+          "value": "?"
+        },
+        "needs_online": true,
+        "remote": {
+          "name": "?",
+          "release_notes": null,
+          "value": "?"
+        }
+      },
+      "online": true,
+      "releaseChannels": {
+        "available": [
+          {
+            "channel": "master",
+            "name": "Stable"
+          },
+          {
+            "channel": "devel",
+            "name": "Prerelease"
+          }
+        ],
+        "current": "master",
+        "stable": "master"
+      },
+      "releaseNotes": null,
+      "updateAvailable": false,
+      "updatePossible": false
+    },
+    "octoprint": {
+      "compatible": true,
+      "disabled": false,
+      "displayName": "OctoPrint",
+      "displayVersion": "1.11.8",
+      "error": "network",
+      "information": {
+        "local": {
+          "name": "?",
+          "value": "?"
+        },
+        "needs_online": true,
+        "remote": {
+          "name": "?",
+          "release_notes": null,
+          "value": "?"
+        }
+      },
+      "online": true,
+      "releaseChannels": {
+        "available": [
+          {
+            "channel": "master",
+            "name": "Stable"
+          },
+          {
+            "channel": "rc/maintenance",
+            "name": "Maintenance RCs"
+          },
+          {
+            "channel": "rc/devel",
+            "name": "Devel RCs"
+          }
+        ],
+        "current": "master",
+        "stable": "master"
+      },
+      "releaseNotes": null,
+      "releasedVersion": true,
+      "updateAvailable": false,
+      "updatePossible": false
+    }
+  },
+  "status": "current",
+  "storage": {
+    "free": [
+      {
+        "free": 358173028352,
+        "name": "Python package installation folder",
+        "path": "/usr/local/lib/python3.10/site-packages"
+      },
+      {
+        "free": 358173028352,
+        "name": "Plugin folder",
+        "path": "/octoprint/octoprint/plugins"
+      },
+      {
+        "free": 358173028352,
+        "name": "System temporary files",
+        "path": "/tmp"
+      }
+    ],
+    "sufficient": true
+  },
+  "timestamp": 1791821406.9248288
+}

@@ -7,7 +7,7 @@ export type Severity = 'info' | 'success' | 'warning' | 'error';
 
 /**
  * Everything octo·modern can notify about. The `queue.*`, `spool.*`, `maintenance.*`,
- * `failure.*` and `power.*` kinds are raised by other features through `notify()`;
+ * `failure.*`, `power.*`, `bed.*` and `octoprint.*` kinds are raised by other features through `notify()`;
  * they render generically (title, message, fields).
  */
 export const EVENT_KINDS = [
@@ -28,7 +28,8 @@ export const EVENT_KINDS = [
 	'failure.suspected',
 	'power.on',
 	'power.off',
-	'bed.drift'
+	'bed.drift',
+	'octoprint.updates'
 ] as const;
 
 export type EventKind = (typeof EVENT_KINDS)[number];
@@ -62,6 +63,7 @@ export const EVENT_INFO: Record<AnyKind, EventInfo> = {
 	'power.on': { label: 'Power on', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched on' },
 	'power.off': { label: 'Power off', group: 'Other features', severity: 'info', hint: 'A printer’s smart plug was switched off' },
 	'bed.drift': { label: 'Bed mesh drift', group: 'Other features', severity: 'warning', hint: 'A new bed mesh is less flat, or moved from the reference, beyond the limits set under Care › Bed mesh' },
+	'octoprint.updates': { label: 'OctoPrint updates available', group: 'Printer', severity: 'info', hint: 'A new OctoPrint or plugin version is out (checked twice a day; once per set of versions)' },
 	test: { label: 'Test', group: 'Other features', severity: 'info', hint: 'Send test' }
 };
 
