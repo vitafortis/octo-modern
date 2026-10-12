@@ -128,7 +128,7 @@
 			{#if j.runs.length}
 				{@const r = j.runs[0]}
 				<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">
-					Last run: {r.printerName} · {r.result}{r.endedAt ? ` · ${ago(r.endedAt)}` : ''}{#if r.printId}{' · '}<a class="text-primary hover:underline" href="/p/{encodeURIComponent(r.printerId)}?tab=history">history</a>{/if}
+					Last run: {r.printerName} · {r.result}{r.endedAt ? ` · ${ago(r.endedAt)}` : ''}{#if r.printId}{' · '}<a class="text-primary hover:underline" href="/p/{encodeURIComponent(r.printerId)}?tab=jobs">history</a>{/if}
 				</p>
 			{/if}
 		</div>

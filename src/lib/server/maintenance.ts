@@ -8,6 +8,7 @@ import { getPrinter, listPrinters, sqlite } from './store.ts';
 import { notify } from './notify/index.ts';
 import { costSettings } from './costs.ts';
 import { DEFAULT_TASKS, gramsFromMm, materialOf, maintenanceStatus, METRIC_UNIT, METRICS, usageLabel, type MaintenanceLogEntry, type MaintenanceMetric, type MaintenanceTask } from '#lib/spools.ts';
+import { printerTabPath } from '#lib/printer-tabs.ts';
 
 type Row = Record<string, unknown>;
 const db = () => sqlite();
@@ -205,7 +206,7 @@ export async function notifyDue(): Promise<MaintenanceTask[]> {
 			printerId: printer?.id ?? null,
 			printerName: printer?.name ?? null,
 			fields: [{ label: 'Task', value: t.name }, { label: 'Interval', value: `${t.interval} ${METRIC_UNIT[t.metric]}` }],
-			link: printer ? `/p/${encodeURIComponent(printer.id)}?tab=maintenance` : '/maintenance',
+			link: printer ? printerTabPath(printer.id, 'care') : '/maintenance',
 			dedupeKey: `task:${t.id}`,
 			snapshot: false
 		});

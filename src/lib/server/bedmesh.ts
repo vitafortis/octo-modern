@@ -40,6 +40,7 @@ import {
 	type UpdateState,
 	updateCommands
 } from '#lib/bedmesh.ts';
+import { printerTabPath } from '#lib/printer-tabs.ts';
 
 type Row = Record<string, unknown>;
 const db = () => sqlite();
@@ -228,7 +229,7 @@ async function notifyDrift(printerId: string, s: MeshSnapshot, breaches: string[
 			{ label: 'Grid', value: `${s.cols} × ${s.rows}` }
 		],
 		data: { meshId: s.id, flatness: s.flatness, change: s.change, min: s.min, max: s.max },
-		link: `/p/${encodeURIComponent(printerId)}?tab=bed`,
+		link: printerTabPath(printerId, 'care', 'bed'),
 		dedupeKey: `mesh:${s.id}`,
 		snapshot: false
 	});

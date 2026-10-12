@@ -52,7 +52,7 @@ export function features(p: Pick<Printer, 'kind'> | null | undefined): KindFeatu
 	return FEATURES[kindOf(p)];
 }
 
-/** Tabs of the printer page that need a feature this kind lacks. */
+/** Views of the printer page's tabs (Camera › Timelapses, Care › Bed mesh) that need a feature this kind lacks. */
 export function hiddenTabs(p: Pick<Printer, 'kind'> | null | undefined): Set<string> {
 	const f = features(p);
 	const out = new Set<string>();

@@ -41,7 +41,7 @@
 		{#if file}
 			<div class="flex items-start gap-2">
 				<p class="min-w-0 flex-1 text-[0.9375rem] font-semibold tracking-tight [overflow-wrap:anywhere] sm:truncate" title={file.path}>{file.display}</p>
-				{#if file.origin === 'local'}<a class="btn btn-ghost btn-sm -mt-1 -mr-2 shrink-0" href="?tab=preview" title="Toolpath preview{active ? ', following the print' : ''}"><Box />Preview</a>{/if}
+				{#if file.origin === 'local'}<a class="btn btn-ghost btn-sm -mt-1 -mr-2 shrink-0" href="?tab=files&view=preview" title="Toolpath preview{active ? ', following the print' : ''}"><Box />Preview</a>{/if}
 			</div>
 			<p class="mt-0.5 text-[0.6875rem] text-muted-foreground">{kind === 'moonraker' && file.origin === 'local' ? 'Klipper' : (ORIGIN[file.origin] ?? file.origin)}{file.size != null ? ` · ${bytes(file.size)}` : ''}{s.job?.user ? ` · started by ${s.job.user}` : ''}</p>
 		{:else}

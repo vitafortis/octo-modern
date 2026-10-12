@@ -66,7 +66,7 @@
 				<section class="space-y-2">
 					<h2 class="flex items-center gap-2 text-sm font-semibold">
 						<span class="size-2 rounded-full" style="background:{COLORS[p.color] ?? COLORS.violet}"></span>
-						<a class="hover:underline" href="/p/{p.id}?tab=maintenance">{p.name}</a>
+						<a class="hover:underline" href="/p/{p.id}?tab=care">{p.name}</a>
 						{#if mine.some((t) => t.status === 'overdue')}<span class="badge badge-danger">overdue</span>{/if}
 					</h2>
 					<MaintenancePanel printerId={p.id} printerName={p.name} tasks={mine} canControl={!!p.access?.control} compact onchange={load} />

@@ -57,7 +57,7 @@
 					{@const control = !!p.access?.control}
 					<div class="card flex flex-col gap-3 p-4" data-testid="queue-printer-{p.name}">
 						<div class="flex items-start gap-2">
-							<a href="/p/{p.id}?tab=queue" class="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight hover:underline">{p.name}</a>
+							<a href="/p/{p.id}?tab=jobs&view=queue" class="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight hover:underline">{p.name}</a>
 							{#if s}<StateBadge state={s.state} text={s.stateText} />{/if}
 						</div>
 						<div class="flex flex-wrap items-center gap-1">

@@ -88,7 +88,7 @@ test('maintenance.due: notified once per overdue task, with a link; marking done
 	assert.equal(hooks.length, 1);
 	assert.equal(hooks[0].event, 'maintenance.due');
 	assert.match(hooks[0].message, /^Voron: “Tighten bolts” is due \(every 2 print hours; 3\.0 \/ 2 h since it was last done\)\.$/);
-	assert.equal(hooks[0].url, `https://octo.example/p/${printer.id}?tab=maintenance`);
+	assert.equal(hooks[0].url, `https://octo.example/p/${printer.id}?tab=care`);
 	assert.equal((await m.notifyDue()).length, 0, 'only once');
 
 	const task = m.listTasks([printer.id]).find((t) => t.name === 'Tighten bolts')!;

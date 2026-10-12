@@ -14,6 +14,7 @@ import { buildRequest, PushError, sendPush, type Urgency } from './webpush.ts';
 import type { Message } from '../notify/types.ts';
 import type { PushPayload } from '#lib/push.ts';
 import type { User } from '#lib/types.ts';
+import { printerTabPath } from '#lib/printer-tabs.ts';
 
 export type Audience = 'all' | 'control' | 'admin';
 export const isAudience = (v: unknown): v is Audience => v === 'all' || v === 'control' || v === 'admin';
@@ -30,7 +31,7 @@ export function clickPath(m: Pick<Message, 'url' | 'printer' | 'kind'>): string 
 	}
 	if (m.printer) {
 		const ended = m.kind === 'print.finished' || m.kind === 'print.failed' || m.kind === 'print.cancelled';
-		return `/p/${encodeURIComponent(m.printer.id)}${ended ? '?tab=history' : ''}`;
+		return ended ? printerTabPath(m.printer.id, 'jobs', 'history') : `/p/${encodeURIComponent(m.printer.id)}`;
 	}
 	return '/';
 }

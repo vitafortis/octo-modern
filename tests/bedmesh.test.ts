@@ -280,7 +280,7 @@ test('drift alert: a new mesh beyond the limits sends bed.drift once, with the f
 	const hook = await waitFor(() => hooks.find((h) => h.event === 'bed.drift'), 'bed.drift webhook');
 	assert.match(hook.title, /Bed mesh drift: Voron/);
 	assert.match(hook.message, /Flatness 0\.350 mm is over the 0\.300 mm limit; A point moved 0\.200 mm/);
-	assert.equal(hook.url, `https://octo.example/p/${p.id}?tab=bed`);
+	assert.equal(hook.url, `https://octo.example/p/${p.id}?tab=care&view=bed`);
 	assert.equal(hook.data?.meshId, bad.snapshot.id);
 	// Seen again: no second alert.
 	bm.ingest(p.id, bad.snapshot.mesh, 'octoprint');

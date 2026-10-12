@@ -72,7 +72,7 @@ test('render: print end keeps the old wording; links, fields, generic kinds', ()
 	const m = failedMsg();
 	assert.equal(m.title, 'Print failed: benchy.gcode');
 	assert.equal(m.text, 'MK4: benchy.gcode failed after 1h 00m, at 42%, 1.50 m filament, reason: error, started by Otto.');
-	assert.equal(m.url, 'https://octo.example/p/p1?tab=history');
+	assert.equal(m.url, 'https://octo.example/p/p1?tab=jobs');
 	assert.equal(m.severity, 'error');
 	assert.deepEqual(
 		m.fields.map((f) => f.label),
@@ -96,7 +96,7 @@ test('ntfy: JSON without a picture, an attachment PUT with one', async () => {
 	const [a] = http.find('/ntfy');
 	assert.equal(a.path, '/ntfy');
 	assert.equal(a.headers.authorization, 'Bearer tk_1');
-	assert.deepEqual(a.json, { topic: 'prints', title: 'Print failed: benchy.gcode', message: failedMsg().text, priority: 4, tags: ['x', 'octo-modern'], click: 'https://octo.example/p/p1?tab=history' });
+	assert.deepEqual(a.json, { topic: 'prints', title: 'Print failed: benchy.gcode', message: failedMsg().text, priority: 4, tags: ['x', 'octo-modern'], click: 'https://octo.example/p/p1?tab=jobs' });
 	await ADAPTERS.ntfy.send({ config: { server: `${M}/ntfy`, topic: 'prints' }, secrets: {}, message: failedMsg({ image: IMG, title: 'Druck · fertig' }) });
 	const b = http.find('/ntfy')[1];
 	assert.equal(b.method, 'PUT');
@@ -127,7 +127,7 @@ test('Slack: Block Kit with the picture by link and a button back', async () => 
 	const types = a.json.blocks.map((b: { type: string }) => b.type);
 	assert.deepEqual(types, ['header', 'section', 'section', 'image', 'actions', 'context']);
 	assert.equal(a.json.blocks[3].image_url, 'https://octo.example/api/notify/media/abc.jpg');
-	assert.equal(a.json.blocks[4].elements[0].url, 'https://octo.example/p/p1?tab=history');
+	assert.equal(a.json.blocks[4].elements[0].url, 'https://octo.example/p/p1?tab=jobs');
 	assert.match(a.json.text, /^Print failed/);
 });
 
@@ -155,7 +155,7 @@ test('Pushover: multipart with the attachment, high priority for errors; its err
 	const [a] = http.find('/pushover');
 	assert.equal(a.form.priority, '1');
 	assert.equal(a.form.sound, 'magic');
-	assert.equal(a.form.url, 'https://octo.example/p/p1?tab=history');
+	assert.equal(a.form.url, 'https://octo.example/p/p1?tab=jobs');
 	assert.equal(a.files.attachment.size, IMG.data.length);
 	await assert.rejects(ADAPTERS.pushover.send({ config: {}, secrets: { ...secrets, userKey: 'u'.repeat(30) }, message: failedMsg() }), /HTTP 400: user identifier is not a valid/);
 });
@@ -410,7 +410,7 @@ test('notify(): routes, quiet hours (errors pass), de-dupe, snapshot attached an
 	assert.equal(fin.find((o) => o.status === 'failed')!.error, 'HTTP 401: Invalid token (mock)');
 	const put = http.find('/ntfy/prints')[0];
 	assert.equal(put.method, 'PUT', 'the snapshot went as an attachment');
-	assert.equal(put.headers['x-click'], `https://octo.example/p/${printer.id}?tab=history`);
+	assert.equal(put.headers['x-click'], `https://octo.example/p/${printer.id}?tab=jobs`);
 	// A failure passes the quiet hours; the snapshot reaches Slack by link.
 	const failed = await service.notify({ kind: 'print.failed', printerId: printer.id, print: { id: 1, file: 'cube.gcode' } });
 	assert.equal(failed.find((o) => o.channelName === 'Slack')!.status, 'sent');

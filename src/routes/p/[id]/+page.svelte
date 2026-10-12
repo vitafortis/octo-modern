@@ -5,7 +5,8 @@
 	import StateBadge from '#lib/components/printer/StateBadge.svelte';
 	import ConnectionControls from '#lib/components/printer/ConnectionControls.svelte';
 	import PowerButtons from '#lib/components/power/PowerButtons.svelte';
-	import { tabsFor } from '#lib/components/printer/tabs.ts';
+	import { TAB_COMPONENTS, TAB_ICONS } from '#lib/components/printer/tabs.ts';
+	import { canonicalSearch, paletteEntries, resolveTab, tabSearch, tabsFor } from '#lib/printer-tabs.ts';
 	import { hiddenTabs, SERVER_LABEL } from '#lib/printer-kind.ts';
 	import { LivePrinter } from '#lib/client/live.svelte.ts';
 	import { emergencyStop, jobCommand } from '#lib/client/actions.ts';
@@ -32,29 +33,44 @@
 	// The queue's "bed is clear" prompt for this printer.
 	$effect(() => pollQueue());
 
-	// Tabs whose plugin is missing, and OctoPrint-only tabs on Klipper printers (timelapse, bed mesh), stay hidden.
-	const TABS = $derived(tabsFor(data.features).filter((t) => !hiddenTabs(printer).has(t.id)));
-	const tab = $derived(TABS.find((t) => t.id === page.url.searchParams.get('tab')) ?? TABS[0]);
-	function openTab(id: string) {
-		const url = new URL(page.url.href);
-		if (id === TABS[0].id) url.searchParams.delete('tab');
-		else url.searchParams.set('tab', id);
-		goto(url, { replace: true, reset: false });
-	}
+	// Views whose plugin is missing, and OctoPrint-only views on Klipper printers (timelapse, bed mesh), stay hidden.
+	const TABS = $derived(tabsFor(data.features, hiddenTabs(printer)));
+	const resolved = $derived(resolveTab(TABS, page.url.searchParams.get('tab'), page.url.searchParams.get('view')));
+	const tab = $derived(resolved.tab);
+	const view = $derived(resolved.view);
+	const views = $derived(tab.views ?? []);
 
-	$effect(() => registerPrinter({ printerId: data.printer.id, openTab, tabs: TABS.map((t) => ({ id: t.id, label: t.label })) }));
+	function go(id: string, v: string | null = null, params: Record<string, string | null> = {}) {
+		const keep: Record<string, string | null> = {};
+		// Extra params (preview's file and v) belong to the view they were opened with.
+		if (id === tab.id) for (const [k, val] of page.url.searchParams) if (k !== 'tab' && k !== 'view') keep[k] = val;
+		Object.assign(keep, params);
+		goto(`${page.url.pathname}${tabSearch(TABS, id, v, keep)}`, { replace: true, reset: false });
+	}
+	const openTab = (id: string) => go(id);
+	const openView = (v: string | null, params: Record<string, string | null> = {}) => go(tab.id, v, params);
+
+	// Old links (?tab=preview, ?tab=terminal, ?tab=bed…, from bookmarks and notifications): rewrite to the new place.
+	$effect(() => {
+		const next = canonicalSearch(TABS, page.url.searchParams);
+		if (next !== null) void goto(`${page.url.pathname}${next}${page.url.hash}`, { replace: true, reset: false });
+	});
+
+	$effect(() =>
+		registerPrinter({
+			printerId: data.printer.id,
+			openTab: (id) => {
+				const [t, v] = id.split('/');
+				go(t, v ?? null);
+			},
+			tabs: paletteEntries(TABS).map((e) => ({ id: e.id, label: e.label, keywords: e.keywords }))
+		})
+	);
 
 	const s = $derived(live.snapshot);
 	const pct = $derived(progressPercent(s));
 	const color = $derived(COLORS[printer.color] ?? COLORS.violet);
 	const active = $derived(canControl && jobActive(s.state));
-
-	// Keep the open tab in view in the (horizontally scrolling) tab strip on phones.
-	let strip = $state<HTMLElement>();
-	$effect(() => {
-		void tab.id;
-		strip?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
-	});
 </script>
 
 {#snippet jobButtons(big: boolean)}
@@ -103,16 +119,18 @@
 				{/if}
 			</div>
 		</div>
-		<!-- Seven sections: a strip that scrolls sideways on phones (a bottom tab bar would need a "More"
-		     menu, and the bottom edge belongs to Pause/Cancel and the terminal prompt). -->
-		<nav bind:this={strip} class="scrollbar-none relative flex snap-x gap-1 overflow-x-auto px-2 sm:px-4 lg:px-6" aria-label="Printer sections">
+		<!-- Six sections. Phones: one row of icon-over-label buttons, no sideways scrolling (a bottom
+		     tab bar would fight Pause/Cancel and the terminal prompt for the bottom edge). -->
+		<nav class="relative grid grid-cols-6 px-0.5 sm:flex sm:gap-1 sm:px-4 lg:px-6" aria-label="Printer sections">
 			{#each TABS as t (t.id)}
+				{@const Icon = TAB_ICONS[t.id]}
 				<button
-					class="relative flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-t-lg px-3 text-[0.8125rem] font-medium transition-colors touch:h-11 touch:text-sm short:h-9 lg:h-9 {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+					class="relative flex h-13 min-w-0 flex-col items-center justify-center gap-0.5 rounded-t-lg px-0 text-[0.6875rem] font-medium tracking-tight sm:tracking-normal transition-colors short:h-11 sm:h-10 sm:shrink-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:text-[0.8125rem] touch:sm:h-11 touch:sm:text-sm lg:h-9 {tab.id === t.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 					aria-current={tab.id === t.id ? 'page' : undefined}
+					data-tab={t.id}
 					onclick={() => openTab(t.id)}
 				>
-					<t.icon class="size-3.5" />{t.label}
+					<Icon class="size-4.5 shrink-0 sm:size-3.5" /><span class="max-w-full truncate">{t.label}</span>
 					{#if tab.id === t.id}<span class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary"></span>{/if}
 				</button>
 			{/each}
@@ -133,13 +151,14 @@
 	<PreparingBanner class="mx-4 mt-3 sm:mx-6 lg:mx-8" printerId={printer.id} preparing={s.preparing} {canControl} />
 
 	<!-- Print queue: waiting for someone to clear the bed (above the scrolling content, so it's in reach on phones). -->
-	{#if tab.id !== 'queue'}
+	{#if !(tab.id === 'jobs' && view === 'queue')}
 	<BedClearBanner class="mx-4 mt-3 sm:mx-6 lg:mx-8" printerId={printer.id} name={printer.name} state={s.state} {canControl} />
 	{/if}
 
-	<div class="page-x min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 lg:py-5 {tab.id === 'terminal' ? 'flex flex-col max-sm:py-2' : ''}">
+	<div class="page-x min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 lg:py-5 {tab.id === 'control' && view === 'terminal' ? 'flex flex-col max-sm:py-2' : ''}">
 		{#key `${data.printer.id}:${tab.id}`}
-			<tab.component {printer} {live} {canControl} />
+			{@const Section = TAB_COMPONENTS[tab.id]}
+			<Section {printer} {live} {canControl} tab={tab.id} {view} {views} {openView} />
 		{/key}
 	</div>
 

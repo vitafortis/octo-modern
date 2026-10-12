@@ -8,6 +8,7 @@ import { shrinkJpeg } from '../history/jpeg.ts';
 import { notify } from '../notify/service.ts';
 import type { NotifyEvent } from '../notify/types.ts';
 import type { DetectLevel, FailureAction } from '#lib/detect.ts';
+import { printerTabPath } from '#lib/printer-tabs.ts';
 
 export interface FailureInfo {
 	level: Exclude<DetectLevel, 'ok'>;
@@ -46,7 +47,7 @@ export function failureEvent(o: { printer: { id: string; name: string }; file: s
 		snapshot: image ? { data: image, type: 'image/jpeg' } : false,
 		// The detector decides when to alert again (warnings re-arm, one failure per print).
 		dedupeKey: `${o.info.level}:${o.at ?? Date.now()}`,
-		link: `/p/${encodeURIComponent(o.printer.id)}?tab=detection`,
+		link: printerTabPath(o.printer.id, 'camera', 'detection'),
 		at: o.at
 	};
 }

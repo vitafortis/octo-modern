@@ -1,7 +1,7 @@
 /**
  * Bed meshes from the Bed Visualizer plugin (OctoPrint-BedLevelVisualizer): parsing what
  * the plugin stores and pushes, statistics, comparing two meshes, drift checks and the
- * colour scale. Shared by the server (src/lib/server/bedmesh.ts) and the Bed tab. Pure.
+ * colour scale. Shared by the server (src/lib/server/bedmesh.ts) and Care › Bed mesh on the printer page. Pure.
  *
  * What the plugin gives us:
  * - settings `plugins.bedlevelvisualizer`: `command` (the G-code it runs to probe, one line

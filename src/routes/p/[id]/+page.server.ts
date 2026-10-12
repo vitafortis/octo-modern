@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		canControl: canControl(locals.user, p),
 		/** Whatever the server already knows, so the first paint isn't empty. */
 		snapshot: printers.snapshot(p.id) ?? null,
-		/** Optional tabs: the Bed tab needs the Bed Visualizer plugin. */
+		/** Optional tabs: Care › Bed mesh needs the Bed Visualizer plugin. */
 		features: { bedmesh: await pluginInstalled(p.id) }
 	};
 };

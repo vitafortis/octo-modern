@@ -198,7 +198,7 @@ test('failure notifications: an event with the annotated frame, routed like any 
 	assert.equal(ev.severity, 'warning');
 	assert.equal(ev.title, 'Failure suspected: Prusa MK4');
 	assert.match(ev.message!, /benchy\.gcode.*41%/);
-	assert.equal(ev.link, '/p/p1?tab=detection');
+	assert.equal(ev.link, '/p/p1?tab=camera&view=detection');
 	assert.deepEqual((ev.snapshot as { data: Uint8Array }).data, img);
 	assert.deepEqual(ev.data, { detection: { level: 'warning', score: 0.41, action: 'notify' } });
 	const failure = dnotify.failureEvent({ printer: { id: 'p1', name: 'Prusa MK4' }, file: null, info: { level: 'failure', score: 0.8, action: 'paused' }, frame: null });

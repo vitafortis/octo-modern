@@ -66,7 +66,7 @@
 	<h2 class="flex items-center gap-2 text-sm font-semibold"><ScanEye class="size-4 text-primary" />Failure detection</h2>
 	<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
 		Spaghetti detection with Obico’s ML model, running in your own <code class="font-mono">ml_api</code> container. octo·modern sends it one webcam frame at a time; the container
-		downloads each frame from octo·modern through a one-time link, so it needs an address of octo·modern it can reach. Turn detection on per printer, on its Failure detection tab.
+		downloads each frame from octo·modern through a one-time link, so it needs an address of octo·modern it can reach. Turn detection on per printer, under Camera › Failure detection on its page.
 	</p>
 	{#if info}
 		<div class="mt-4 grid gap-3 md:grid-cols-2">
