@@ -361,6 +361,8 @@ octo·modern is an installable web app: on a phone it gets its own icon and open
 - The button only appears where it can do something: not in an installed app, not after installing (`appinstalled`), and not in browsers that can't install web apps (Firefox on a computer, say). **Not now** (the ✕ next to it, or in the iPhone sheet) hides it in that browser; **My account** keeps offering it.
 - Browsers only offer installing over HTTPS (or on `localhost`), the same as push.
 
+A native Android app is also available, with a print progress notification and a home-screen widget: see [Android app](#android-app).
+
 ## Notifications
 
 Admins set them up under **Notifications** in the sidebar.
