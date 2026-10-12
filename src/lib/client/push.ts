@@ -7,13 +7,14 @@ import type { PushDevice, PushState } from '#lib/push.ts';
 
 export type Support =
 	| { ok: true }
-	/** `ios-home`: iOS/iPadOS only offers push to home-screen apps. */
-	| { ok: false; reason: 'insecure' | 'ios-home' | 'unsupported' };
+	/** `ios-home`: iOS/iPadOS only offers push to home-screen apps. `android-app`: the Android app's WebView has no Web Push; the app notifies natively. */
+	| { ok: false; reason: 'insecure' | 'ios-home' | 'unsupported' | 'android-app' };
 
 const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = () => matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 export function support(): Support {
+	if (/\bOctoModernAndroid\//.test(navigator.userAgent)) return { ok: false, reason: 'android-app' };
 	if (!window.isSecureContext) return { ok: false, reason: 'insecure' };
 	const has = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 	if (isIos() && !standalone()) return { ok: false, reason: 'ios-home' };

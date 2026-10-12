@@ -405,6 +405,28 @@ const MIGRATIONS: [string, (h: DatabaseSync) => void][] = [
 			-- What runs the printer: 'octoprint' or 'moonraker' (Klipper). Existing rows are OctoPrint.
 			ALTER TABLE printers ADD COLUMN kind TEXT NOT NULL DEFAULT 'octoprint';
 		`)
+	],
+	[
+		'devices-001',
+		(h) =>
+			h.exec(`
+			-- Device tokens for the Android app (see devices.ts). Only a SHA-256 of the token is
+			-- kept. No foreign key: OCM_AUTH=disabled uses the user "open"; the user is checked
+			-- on every request, so a deleted user's devices stop working.
+			CREATE TABLE IF NOT EXISTS device_tokens (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL,
+				name TEXT NOT NULL,
+				platform TEXT NOT NULL DEFAULT 'android',
+				token_hash TEXT NOT NULL UNIQUE,
+				prefix TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				last_used_at TEXT,
+				last_used_ip TEXT,
+				revoked_at TEXT
+			);
+			CREATE INDEX IF NOT EXISTS device_tokens_user ON device_tokens(user_id);
+		`)
 	]
 ];
 

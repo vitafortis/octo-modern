@@ -9,6 +9,7 @@ import { canSee } from '#lib/server/permissions.ts';
 import { getPrinter } from '#lib/server/store.ts';
 import { authorizeBedClearRequest, authorizeStatusRequest, authorizeUploadRequest, BED_CLEAR_ROUTE, isStatusRoute } from '#lib/server/api-tokens.ts';
 import { FRAME_PATH } from '#lib/server/detect/frames.ts';
+import { authorizeDeviceRequest, deviceJobCommandAllowed, isDeviceJobRoute, presentedDeviceToken } from '#lib/server/devices.ts';
 
 export const init: ServerInit = () => {
 	startJobs();
@@ -106,12 +107,30 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return response;
 	}
 
-	const { state, user } = authenticate(event.cookies);
-	event.locals.auth = state;
-	event.locals.user = user;
 	try {
 		event.locals.ip = event.getClientAddress();
 	} catch {}
+
+	// The Android app's native code (notifications, widget) sends a device token instead of
+	// the session cookie. It acts as its user, on the few API routes it needs (devices.ts);
+	// the role and printer checks below apply as for a session.
+	const deviceToken = isApi ? presentedDeviceToken(event.request.headers) : null;
+	if (deviceToken) {
+		const auth = authorizeDeviceRequest({ method, path: pathname, headers: event.request.headers, ip: event.locals.ip });
+		if (!auth.ok) return json({ message: auth.message }, { status: auth.status, headers: auth.status === 401 ? { 'www-authenticate': 'Bearer' } : {} });
+		if (isDeviceJobRoute(method, pathname) && !deviceJobCommandAllowed(await event.request.clone().json().catch(() => null))) {
+			return json({ message: 'From the app, prints can only be paused, resumed or cancelled' }, { status: 403 });
+		}
+		event.locals.device = { id: auth.device.id, name: auth.device.name };
+		event.locals.auth = 'authenticated';
+		event.locals.user = auth.user;
+	} else {
+		const { state, user } = authenticate(event.cookies);
+		event.locals.auth = state;
+		event.locals.user = user;
+	}
+	const state = event.locals.auth;
+	const user = event.locals.user;
 
 	if (!PUBLIC.some((p) => pathname.startsWith(p))) {
 		if (state === 'setup') {

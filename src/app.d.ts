@@ -18,6 +18,8 @@ declare global {
 			ip?: string;
 			/** Set only on /api/status routes, by a valid API token (never a session). */
 			apiToken?: import('#lib/server/api-tokens.ts').TokenPrincipal;
+			/** Set when the Android app's native code authenticated with a device token (devices.ts). */
+			device?: import('#lib/server/devices.ts').DevicePrincipal;
 		}
 	}
 }
