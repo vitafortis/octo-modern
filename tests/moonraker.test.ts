@@ -400,7 +400,8 @@ test('live: the websocket subscribes, maps status, and turns a print into events
 		await until(() => events.includes('PrintDone'), 'print done', 8_000);
 		assert.deepEqual(events.filter((e) => e.startsWith('Print')), ['PrintStarted', 'PrintPaused', 'PrintResumed', 'PrintDone']);
 		assert.equal(model.snapshot.progress?.completion, 100);
-		assert.ok(model.history.toArray().length > 3, 'temperature samples accumulate');
+		// Samples are taken about once a second; under load the print can finish in fewer, so wait for them.
+		await until(() => model.history.toArray().length > 3, 'temperature samples accumulate', 8_000);
 
 		await b.sendCommands(['M105']);
 		await until(() => logs.some((l) => l.startsWith('Recv: ok T:')), 'the response arrives on the socket');
