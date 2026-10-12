@@ -188,7 +188,7 @@
 						</div>
 						<div>
 							<label class="label" for="sso-auto">Create accounts automatically for</label>
-							<input id="sso-auto" class="input font-mono text-xs" placeholder="*@example.com, friend@gmail.com" bind:value={ssoForm.autoCreate} />
+							<input id="sso-auto" class="input font-mono text-xs" placeholder="*@example.com, friend@example.org" bind:value={ssoForm.autoCreate} />
 							<p class="mt-1 text-[0.6875rem] text-muted-foreground">Leave empty to only allow people added on the Users page.</p>
 						</div>
 						<div class="grid grid-cols-[1fr_8rem] gap-3">
@@ -283,7 +283,7 @@
 			<h2 class="flex items-center gap-2 text-sm font-semibold"><Gauge class="size-4 text-primary" />Status API tokens</h2>
 			<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
 				Read-only tokens for dashboards and monitors — Homepage, Glance, Uptime Kuma, Home Assistant. They only open
-				<code class="font-mono">GET /api/status</code> (state, progress, time left and temperatures of each printer) and nothing else.
+				<code class="font-mono">GET /api/status</code> (state, progress, time left and temperatures of each printer) and, for tokens allowed to, confirming a printer’s bed is clear for the print queue; nothing else.
 			</p>
 			<ApiTokens />
 		</section>

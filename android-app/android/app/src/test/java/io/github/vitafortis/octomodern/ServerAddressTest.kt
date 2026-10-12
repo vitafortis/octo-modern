@@ -13,12 +13,12 @@ class ServerAddressTest {
     private fun invalid(input: String): String = (ServerAddress.parse(input) as? Parsed.Invalid ?: throw AssertionError("$input should be refused")).message
 
     @Test fun httpsAddressesBecomeOrigins() {
-        assertEquals("https://print.armgrp.dev", ok("https://print.armgrp.dev").origin)
-        assertEquals("https://print.armgrp.dev", ok("  https://Print.Armgrp.dev/  ").origin)
-        assertEquals("https://print.armgrp.dev", ok("https://print.armgrp.dev/p/abc?x=1#y").origin)
-        assertEquals("https://print.armgrp.dev:8443", ok("https://print.armgrp.dev:8443").origin)
-        assertEquals("https://print.armgrp.dev", ok("https://print.armgrp.dev:443").origin)
-        assertFalse(ok("https://print.armgrp.dev").insecure)
+        assertEquals("https://print.example.com", ok("https://print.example.com").origin)
+        assertEquals("https://print.example.com", ok("  https://Print.Example.com/  ").origin)
+        assertEquals("https://print.example.com", ok("https://print.example.com/p/abc?x=1#y").origin)
+        assertEquals("https://print.example.com:8443", ok("https://print.example.com:8443").origin)
+        assertEquals("https://print.example.com", ok("https://print.example.com:443").origin)
+        assertFalse(ok("https://print.example.com").insecure)
     }
 
     @Test fun noSchemeMeansHttps() {
@@ -34,7 +34,7 @@ class ServerAddressTest {
         assertEquals("http://192.168.1.20:3000", ok("http://192.168.1.20:3000").origin)
         assertEquals("http://[fd00::12]:3000", ok("http://[fd00::12]:3000").origin)
         assertEquals("http://octopi.local", ok("http://octopi.local:80").origin)
-        for (a in listOf("http://print.armgrp.dev", "http://8.8.8.8", "http://172.32.0.1", "http://192.169.1.1", "http://[2001:db8::1]", "http://100.128.0.1", "http://example.local.evil.com")) {
+        for (a in listOf("http://print.example.com", "http://8.8.8.8", "http://172.32.0.1", "http://192.169.1.1", "http://[2001:db8::1]", "http://100.128.0.1", "http://example.local.evil.com")) {
             assertTrue(a, invalid(a).contains("https"))
         }
     }
@@ -51,12 +51,12 @@ class ServerAddressTest {
     }
 
     @Test fun sameOriginComparesSchemeHostAndPort() {
-        val o = "https://print.armgrp.dev"
-        assertTrue(ServerAddress.sameOrigin(o, "https://print.armgrp.dev/p/abc"))
-        assertTrue(ServerAddress.sameOrigin(o, "https://PRINT.armgrp.dev:443/"))
-        assertFalse(ServerAddress.sameOrigin(o, "http://print.armgrp.dev/"))
-        assertFalse(ServerAddress.sameOrigin(o, "https://print.armgrp.dev:8443/"))
-        assertFalse(ServerAddress.sameOrigin(o, "https://print.armgrp.dev.evil.com/"))
+        val o = "https://print.example.com"
+        assertTrue(ServerAddress.sameOrigin(o, "https://print.example.com/p/abc"))
+        assertTrue(ServerAddress.sameOrigin(o, "https://PRINT.example.com:443/"))
+        assertFalse(ServerAddress.sameOrigin(o, "http://print.example.com/"))
+        assertFalse(ServerAddress.sameOrigin(o, "https://print.example.com:8443/"))
+        assertFalse(ServerAddress.sameOrigin(o, "https://print.example.com.evil.com/"))
         assertFalse(ServerAddress.sameOrigin(o, "https://octopi.local/"))
         assertFalse(ServerAddress.sameOrigin(o, "not a url"))
         assertTrue(ServerAddress.sameOrigin("http://10.0.2.2:5700", "http://10.0.2.2:5700/login?next=/"))

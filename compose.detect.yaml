@@ -2,8 +2,8 @@
 #
 #   docker compose -f compose.yaml -f compose.detect.yaml up -d
 #
-# Then turn detection on per printer (its Failure detection tab). The two settings below
-# can also be made in Settings → Failure detection, which has a Test button.
+# Then turn detection on per printer (its Camera tab → Failure detection). The settings below
+# can also be made in Settings → General → Failure detection, which has a Test button.
 #
 # How they talk: octo·modern asks ml_api `GET /p/?img=<url>`, and ml_api downloads the
 # frame from that URL itself, so it must reach octo·modern too. Both are on the default
@@ -23,7 +23,7 @@ services:
       OCM_ML_API_URL: http://ml_api:3333
       # octo·modern as ml_api sees it (the container port, not the published one).
       OCM_DETECT_PUBLIC_URL: http://octo-modern:3000
-      # Must match ML_API_TOKEN below. Leave both unset to run ml_api without auth.
+      # Must match ML_API_TOKEN below (set it in .env).
       OCM_ML_API_TOKEN: ${ML_API_TOKEN:?set ML_API_TOKEN in .env, e.g. openssl rand -hex 32}
     depends_on:
       - ml_api

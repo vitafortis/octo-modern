@@ -5,7 +5,7 @@
 <h1 align="center">octo·modern</h1>
 
 <p align="center">
-  A modern, self-hosted web UI for one or more OctoPrint servers.<br />
+  A modern, self-hosted web UI for your OctoPrint and Klipper printers.<br />
   Live state, webcams, files and jobs for every printer in one place, with the API keys kept on the server.
 </p>
 
@@ -14,6 +14,15 @@
 <p align="center">
   <img src="docs/screenshots/overview.png" alt="octo·modern overview" />
 </p>
+
+**Quick start**: one container, one volume, nothing to install on your printers.
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/vitafortis/octo-modern/main/compose.yaml
+docker compose up -d    # then open http://<your-host>:3040 and create the admin account
+```
+
+More in [Getting started](#getting-started); what changed in [CHANGELOG.md](CHANGELOG.md); found a security problem? See [SECURITY.md](SECURITY.md).
 
 ## Features
 
@@ -69,7 +78,7 @@ curl -fsSLO https://raw.githubusercontent.com/vitafortis/octo-modern/main/compos
 docker compose up -d
 ```
 
-Open `http://<your-host>:3040`. A short setup wizard creates the admin account (name, email, password) and adds your first printer.
+Open `http://<your-host>:3040`. A short setup wizard creates the admin account (name, email, password) and adds your first printer. There is no default account or password: until the wizard has run, anyone who can reach the port can create the admin, so do it right away (or set `OCM_ADMIN_EMAIL` and `OCM_ADMIN_PASSWORD`).
 
 ### `docker run`
 
@@ -86,6 +95,38 @@ The container runs as an unprivileged user and needs nothing but its `/data` vol
 ### Using Arcane?
 
 Add `compose.yaml` as a new project in [Arcane](https://getarcane.app) and deploy it. Everything octo·modern stores lives in the `octo-modern-data` volume.
+
+### Reverse proxy
+
+octo·modern speaks plain HTTP on port 3000 inside the container; put it behind your usual proxy (Caddy, Traefik, nginx, Nginx Proxy Manager) for HTTPS, which browser push and installing the app need.
+
+- **Public address**: set `ORIGIN=https://print.example.com`. Without it, octo·modern trusts the proxy's `X-Forwarded-Proto` to tell http from https (for secure cookies and the SSO callback); `PROTOCOL_HEADER=x-forwarded-proto` and `HOST_HEADER=x-forwarded-host` are the adapter-node alternative. Notification links use the public URL under **Settings → Notifications → Options**, else `ORIGIN`.
+- **Client addresses**: set `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1` (one proxy) so the audit log and the login throttle see the real address, not the proxy's.
+- **Live updates and webcams** are long-lived HTTP responses (Server-Sent Events and MJPEG); no websocket passes through the proxy. octo·modern sends `X-Accel-Buffering: no`, so nginx doesn't buffer them; other proxies need response buffering off and generous read timeouts.
+- **Uploads**: raise the proxy's body limit for big G-code files (nginx: `client_max_body_size 4g;`).
+- **A sub-path** (`https://example.com/octo/`) isn't supported; give it its own host name.
+
+```nginx
+location / {
+    proxy_pass http://octo-modern:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 1h;
+    client_max_body_size 4g;
+}
+```
+
+### Upgrading
+
+octo·modern doesn't update itself. Pull the new image and recreate the container: in Arcane, **Pull** (or **Redeploy**) the project; with Compose, `docker compose pull && docker compose up -d`. Database migrations run on start, and the version is shown in the sidebar. `:latest` follows `main`; pin a `0.1.<build>` tag to choose when you move (see [Images](#images)).
+
+### Backing up
+
+Everything lives in the `/data` volume (`octo-modern-data`): the SQLite database, `secret.key` and files uploaded to the print queue. Either:
+
+- use **Settings → General → Backup & restore** for a passphrase-protected file that restores on any install (see [Backup & restore](#backup--restore)), or
+- copy the volume while the container is stopped, e.g. `docker compose stop && docker run --rm -v octo-modern-data:/data -v "$PWD":/backup alpine tar czf /backup/octo-modern-data.tgz -C /data . && docker compose start`. Restore by extracting into an empty volume. Keep `secret.key` with it (or set `OCM_SECRET_KEY`): without it the saved API keys and passwords can't be decrypted.
 
 ### Adding a printer
 
@@ -177,11 +218,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 ```
 
-More Docker hosts? Run a proxy on each and list them all: `OCM_DOCKER_HOSTS=tcp://docker-proxy:2375,tcp://nas.lan:2375`, or add them under **Discover → Docker → Docker endpoints**. Published ports are reached through the endpoint's host (`host.docker.internal` for the local socket).
+More Docker hosts? Run a proxy on each and list them all: `OCM_DOCKER_HOSTS=tcp://docker-proxy:2375,tcp://nas.lan:2375`, or add them under **Settings → Printers & Discover → Docker → Docker endpoints**. Published ports are reached through the endpoint's host (`host.docker.internal` for the local socket).
 
 ### Arcane, with a read-only key
 
-In Arcane, open **Settings → API Keys** and create a key with only read permissions: `environments:list`, `containers:list` and `containers:read` are what octo·modern uses (`projects:list` and `projects:read` don't hurt, so pg·modern's key works too). Then connect it under **Discover → Arcane**, or set `OCM_ARCANE_URL` and `OCM_ARCANE_API_KEY`. The key is stored encrypted. Published ports resolve to each environment's host address.
+In Arcane, open **Settings → API Keys** and create a key with only read permissions: `environments:list`, `containers:list` and `containers:read` are what octo·modern uses (`projects:list` and `projects:read` don't hurt, so pg·modern's key works too). Then connect it under **Settings → Printers & Discover → Arcane**, or set `OCM_ARCANE_URL` and `OCM_ARCANE_API_KEY`. The key is stored encrypted. Published ports resolve to each environment's host address.
 
 ### mDNS needs the LAN
 
@@ -197,7 +238,7 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 
 **Sidebar**: **Overview** (with more than one printer), **Queue**, **Library**, **History**, **Cameras**, then your printers. **Filament** appears once Spoolman is set up, and **Maintenance** once there is a task (or something is overdue; the red badge counts overdue tasks). Admins get one **Settings** entry. ⌘K / Ctrl+K searches every page, printer and tab.
 
-**Settings** (admins) has its own sub-navigation, a rail beside the page (a strip of sections on phones): **General** (security, data, backups, failure detection, pre-print defaults), **Printers & Discover**, **Users**, **Notifications**, **Integrations** and **Audit log**, plus **Filament** and **Maintenance** under *Set up* while they aren't in the sidebar. The pages keep their addresses (`/settings`, `/discover`, `/users`, `/notifications`, `/integrations`, `/audit`).
+**Settings** (admins) has its own sub-navigation, a rail beside the page (a strip of sections on phones): **General** (sign-in and guests, security, backup & restore, failure detection, before each print), **Printers & Discover**, **Users**, **Notifications**, **Integrations** and **Audit log**, plus **Filament** and **Maintenance** under *Set up* while they aren't in the sidebar. The pages keep their addresses (`/settings`, `/discover`, `/users`, `/notifications`, `/integrations`, `/audit`).
 
 **History** has two views, **Prints** and **Stats** (`/history/stats`; `/stats` redirects there, keeping `range` and `printer`).
 
@@ -218,38 +259,40 @@ Links to the old tabs (`?tab=preview`, `terminal`, `webcam`, `timelapse`, `detec
 
 | | Admin | Operator | Viewer |
 | --- | --- | --- | --- |
-| Watch printers: state, temperatures, webcam, files | ✓ | ✓ | ✓ |
+| Watch printers: state, temperatures, webcam, smart plug state; browse and download their files | ✓ | ✓ | ✓ |
 | G-code preview (printer and library files), camera wall | ✓ | ✓ | ✓ |
 | Start, pause, resume, cancel prints | ✓ | ✓ | |
-| Set temperatures, connect/disconnect, G-code, emergency stop | ✓ | ✓ | |
+| Set temperatures, jog/home, connect/disconnect, G-code and the terminal, emergency stop; test a saved printer's connection | ✓ | ✓ | |
 | Power printers on and off (smart plug), "Keep on" | ✓ | ✓ | |
-| Upload, print and delete files | ✓ | ✓ | |
-| Browse the library | ✓ | ✓ | ✓ |
-| Send library files to printers, save printer files to the library | ✓ | ✓ | |
+| Upload, print and delete files; create folders | ✓ | ✓ | |
+| Browse and download the library (sources open to the printers they can see) | ✓ | ✓ | ✓ |
+| Send library files to printers, save printer files to the library; follow and cancel their own transfers | ✓ | ✓ | |
 | Watch the print queue | ✓ | ✓ | ✓ |
-| Add, reorder and remove queued jobs, pause the queue, confirm a bed is clear | ✓ | ✓ | |
-| Printer tags (for the queue), slicer upload keys | ✓ | | |
+| Add (including uploads), reorder, edit and remove queued jobs; pause the queue or one printer's; confirm a bed is clear | ✓ | ✓ | |
+| Printer tags (for the queue) | ✓ | | |
 | Watch the print history, its Stats and timelapses, export CSV | ✓ | ✓ | ✓ |
-| Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
+| Notes on prints, print again; render and delete timelapses (and unrendered ones) | ✓ | ✓ | |
 | Watch failure detection (score, last frame) | ✓ | ✓ | ✓ |
-| Turn failure detection on/off per printer, its sensitivity and action; mark a false alarm | ✓ | ✓ | |
+| Failure detection per printer: on/off, sensitivity, action, interval; mark a false alarm | ✓ | ✓ | |
 | See spools, print costs and maintenance tasks | ✓ | ✓ | ✓ |
-| Choose a printer's active spool; add, edit and complete maintenance tasks | ✓ | ✓ | |
+| Choose a printer's active spool; add, edit, complete and delete maintenance tasks | ✓ | ✓ | |
 | See bed meshes, their history, comparisons and drift settings | ✓ | ✓ | ✓ |
 | Update the bed mesh (probe), drift alerts and reference mesh, delete meshes | ✓ | ✓ | |
-| Start prints through the pre-print steps (automatic), skip them for one print, cancel a preparation | ✓ | ✓ | |
+| Start prints through the pre-print steps (automatic), see the plan, skip them for one print, cancel a preparation | ✓ | ✓ | |
 | Pre-print settings: the defaults and each printer's | ✓ | | |
-| Spoolman connection, cost settings | ✓ | | |
+| Spoolman connection, cost settings, recalculating costs | ✓ | | |
 | Timelapse settings, delete history entries, import history | ✓ | | |
-| Browser push on their own devices: turn on/off, list, remove, send a test | ✓ | ✓ | ✓ |
-| Android app: progress notifications and widgets, sign their own phones out (Pause/Resume/Cancel from a notification: as for prints above) | ✓ | ✓ | ✓ |
-| Notifications: channels, rules, quiet hours, delivery log; how many devices are subscribed | ✓ | | |
+| My account: name, email, password | ✓ | ✓ | ✓ |
+| Browser push on their own devices: turn on/off, list, remove, send a test (signed-in accounts, not guests) | ✓ | ✓ | ✓ |
+| Android app: progress notifications and widgets, sign their own phones out; Pause/Resume/Cancel and stopping a preparation as for prints above (the app's token never starts prints or does admin work, even an admin's) | ✓ | ✓ | ✓ |
+| Notifications: channels, rules, quiet hours, delivery log, tests; how many devices are subscribed | ✓ | | |
 | Set up smart plugs and their automations, test them | ✓ | | |
-| Add, edit and remove printers (and their API keys) | ✓ | | |
+| Add, edit and remove printers (and their API keys); Discover | ✓ | | |
 | OctoPrint plugins and updates: list, install, enable/disable, uninstall, update OctoPrint and plugins, restart OctoPrint | ✓ | | |
-| Settings: General (including the ML API), Users, Integrations, Audit log, backups, library sources | ✓ | | |
+| Integrations: single sign-on, status API tokens, slicer upload keys | ✓ | | |
+| Settings: General (sign-in and guests, the ML API, backups), Users, Audit log, library sources | ✓ | | |
 
-Operators and viewers see every printer, or only the ones you pick under **Users → Printers**. Printers someone hasn't been given don't exist as far as they can tell. Roles are enforced on the server for every route, not just hidden in the UI.
+Admins always see every printer. Operators and viewers see every printer, or only the ones you pick under **Settings → Users** (the **Printers** column); printers someone hasn't been given don't exist as far as they can tell, and the history, stats and queued jobs of removed printers are for admins only. Guests (when sign-in is optional) act as viewers or operators on every printer, but can't use browser push or link the Android app. Status API tokens and slicer upload keys aren't users: a status token reads every printer (and may confirm a bed is clear if it was created to), an upload key only uploads to the one place it was made for. Roles are enforced on the server for every route, not just hidden in the UI.
 
 Dangerous actions ask for confirmation, and the server insists on it too (it answers `409` with `confirmRequired` until the request says `confirm: true`): cancelling a print, deleting a file, an emergency stop (M112), disconnecting during a print, sending G-code while printing, uninstalling an OctoPrint plugin, installing one from a URL, updating OctoPrint or plugins, restarting OctoPrint, and G-code that stops the machine or touches stored settings and firmware (M0/M1, M81, M92, M112, M302, M303, M410, M500–M502, M906/M907, M997, M999).
 
@@ -260,11 +303,11 @@ The first admin is created by the setup wizard, or headlessly with `OCM_ADMIN_EM
 These are two separate layers:
 
 - **octo·modern → OctoPrint**: each printer's API key is saved (encrypted) in `/data`, so octo·modern stays connected, keeps watching temperatures and jobs, and survives restarts whether or not anyone is signed in. Nobody using octo·modern needs an OctoPrint login.
-- **You → octo·modern**: octo·modern's own accounts and roles (above). Under **Settings → Sign-in** you can make sign-in optional: visitors then use it as guests who can either watch or control printers, while admin pages still need an admin account. `OCM_AUTH=disabled` goes further and gives everyone full access (trusted networks only).
+- **You → octo·modern**: octo·modern's own accounts and roles (above). Under **Settings → General → Sign-in** you can make sign-in optional: visitors then use it as guests who can either watch or control printers, while admin pages still need an admin account. `OCM_AUTH=disabled` goes further and gives everyone full access (trusted networks only).
 
 ### OIDC
 
-Set up single sign-on under **Integrations**, or with `OCM_OIDC_*` variables (see [Configuration](#configuration)). Register `<your-url>/auth/oidc/callback` as the redirect URI with your provider. People whose email matches **Create accounts automatically for** get an account on first sign-in, as admin if they also match **…as admin when matching**, otherwise with the default role (viewer, unless you choose operator). Once SSO works you can turn off password sign-in; `OCM_LOCAL_LOGIN=enabled` brings it back if SSO breaks.
+Set up single sign-on under **Settings → Integrations**, or with `OCM_OIDC_*` variables (see [Configuration](#configuration)). Register `<your-url>/auth/oidc/callback` as the redirect URI with your provider. People whose email matches **Create accounts automatically for** get an account on first sign-in, as admin if they also match **…as admin when matching**, otherwise with the default role (viewer, unless you choose operator). Once SSO works you can turn off password sign-in; `OCM_LOCAL_LOGIN=enabled` brings it back if SSO breaks.
 
 ## Webcams
 
@@ -279,7 +322,7 @@ octo·modern reads each printer's cameras from OctoPrint's webcam settings: the 
 
 - **Live or snapshots.** *Auto* streams live up to four cameras and switches to snapshots, refreshed every few seconds, for more. Each MJPEG stream keeps a connection open and browsers allow only six per host over HTTP/1.1, so a wall of live streams would also block the rest of the page. Pick *Live* or *Snapshots* to override. Cameras pause while they're scrolled out of view, while the tab is hidden, and while another camera is open full screen. A stream that breaks falls back to snapshots and tries again a minute later.
 - **Kiosk** turns the page into a full-screen wall for a tablet or a TV: no sidebar, the cursor hides after 3 seconds, the screen is kept awake (Screen Wake Lock API, where the browser has it), and optionally one camera at a time, rotating every N seconds. Move the mouse or tap for **Exit kiosk**, or press Esc.
-- **Bookmarkable**: the options are in the URL, e.g. `/cameras?kiosk=1&layout=3&mode=snapshot&every=5&rotate=20&printers=<id>,<id>&fill=1`. `layout` is `1`–`4` columns, `mode` `live` or `snapshot`, `every` the snapshot interval in seconds, `rotate` seconds per camera in kiosk mode, `printers` limits the wall to some printers, `fill` crops pictures to fill their tiles. For a wall tablet, sign in once (or allow guests to watch under **Settings → Sign-in**) and open that URL as a home-screen app.
+- **Bookmarkable**: the options are in the URL, e.g. `/cameras?kiosk=1&layout=3&mode=snapshot&every=5&rotate=20&printers=<id>,<id>&fill=1`. `layout` is `1`–`4` columns, `mode` `live` or `snapshot`, `every` the snapshot interval in seconds, `rotate` seconds per camera in kiosk mode, `printers` limits the wall to some printers, `fill` crops pictures to fill their tiles. For a wall tablet, sign in once (or allow guests to watch under **Settings → General → Sign-in**) and open that URL as a home-screen app.
 
 ## G-code preview
 
@@ -394,9 +437,9 @@ Admins set them up under **Settings → Notifications** (`/notifications`).
 
 **Channels**: **Browser push** (see [below](#browser-push)), [ntfy](https://ntfy.sh) (server, topic, optional token), Discord (webhook), Slack (incoming webhook; Block Kit with the facts and a button back), Telegram (bot token and chat ID; the snapshot as a photo with the caption), Pushover (application token, user key; high priority for errors), Gotify (server, application token; markdown), Matrix (homeserver, room ID, access token of a bot account; the snapshot uploaded as an image), email over SMTP (STARTTLS, TLS or plain; HTML with the snapshot inline), Home Assistant (a webhook trigger, a `notify.*` service with a long-lived token, or both) and generic webhooks (JSON). Tokens, webhook URLs and passwords are stored encrypted and never sent back to the browser. **Send test** in the editor tries the settings on screen, with a test picture, and shows the service's answer word for word when it fails (`HTTP 400: Bad Request: chat not found`, `535 Authentication credentials invalid`…).
 
-**Events**: print started, progress milestones (percentages and/or minutes left, e.g. `25, 50, 75` and `10`), paused (with why: filament runout, M600, a pause in the G-code such as `M0`, the printer, or who pressed pause), finished, failed, cancelled (and who cancelled), printer offline (OctoPrint unreachable or the printer disconnected, after a grace period), printer error, printer back, and still hot after a print (bed or hotend above a threshold N minutes after it ended). Other features raise their own: **Bed clear needed** (queue), **Failure suspected** (failure detection), **Spool low** and **Maintenance due** (Spoolman and maintenance), **Power on** and **Power off** (smart plugs).
+**Events**: print started, progress milestones (percentages and/or minutes left, e.g. `25, 50, 75` and `10`), paused (with why: filament runout, M600, a pause in the G-code such as `M0`, the printer, or who pressed pause), finished, failed, cancelled (and who cancelled), printer offline (OctoPrint unreachable or the printer disconnected, after a grace period), printer error, printer back, and still hot after a print (bed or hotend above a threshold N minutes after it ended). Other features raise their own: **Bed clear needed** (queue), **Failure suspected** (failure detection), **Spool low** and **Maintenance due** (Spoolman and maintenance), **Power on** and **Power off** (smart plugs), **Bed mesh drift** (`bed.drift`), **OctoPrint updates available** (`octoprint.updates`) and **Pre-print steps failed** (`print.prestart_failed`).
 
-**Messages** carry the printer, file, progress, elapsed and estimated time, filament, who started (or cancelled) it, a link back to the printer page, and a fresh webcam snapshot where the channel can take one (the history's picture when there's no camera). Links need octo·modern's **public URL** (Options; `ORIGIN` when empty). Slack, Gotify and Home Assistant's notify service only show pictures by URL: with **Share snapshots by link** on, each snapshot gets an unguessable link under `/api/notify/media/`, readable without signing in for 48 hours.
+**Messages** carry the printer, file, progress, elapsed and estimated time, filament, who started (or cancelled) it, a link back to the printer page, and a fresh webcam snapshot where the channel can take one (the history's picture when there's no camera). Links need octo·modern's **public URL** (**Options** on the same page; `ORIGIN` when empty). Slack, Gotify and Home Assistant's notify service only show pictures by URL: with **Share snapshots by link** on, each snapshot gets an unguessable link under `/api/notify/media/`, readable without signing in for 48 hours.
 
 **Rules** send some events from some printers (or all) to some channels. **Quiet hours** per channel hold messages back in a time window (server time, optionally on certain days), letting errors and failures through if you want. The same event goes to a channel at most once per de-dupe window (10 min), and at most 20 messages per channel per 10 minutes, so a flapping printer can't flood you; "back" only follows an offline or error message. **Recent deliveries** lists the last 100 with their status (sent, failed with the error, quiet hours, duplicate, rate limited).
 
@@ -425,11 +468,11 @@ Notifications straight to phones and computers, without an app or a third-party 
 | ![Browser push on My account](docs/screenshots/push-account-dark.png) | ![Browser push on a phone](docs/screenshots/mobile-push.png) |
 | --- | --- |
 
-1. **An admin** adds a **Browser push** channel under **Notifications** (choose who gets it: everyone who can see the printer, operators and admins, or admins only) and a rule that sends events to it.
+1. **An admin** adds a **Browser push** channel under **Settings → Notifications** (choose who gets it: everyone who can see the printer, operators and admins, or admins only) and a rule that sends events to it.
 2. **Everyone** turns it on per device: **My account → Browser push → Enable notifications on this device** (admins also find it under **Settings → Notifications**), and allows notifications when the browser asks. The list shows their devices ("Chrome on Android", "Safari on iPhone"…) with **Send test** and **Remove**; admins see how many devices of how many people are subscribed, never anyone else's devices.
 3. **Clicking a notification** opens (or focuses) octo·modern on the printer's page. Messages about the same print replace each other.
 
-- **HTTPS is required**: browsers only offer push on a secure origin (`https://…`, or `localhost`). Behind a TLS reverse proxy, set `ORIGIN` (or the public URL under Notifications → Options).
+- **HTTPS is required**: browsers only offer push on a secure origin (`https://…`, or `localhost`). Behind a TLS reverse proxy, set `ORIGIN` (or the public URL under **Settings → Notifications → Options**).
 - **iPhone and iPad** (iOS/iPadOS 16.4 or later) only offer push to home-screen apps: open octo·modern in Safari, **Share → Add to Home Screen**, open it from the Home Screen, then enable notifications there (see [Phone app](#phone-app)). The page says so when opened in a browser tab.
 - **Who gets what**: a push channel's rules go to the subscribed devices of people in its audience who can see that printer (per-printer access applies); disabled accounts get nothing. Devices the push service reports gone (`404`/`410`, e.g. notifications turned off in the browser) are forgotten on the next send, and so are a removed person's.
 - **VAPID keys** identify this octo·modern to the push services. A pair is generated on first use and stored encrypted in the database; or set `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (base64url, the format `npx web-push generate-vapid-keys` prints) and `VAPID_SUBJECT` (a `mailto:` or `https:` contact; defaults to the public https URL, else the first admin's email). Changing the keys makes devices re-subscribe the next time they open octo·modern.
@@ -448,10 +491,12 @@ An Android app (Android 8 and later) that shows your octo·modern server, plus w
 
 **Install**
 
-1. On the phone, open the repository's [Releases](../../releases) and download the latest `octo-modern-<version>.apk` (from an *Android app* release, tags `android-v…`).
+1. On the phone, open the [Android app release](https://github.com/vitafortis/octo-modern/releases/tag/android-v0.1.0) (or the newest *Android app* release, tags `android-v…`, under [Releases](https://github.com/vitafortis/octo-modern/releases)) and download `octo-modern-<version>.apk`. A `.sha256` file next to it has its checksum.
 2. Open it. Android asks to **allow installing unknown apps** for your browser or file manager the first time: allow it for that app, go back and tap **Install**. (Play Protect may ask you to confirm an app it doesn't know.) Updates install the same way, over the old version.
 3. Open **octo·modern**, enter the address you use in the browser (`https://print.example.com`) and tap **Connect**. The app checks that it's an octo·modern server first. Plain `http://` is only accepted for addresses on your own network (`192.168.x.x`, `10.x.x.x`, `*.local`, Tailscale's `100.x.x.x`…), with a warning.
 4. Sign in as in the browser (password or SSO). The app then links itself to your account: it gets its own **device token**, listed under **My account → Android app**, which the notifications and widgets use. Allow notifications when Android asks.
+
+**Permissions**: network access, notifications (asked on first use; Android 13 and later), a foreground service for the live progress notification, an optional exemption from battery optimisation (only if you allow it, for starting live progress from the background) and biometrics for the optional app lock. No location, camera, contacts or storage permission; downloads go through Android's download manager. The app talks only to the server you enter.
 
 **What it does**
 
@@ -476,7 +521,7 @@ An Android app (Android 8 and later) that shows your octo·modern server, plus w
 
 ## Spools, costs and maintenance
 
-The **Filament** page shows which spool is on which printer, and holds the admin settings for Spoolman and costs. It joins the sidebar once Spoolman is set up; until then admins find it under **Settings → Set up**. Each printer's dashboard has a **Filament** card with the active spool per extruder.
+The **Filament** page shows which spool is on which printer, and holds the admin settings for Spoolman and costs. It joins the sidebar once Spoolman is set up; until then admins find it in the Settings sub-navigation under *Set up*. Each printer's dashboard has a **Filament** card with the active spool per extruder.
 
 **Connecting Spoolman** (admins, **Filament → Spoolman**): enter Spoolman's address, e.g. `http://spoolman.lan:7912` (the `/api/v1` address works too). Spoolman has no login of its own; if a reverse proxy in front of it wants one, add an auth header (name and value, e.g. `Authorization: Bearer …`): the value is stored encrypted and never sent back to the browser. **Test** shows Spoolman's version and how many spools it has. octo·modern talks to Spoolman's REST API only from the server, so the browser doesn't need to reach it.
 
@@ -490,7 +535,7 @@ The **Filament** page shows which spool is on which printer, and holds the admin
 
 **Costs** (admins, **Filament → Print costs**): currency, electricity price per kWh, an average power draw while printing (a default and per printer), and a price per kg and density per material, with a default material and filament diameter for prints whose spool isn't known. Each print's cost is filament (grams from the spool's density, priced with the spool's price from Spoolman when it has one, else the material's) plus electricity (print time × draw × price). It's stored on the history entry when the print ends; entries without a cost (earlier and imported prints) are costed when the settings are saved and every few hours. **Recalculate history** re-costs every finished print with today's prices (prints priced from a Spoolman spool keep that price).
 
-**Maintenance** (the **Maintenance** page, and each printer's **Care** tab; the page joins the sidebar once there's a task, and admins find it under **Settings → Set up** until then): tasks with an interval in print hours, kg of filament or days, counted from the print history since the task was last done (or since a "last done" date you give when adding it). New printers are offered nozzle change (500 h), belt tension (200 h), lubricating rods and rails (150 h), cleaning the bed (7 days) and checking e-steps (5 kg). A task is **due soon** at 90 % of its interval and **overdue** past it; the sidebar shows how many are overdue, and `maintenance.due` is sent once when a task becomes overdue. **Done** (operators) logs who did it, when, at what usage and your notes, and starts the count again.
+**Maintenance** (the **Maintenance** page, and each printer's **Care** tab; the page joins the sidebar once there's a task, and admins find it in the Settings sub-navigation under *Set up* until then): tasks with an interval in print hours, kg of filament or days, counted from the print history since the task was last done (or since a "last done" date you give when adding it). New printers are offered nozzle change (500 h), belt tension (200 h), lubricating rods and rails (150 h), cleaning the bed (7 days) and checking e-steps (5 kg). A task is **due soon** at 90 % of its interval and **overdue** past it; the sidebar shows how many are overdue, and `maintenance.due` is sent once when a task becomes overdue. **Done** (operators) logs who did it, when, at what usage and your notes, and starts the count again.
 
 ## Bed mesh
 
@@ -522,7 +567,7 @@ API (admins): `GET /api/printers/<id>/plugins` (plugins, restart state, the runn
 
 ## Before each print (leveling and pre-print G-code)
 
-Some files level the bed in their start G-code and some don't; some printers need a `G28` and a saved mesh loaded, others a fresh `BED_MESH_CALIBRATE`. **Settings → Before each print** (admins) sets what runs before every print octo·modern starts, and each printer's settings dialog (**Before each print**) chooses **Default** (labelled on or off, as the default is), **On for this printer** or **None**, separately for leveling and for the G-code. The default is off until you switch it on in Settings, so **Default (off)** runs nothing; the dialog says so and offers **Turn it on for this printer**. Everything is off until you turn it on.
+Some files level the bed in their start G-code and some don't; some printers need a `G28` and a saved mesh loaded, others a fresh `BED_MESH_CALIBRATE`. **Settings → General → Before each print** (admins) sets what runs before every print octo·modern starts, and each printer's settings dialog (**Before each print**) chooses **Default** (labelled on or off, as the default is), **On for this printer** or **None**, separately for leveling and for the G-code. The default is off until you switch it on in Settings, so **Default (off)** runs nothing; the dialog says so and offers **Turn it on for this printer**. Everything is off until you turn it on.
 
 ![Before each print](docs/screenshots/preprint-settings.png)
 
@@ -543,7 +588,7 @@ Some files level the bed in their start G-code and some don't; some printers nee
 
 **Where it applies**: every start octo·modern makes: Files (print, print after upload), **Start** and Klipper's **Restart** on the dashboard, **Print again** in the history, library send-and-print, the print queue and slicer uploads that print. Not to resume, and not to restarting a paused OctoPrint job from the top (its part is still on the bed). Prints started in OctoPrint's or Mainsail/Fluidd's own UI, or by OctoPrint plugins, don't pass through octo·modern and can't be intercepted; put the steps in your slicer's start G-code for those. With the Bed Visualizer plugin, a mesh the probing produces lands in the [bed mesh history](#bed-mesh) if the plugin reports it, as for any other probe run.
 
-API: `GET`/`PUT /api/settings/preprint` (admins), `GET`/`PUT /api/printers/<id>/preprint/settings` (admins), `GET /api/printers/<id>/preprint?path=<file>[&origin=sdcard]` (the plan; operators), `DELETE /api/printers/<id>/preprint` (cancel). Starting a print (`POST …/files/select` with `print: true`, `POST …/job` `start`/`restart`) answers `409` with `confirmRequired` and `preprint: { steps }` while something is set up for the printer, until the request says `preprint: "run"` or `"skip"`; `preparing: true` in the answer means the steps are running. Audit actions: `preprint.start`, `.done`, `.skip`, `.fail`, `.cancel`, `settings.preprint`, `printer.preprint`. The settings are part of backups (**Settings**).
+API: `GET`/`PUT /api/settings/preprint` (admins), `GET`/`PUT /api/printers/<id>/preprint/settings` (admins), `GET /api/printers/<id>/preprint?path=<file>[&origin=sdcard]` (the plan; operators), `DELETE /api/printers/<id>/preprint` (cancel). Starting a print (`POST …/files/select` with `print: true`, `POST …/job` `start`/`restart`) answers `409` with `confirmRequired` and `preprint: { steps }` while something is set up for the printer, until the request says `preprint: "run"` or `"skip"`; `preparing: true` in the answer means the steps are running. Audit actions: `preprint.start`, `.done`, `.skip`, `.fail`, `.cancel`, `settings.preprint`, `printer.preprint`. The settings are part of backups (**Settings → General → Backup & restore**).
 
 ## Smart plugs
 
@@ -579,7 +624,7 @@ echo "ML_API_TOKEN=$(openssl rand -hex 32)" >> .env
 docker compose -f compose.yaml -f compose.detect.yaml up -d
 ```
 
-Then, as an admin, check **Settings → Failure detection** (the ML API URL, its token, and *octo·modern's address as the ML container sees it*, usually `http://octo-modern:3000`); **Test** checks the model is loaded and does a full round trip. Turn detection on per printer under its **Camera → Failure detection**.
+Then, as an admin, check **Settings → General → Failure detection** (the ML API URL, its token, and *octo·modern's address as the ML container sees it*, usually `http://octo-modern:3000`); **Test** checks the model is loaded and does a full round trip. Turn detection on per printer under its **Camera → Failure detection**.
 
 **What happens while a printer prints**
 
@@ -624,7 +669,7 @@ http://<octo·modern host>:3040/octoprint
 
 (octo·modern's own `/api/…` is a different, session-only API; the prefix keeps the two apart.)
 
-1. Under **Integrations → Slicer upload keys** (admins), create a key and choose where its uploads go:
+1. Under **Settings → Integrations → Slicer upload keys** (admins), create a key and choose where its uploads go:
    - **The print queue**: a job for a chosen printer, or for any printer with the tags you give (e.g. a "PETG" key);
    - **A library folder**: a folder in a *writable* library source (the slicer's subfolder, if any, goes below it);
    - **A printer**: straight into its OctoPrint, optionally allowed to start the print ("Upload and print").
@@ -638,7 +683,7 @@ Keys are letters and digits after `ocm_`, and octo·modern also accepts them wit
 
 ## Dashboards and monitoring
 
-Create a token under **Integrations → Status API tokens** (admins). It's shown once; only its SHA-256 is stored. Tokens can expire, can be revoked, and record when they were last used. They open these routes only, and only for `GET` (plus the bed-clear `POST` for tokens allowed to). They're never accepted as a session anywhere else.
+Create a token under **Settings → Integrations → Status API tokens** (admins). It's shown once; only its SHA-256 is stored. Tokens can expire, can be revoked, and record when they were last used. They open these routes only, and only for `GET` (plus the bed-clear `POST` for tokens allowed to). They're never accepted as a session anywhere else.
 
 | Route | Returns |
 | --- | --- |
@@ -723,7 +768,7 @@ Images are published to the GitHub Container Registry for `linux/amd64` and `lin
 
 | Tag | Tracks |
 | --- | --- |
-| `ghcr.io/vitafortis/octo-modern:latest` | the latest build of `main` |
+| `ghcr.io/vitafortis/octo-modern:latest`, `:main` | the latest build of `main` |
 | `ghcr.io/vitafortis/octo-modern:0.1.<run>` | every build of `main` (the version shown in the sidebar) |
 | `ghcr.io/vitafortis/octo-modern:1`, `:1.2`, `:1.2.3` | releases (`v*` tags) |
 
@@ -815,45 +860,98 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | ![Approve in OctoPrint](docs/screenshots/discover-approve.png) | ![Discover: Arcane](docs/screenshots/discover-arcane.png) |
 | **Application Keys**: approve in OctoPrint | **Arcane** environments |
 
+### More screenshots
+
+| | |
+| --- | --- |
+| ![Control, light](docs/screenshots/control-light.png) | ![Control while printing: movement locked](docs/screenshots/control-printing.png) |
+| **Control**, light | **Control** while printing: movement locked |
+| ![Files on a Klipper printer](docs/screenshots/files-klipper.png) | ![Add printer, light](docs/screenshots/add-printer-klipper-light.png) |
+| **Files** on a Klipper printer | **Add printer**, light |
+| ![Camera → Timelapses](docs/screenshots/timelapse.png) | ![Camera wall, light](docs/screenshots/cameras-light.png) |
+| **Camera → Timelapses** | **Camera wall**, light |
+| ![G-code preview: one layer from above, light](docs/screenshots/gcode-layer-light.png) | ![Send & print, light](docs/screenshots/library-send-light.png) |
+| **G-code preview**: one layer from above, light | **Send & print**, light |
+| ![Library sources](docs/screenshots/library-sources.png) | ![Failure detection settings with Test](docs/screenshots/detection-settings.png) |
+| **Library sources** | **Failure detection** settings with **Test** |
+| ![Filament page](docs/screenshots/filament.png) | ![Notifications: channels and rules](docs/screenshots/notifications.png) |
+| **Filament** page | **Notifications**: channels and rules |
+| ![Update mesh asks first](docs/screenshots/bedmesh-confirm.png) | ![Update mesh: probing, with progress](docs/screenshots/bedmesh-updating.png) |
+| **Update mesh** asks first | **Update mesh**: probing, with progress |
+| ![Get more plugins, light](docs/screenshots/plugins-install-light.png) | ![Updates, light](docs/screenshots/plugins-updates-light.png) |
+| **Get more** plugins, light | **Updates**, light |
+| ![Power card, light](docs/screenshots/power-light.png) | ![Before each print settings, light](docs/screenshots/preprint-settings-light.png) |
+| **Power** card, light | **Before each print** settings, light |
+| ![Browser push in Settings → Notifications](docs/screenshots/push-notifications-devices.png) | ![The same, dark](docs/screenshots/push-notifications-devices-dark.png) |
+| **Browser push** in Settings → Notifications | The same, dark |
+| ![Browser push on My account, light](docs/screenshots/push-account.png) | ![The offline page](docs/screenshots/push-offline.png) |
+| **Browser push** on My account, light | The offline page |
+| ![Install app in the sidebar, light](docs/screenshots/install-button.png) | ![Install app on My account](docs/screenshots/install-button-account.png) |
+| **Install app** in the sidebar, light | **Install app** on My account |
+| ![Install app on My account, dark](docs/screenshots/install-button-account-dark.png) | ![Install on an iPhone, dark](docs/screenshots/install-button-ios-dark.png) |
+| **Install app** on My account, dark | **Install** on an iPhone, dark |
+
+On a phone:
+
+<p align="center">
+  <img src="docs/screenshots/mobile-drawer.png" alt="The drawer on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-confirm.png" alt="Emergency stop asks first on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-cameras.png" alt="Camera wall on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-gcode-preview.png" alt="G-code preview on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-detection.png" alt="Failure detection on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-filament.png" alt="Filament on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-spools-dashboard.png" alt="Filament card on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-maintenance.png" alt="Maintenance on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-preprint.png" alt="Preparing on a phone" width="24%" />
+  <img src="docs/screenshots/mobile-bedmesh-light.png" alt="Bed mesh, light on a phone" width="24%" />
+  <img src="docs/screenshots/notifications-phone.png" alt="Notifications on a phone" width="24%" />
+  <img src="docs/screenshots/power-phone.png" alt="The power switch in the printer header on a phone" width="24%" />
+  <img src="docs/screenshots/install-button-mobile.png" alt="Install app in the drawer on a phone" width="24%" />
+</p>
+
 ## Configuration
+
+Everything is optional; the defaults run fine. Set these as environment variables on the container.
 
 | Variable | Default | |
 | --- | --- | --- |
 | `OCM_DATA_DIR` | `./data` (`/data` in the image) | Encrypted SQLite store and key file |
-| `OCM_SECRET_KEY` | — | Master secret. Unset means a random key is generated in `secret.key` |
-| `OCM_ADMIN_EMAIL`, `OCM_ADMIN_PASSWORD`, `OCM_ADMIN_NAME` | — | Create the first admin on start instead of using the setup wizard |
-| `OCM_AUTH` | — | `disabled` skips sign-in entirely and gives everyone admin access (trusted networks only). To keep admin accounts but let guests watch or control printers, use **Settings → Sign-in** instead |
-| `OCM_LOCAL_LOGIN` | — | `disabled` hides the email/password form (SSO only); `enabled` forces it back on |
-| `OCM_OIDC_ISSUER` | — | OIDC issuer URL; enables SSO (or configure it under Integrations) |
+| `OCM_SECRET_KEY` | — | Master secret that seals every stored credential (API keys, SSO secret, notification tokens, the ML API token, the VAPID key). Unset means a random key is generated in `secret.key` |
+| `OCM_ADMIN_EMAIL`, `OCM_ADMIN_PASSWORD`, `OCM_ADMIN_NAME` | — | Create the first admin on start instead of using the setup wizard (only while there are no users; the password needs 8+ characters) |
+| `OCM_AUTH` | — | `disabled` skips sign-in entirely and gives everyone admin access (trusted networks only). To keep admin accounts but let guests watch or control printers, use **Settings → General → Sign-in** instead |
+| `OCM_LOCAL_LOGIN` | — | `disabled` hides the email/password form (SSO only; ignored while SSO isn't set up); `enabled` forces it back on |
+| `OCM_OIDC_ISSUER` | — | OIDC issuer URL; enables SSO. When set, the `OCM_OIDC_*` variables replace the SSO settings under **Settings → Integrations** |
 | `OCM_OIDC_CLIENT_ID`, `OCM_OIDC_CLIENT_SECRET` | — | Client credentials from your identity provider |
 | `OCM_OIDC_NAME` | `SSO` | Login button label |
 | `OCM_OIDC_SCOPES` | `openid email profile` | Requested scopes |
-| `OCM_OIDC_AUTO_CREATE` | — | Emails that get an account on first login: `*@example.com`, `bob@gmail.com`, `*` |
+| `OCM_OIDC_AUTO_CREATE` | — | Emails that get an account on first login: `*@example.com`, `bob@example.org`, `*` |
 | `OCM_OIDC_ADMIN_EMAILS` | — | Auto-created accounts matching these become admins |
-| `OCM_OIDC_DEFAULT_ROLE` | `viewer` | Role for other auto-created accounts (`viewer` or `operator`) |
+| `OCM_OIDC_DEFAULT_ROLE` | `viewer` | Role for other auto-created accounts (`viewer`, `operator` or `admin`) |
 | `OCM_OIDC_REDIRECT_URI` | `<origin>/auth/oidc/callback` | Override when the public URL can't be inferred |
-| `OCM_DOCKER_HOSTS` | the local socket, if present | Docker endpoints for Discover, e.g. `tcp://docker-proxy:2375,tcp://nas.lan:2375`; `none` turns it off |
+| `OCM_DOCKER_HOSTS` | `DOCKER_HOST`, else the local socket if present | Docker endpoints for Discover, e.g. `tcp://docker-proxy:2375,tcp://nas.lan:2375`; `none` turns it off |
 | `OCM_SELF_CONTAINER` | — | octo·modern's own container name, when Discover can't find it by hostname or IP |
-| `OCM_ARCANE_URL`, `OCM_ARCANE_API_KEY`, `OCM_ARCANE_NAME` | — | An Arcane instance for Discover (or connect one in the UI) |
-| `OCM_ML_API_URL` | — | Obico's ML API for failure detection, e.g. `http://ml_api:3333` (or set it under Settings → Failure detection, which overrides this) |
+| `OCM_ARCANE_URL`, `OCM_ARCANE_API_KEY`, `OCM_ARCANE_NAME` | —, —, `Arcane` | An Arcane instance for Discover (or connect one in the UI) |
+| `OCM_ML_API_URL` | — | Obico's ML API for failure detection, e.g. `http://ml_api:3333` |
 | `OCM_ML_API_TOKEN` | — | The ml_api container's `ML_API_TOKEN`, sent as `Authorization: Bearer …` |
-| `OCM_DETECT_PUBLIC_URL` | — | octo·modern's address as the ML container reaches it, e.g. `http://octo-modern:3000` |
-| `ORIGIN` | — | octo·modern's public address (adapter-node); also the default for links in notifications |
+| `OCM_DETECT_PUBLIC_URL` | — | octo·modern's address as the ML container reaches it, e.g. `http://octo-modern:3000`. Values saved under **Settings → General → Failure detection** override these three |
+| `ORIGIN` | — | octo·modern's public address, e.g. `https://print.example.com` (adapter-node); also the default for links in notifications and push |
+| `PROTOCOL_HEADER`, `HOST_HEADER` | — | Optional behind a reverse proxy: `x-forwarded-proto` / `x-forwarded-host` (see [Reverse proxy](#reverse-proxy)) |
+| `ADDRESS_HEADER`, `XFF_DEPTH` | — | Behind a reverse proxy, `X-Forwarded-For` and `1` (the number of proxies), so the audit log and the login throttle see the real client address |
 | `OCM_PUSHOVER_API` | Pushover's API | Where Pushover messages go (tests point it at a mock) |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | generated, stored encrypted | The [browser push](#browser-push) key pair (base64url, as `npx web-push generate-vapid-keys` prints them); set both or neither |
 | `VAPID_SUBJECT` | the public https URL, else `mailto:` the first admin | Contact the push services may use (`mailto:…` or `https://…`) |
 | `OCM_PUSH_ENDPOINTS` | — | Extra push service URL prefixes besides the browsers' own, comma-separated (a self-hosted push service; the tests use a mock) |
-| `OCM_POLL_INTERVAL_MS` | `10000` | Status poll for printers nobody is watching live |
-| `OCM_REQUEST_TIMEOUT_MS` | `10000` | Timeout for each request to OctoPrint |
-| `OCM_PUSH_THROTTLE` | `2` | Live updates arrive every 500 ms × this |
-| `OCM_TEMP_HISTORY_MINUTES` | `30` | Temperature history kept in memory per printer |
-| `BODY_SIZE_LIMIT` | `4G` in the image | Largest upload |
-| `TZ` | `UTC` | Time zone for logs, and for Stats buckets when the browser doesn't send its own |
-| `PROTOCOL_HEADER`, `HOST_HEADER` | — | Set to `x-forwarded-proto` / `x-forwarded-host` behind a TLS reverse proxy |
+| `OCM_POLL_INTERVAL_MS` | `10000` | Status poll for printers nobody is watching live (2000–600000) |
+| `OCM_REQUEST_TIMEOUT_MS` | `10000` | Timeout for each request to a printer (1000–120000) |
+| `OCM_PUSH_THROTTLE` | `2` | Live updates arrive every 500 ms × this (1–20) |
+| `OCM_TEMP_HISTORY_MINUTES` | `30` | Temperature history kept in memory per printer (5–240) |
+| `BODY_SIZE_LIMIT` | `4G` in the image | Largest upload (adapter-node's default outside the image is 512 KB) |
+| `PORT` | `3000` in the image | The port inside the container; the compose file publishes it as `3040` |
+| `TZ` | UTC in the image | Time zone for logs and ETAs, and for Stats buckets when the browser doesn't send its own |
 
 ## Backup & restore
 
-Under **Settings → Backup & restore**, admins download an encrypted file with printers (with their API keys and smart plugs), users (roles, password hashes, SSO links, printer access), settings (single sign-on, failure detection with its ML API token, before each print), notifications (channels with their tokens, rules, options), the print queue (jobs and printer tags; files uploaded to the queue aren't included, so such jobs come back asking for the file), spools & maintenance (the Spoolman connection with its auth header, cost settings, the spool on each printer, maintenance tasks and their log; not the per-print reports to Spoolman, so nothing is reported twice) and, when ticked, the print history (optionally with its pictures, up to 100 KB each; can make the file large). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, notifications are replaced as a whole, history entries, queued jobs and maintenance tasks already present are kept (no duplicates), nothing else is deleted, and your own account is never changed. The audit log, the delivery log and API tokens aren't included. A large backup needs a `BODY_SIZE_LIMIT` above adapter-node's 512 KB default outside the image (the image allows 4 GB).
+Under **Settings → General → Backup & restore**, admins download an encrypted file with printers (with their API keys and smart plugs), users (roles, password hashes, SSO links, printer access), settings (single sign-on, failure detection with its ML API token, before each print), notifications (channels with their tokens, rules, options), the print queue (jobs and printer tags; files uploaded to the queue aren't included, so such jobs come back asking for the file), spools & maintenance (the Spoolman connection with its auth header, cost settings, the spool on each printer, maintenance tasks and their log; not the per-print reports to Spoolman, so nothing is reported twice) and, when ticked, the print history (optionally with its pictures, up to 100 KB each; can make the file large). It's sealed with a passphrase you choose, not the master key, so it restores on a new install. A restore shows what it will add or update before applying; printers are matched by id and users by email, notifications are replaced as a whole, history entries, queued jobs and maintenance tasks already present are kept (no duplicates), nothing else is deleted, and your own account is never changed. The audit log, the delivery log and API tokens aren't included. A large backup needs a `BODY_SIZE_LIMIT` above adapter-node's 512 KB default outside the image (the image allows 4 GB).
 
 ## Security model
 
@@ -861,7 +959,7 @@ Under **Settings → Backup & restore**, admins download an encrypted file with 
 - **The browser never talks to OctoPrint.** Status, the push connection, webcam images and streams, thumbnails and uploads all go through octo·modern. Camera URLs of relayed cameras aren't sent to the browser either. A camera request carries the API key only when the camera is on OctoPrint's own origin.
 - **Least privilege**: an OctoPrint Application Key acts as the user who approved it. Use a key of a user with only the permissions you want octo·modern to have; **Test connection** lists what it lacks.
 - **Access** is checked on the server for every printer-scoped page and API call. Viewers can't reach any route that changes a printer; operators can't reach server, user or settings routes. Confirmations for dangerous actions are enforced by the server.
-- **API tokens** (`ocm_` + 32 random bytes, SHA-256 hashed at rest) only work on `GET /api/status…`; they never become sessions, and repeated bad tokens from one address are throttled. Status responses omit OctoPrint URLs unless the token allows it, and report errors as codes only.
+- **API tokens** (`ocm_` + 32 random bytes, SHA-256 hashed at rest) never become sessions, and repeated bad tokens from one address are throttled. Status tokens only work on `GET /api/status…` (plus the bed-clear `POST` for tokens created with **May confirm bed clear**); their answers omit OctoPrint URLs unless the token allows it and report errors as codes only. Slicer upload keys only open `/octoprint/api/…` and upload to the one destination they were created for.
 - **Device tokens** (the Android app, `ocd_` + 32 random bytes, SHA-256 hashed at rest) are issued to a signed-in session, act as their user with the user's current role and printer access, and only open the routes the app needs (printer list and status, a printer's state and snapshot, pause/resume/cancel, stopping a preparation, and the device's own record); everything else answers `403`. Only `Authorization: Bearer`, never a query string. Disabling or deleting the account stops them at once; **My account** signs a phone out. On the phone the token is sealed with an AES-GCM key in the Android Keystore and bound to the server's address.
 - **Sign-in** is by OIDC or by local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies tied to a user and end when the user is disabled or their role changes. Writes from another origin are rejected.
 - **Discovery** is admin-only and read-only: Docker and Arcane are only read (`GET`), a socket proxy keeps writes blocked, and fingerprinting uses unauthenticated `GET`s. Keys from the Application Keys flow are polled for by octo·modern's server and go straight into the encrypted store; the browser only sees the request's state. Subnet scans need an admin, are capped at 4096 addresses and are audited.
@@ -875,26 +973,37 @@ Under **Settings → Backup & restore**, admins download an encrypted file with 
 pnpm install
 pnpm dev                              # http://localhost:3040
 pnpm check && pnpm test               # types + unit tests
+pnpm build && bash site/build.sh      # the app, and the project site in site/_site
 scripts/dev-octoprint.sh up 2         # two OctoPrint servers with virtual printers on :5101, :5102
 node scripts/mjpeg-source.mjs 5190    # a fake MJPEG webcam on :5190
-pnpm e2e                              # end-to-end against real OctoPrint containers (needs Docker)
-pnpm e2e:control                      # the Control tab and its terminal end-to-end (OctoPrint on :5131, app on :3150)
-pnpm e2e:discover                     # Discover end-to-end: real OctoPrint, mock Docker/Arcane/mDNS, Application Keys
-pnpm e2e:library                      # the Library against OctoPrint, SFTP, Samba and WebDAV containers
 ```
 
-`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:library` does the same for the Library: a folder source plus SFTP (`atmoz/sftp`), Samba (`crazymax/samba`) and WebDAV (`rclone serve webdav`) servers, browsing, metadata, search, send & print, 150 MB transfers from each with a memory check, and Save to library.
-pnpm e2e:history                      # print history, notifications and timelapses end to end
-pnpm e2e:notify                       # notifications: every channel type against local mocks, a real virtual printer
-pnpm e2e:mobile                       # phones: no sideways scrolling at 360/390/430 px, thumb-sized controls
+End-to-end tests drive the built app in Chromium (`pnpm exec playwright install chromium`) and write the screenshots in `docs/screenshots/` (demo data only). `E2E_SKIP_BUILD=1` reuses `./build`, `E2E_KEEP=1` leaves everything running; each script's header lists its ports and the variables that move them.
+
+```sh
+pnpm e2e                              # the basics against real OctoPrint containers (needs Docker)
+pnpm e2e:control                      # the Control tab and its terminal (Docker)
+pnpm e2e:discover                     # Discover: real OctoPrint, mock Docker/Arcane/mDNS, Application Keys (Docker)
+pnpm e2e:library                      # the Library against OctoPrint, SFTP, Samba and WebDAV containers (Docker)
+pnpm e2e:history                      # print history, notifications and timelapses (Docker)
+pnpm e2e:notify                       # every notification channel against local mocks (Docker)
+pnpm e2e:queue                        # the print queue and slicer uploads (Docker)
+pnpm e2e:spools                       # Spoolman, costs and maintenance (Docker, mock Spoolman)
+pnpm e2e:viewer                       # G-code preview and the camera wall (Docker)
+pnpm e2e:mobile                       # phones: no sideways scrolling at 360/390/430 px, thumb-sized controls (Docker)
+pnpm e2e:power                        # smart plugs against mock Shelly/Tasmota (no Docker)
+pnpm e2e:detect                       # failure detection against a mock ML API (no Docker)
 pnpm e2e:stats                        # History → Stats on seeded demo history (no Docker)
-pnpm e2e:bedmesh                      # Care → Bed mesh against a mock OctoPrint with the Bed Visualizer plugin (no Docker)
-pnpm e2e:plugins                      # Care → Plugins & updates against a mock Plugin Manager and Software Update (no Docker; ports :4500–:4502)
-pnpm e2e:klipper                      # Klipper printers against a mock Moonraker (no Docker; ports :5560–:5564)
-pnpm e2e:preprint                     # leveling and pre-print G-code against a mock OctoPrint and Moonraker (no Docker; ports :5600–:5603)
+pnpm e2e:bedmesh                      # Care → Bed mesh against a mock Bed Visualizer (no Docker)
+pnpm e2e:plugins                      # Care → Plugins & updates against a mock Plugin Manager (no Docker)
+pnpm e2e:push                         # the installable app and browser push against a mock push service (no Docker)
+pnpm e2e:install                      # the Install app button (no Docker)
+pnpm e2e:klipper                      # Klipper printers against a mock Moonraker (no Docker)
+pnpm e2e:preprint                     # leveling and pre-print G-code (no Docker)
+pnpm e2e:android                      # the Android app on an emulator (see its script)
 ```
 
-`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:notify` (app `:3200`, OctoPrint `:3201`, camera `:3202`, mock services `:3204` HTTP and `:3205` SMTP) sets up one channel of every type against `scripts/e2e/mock-notify.mjs` (nothing real is contacted), sends tests including failing ones, prints on a virtual printer and checks the started, 50 %, finished (with snapshots: attachments, the shared link), still-hot, paused-by-M0, paused-by-the-operator and cancelled-by messages, offline and back by stopping the container, quiet hours, the delivery log and a backup round trip, then writes the `notifications*.png` screenshots. `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. `pnpm e2e:power` (ports `:3230`–`:3236`) needs no Docker: it runs two mock OctoPrint servers powered by a mock Shelly Gen2 (Digest login) and a mock Tasmota, and checks plug setup and tests (admins only, sealed passwords), power-on with auto-connect, the hot and printing confirmations (in Chromium too), auto power-on for a print, the auto power-off countdown with Keep on and cancelling, the webhooks, the audit log and a 390 px phone, then writes the `power*.png` screenshots. The adapters are unit-tested against the same mocks (`scripts/e2e/mock-plugs.mjs`); nothing contacts a real device. `pnpm e2e:viewer` (app `:3250`, OctoPrint `:3251`–`:3252`, camera `:3253`) writes synthetic slicer-flavoured G-code (`node scripts/gcode-samples.mjs <dir> [--big MB]`: PrusaSlicer, Cura, OrcaSlicer with arcs, and comment-free files) plus a ~100 MB file (`E2E_BIG_MB`), checks the download routes (ranges, traversal, sign-in, no key in responses), previews printer and library files as a viewer (layers, legend, slider, keyboard, orbit, the 2D layer view), times the big file, follows a live print on a virtual printer and cross-checks the layer against OctoPrint's `filepos`, then checks the camera wall: live streams vs. snapshots, streams closing while the tab is hidden and while one camera is full screen, kiosk mode (whole window, cursor hiding, wake lock, rotation, bookmarkable URL) and one column at 390 px; it writes the `gcode-*.png`, `cameras*.png`, `mobile-gcode-preview.png` and `mobile-cameras.png` screenshots. It runs the full Chromium build so WebGL uses the real GPU (`E2E_SOFTWARE_GL=1` for SwiftShader). Measured on an Apple M4 with the 101 MB file (3.57 million moves, 784 layers): downloaded and parsed in about 0.6 s from a folder library and 0.9–1.4 s through OctoPrint (it runs on the same machine, in Docker), kept as 1.6 million points (39 MB JS heap); a full frame of 1.6 million segments draws within a 60 Hz frame, and orbiting stays at 60 fps. With a phone's budget (390 px touch emulation) it loads in about 0.6 s as 0.96 million points and 22 MB of heap. `pnpm e2e:stats` (app `:5300`, mock OctoPrint `:5301`–`:5303`, mock Spoolman `:5304`; no Docker) seeds about 14 months of deterministic demo history on three printers and a removed one, checks the totals and buckets against the seed, a viewer limited to one printer (also in the CSV), the CSV row count, the file links into the History and a 390 px phone without sideways scrolling, then writes `stats.png`, `stats-tables.png`, `stats-light.png` and `mobile-stats.png`. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`.. `pnpm e2e:push` (app `:5200`, OctoPrint `:5201`–`:5202`, push service `:5203`) needs no Docker: it checks that the manifest, icons, service worker and offline page are served without signing in, subscribes devices against a mock Web Push service (`scripts/e2e/mock-push.mjs`, which verifies the VAPID signature and decrypts every message) and checks validation, ownership, admin counts, a device the push service reports gone, and that prints on two mock printers reach only the people who can see them; then, in Chromium, the service worker registering and caching only the app shell, **Enable notifications on this device** and **Send test**, a push delivered to the real service worker (over the DevTools protocol) showing its notification with the printer's link, the offline page with API calls still going to the network, an iPhone browser tab being told to add to the Home Screen first, and turning it off again, and writes the `push-*.png` and `mobile-push.png` screenshots. Chromium's own push service registration is replaced by a subscription at the mock, since it would contact Google; clicking a system notification can't be automated, so `notificationclick` (focus or open the printer page) isn't covered by the automated tests. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`. It also writes `badge-96.png`, the monochrome badge Android shows for push notifications.
+`scripts/dev-octoprint.sh` starts `octoprint/octoprint` containers with the built-in Virtual Printer enabled, the first-run wizard skipped and an admin user (`admin` / `octoprint-dev`) whose API key is `ocm-dev-key-<n>`; `env` prints their URLs and keys, `down` removes them. `pnpm e2e` builds the app, starts two such servers and the fake webcam, and drives octo·modern over HTTP and in Chromium: setup, adding servers, live temperatures over SSE, roles, uploads (including a 200 MB one, checking memory), printing, pausing, resuming and cancelling, webcam streaming and cleanup. It writes the screenshots in `docs/screenshots/` and removes its containers afterwards. `pnpm e2e:library` does the same for the Library: a folder source plus SFTP (`atmoz/sftp`), Samba (`crazymax/samba`) and WebDAV (`rclone serve webdav`) servers, browsing, metadata, search, send & print, 150 MB transfers from each with a memory check, and Save to library (`E2E_NAS_PREFIX` names its containers). `pnpm e2e:history` prints files to completion and cancels others on two virtual printers, with and without a browser watching, and checks the history entries (results, durations, who started them, pictures), the webhook notifications, CSV export, import, and the timelapses OctoPrint renders from the test camera (listing, Range requests, playback with seeking, download, delete, settings). Ports: `E2E_APP_PORT`, `E2E_OP_PORT_BASE`, `E2E_CAM_PORT`; `E2E_OP_PREFIX` names the containers (for both e2e scripts). `pnpm e2e:notify` (app `:3200`, OctoPrint `:3201`, camera `:3202`, mock services `:3204` HTTP and `:3205` SMTP) sets up one channel of every type against `scripts/e2e/mock-notify.mjs` (nothing real is contacted), sends tests including failing ones, prints on a virtual printer and checks the started, 50 %, finished (with snapshots: attachments, the shared link), still-hot, paused-by-M0, paused-by-the-operator and cancelled-by messages, offline and back by stopping the container, quiet hours, the delivery log and a backup round trip, then writes the `notifications*.png` screenshots. `pnpm e2e:mobile` (app `:3180`, OctoPrint `:5161`–`:5162`, camera `:5261`; same variables) opens every main page as an iPhone-sized touch screen at 360, 390 and 430 px and fails if anything sticks out sideways or a text field is under 16 px, then checks the drawer, the job bar and emergency-stop confirmation, the tab strip, the file list and its menu, the jog pad, the terminal prompt, the library and history sheets and the web app manifest, and writes the `mobile-*.png` screenshots. `pnpm e2e:power` (ports `:3230`–`:3236`) needs no Docker: it runs two mock OctoPrint servers powered by a mock Shelly Gen2 (Digest login) and a mock Tasmota, and checks plug setup and tests (admins only, sealed passwords), power-on with auto-connect, the hot and printing confirmations (in Chromium too), auto power-on for a print, the auto power-off countdown with Keep on and cancelling, the webhooks, the audit log and a 390 px phone, then writes the `power*.png` screenshots. The adapters are unit-tested against the same mocks (`scripts/e2e/mock-plugs.mjs`); nothing contacts a real device. `pnpm e2e:viewer` (app `:3250`, OctoPrint `:3251`–`:3252`, camera `:3253`) writes synthetic slicer-flavoured G-code (`node scripts/gcode-samples.mjs <dir> [--big MB]`: PrusaSlicer, Cura, OrcaSlicer with arcs, and comment-free files) plus a ~100 MB file (`E2E_BIG_MB`), checks the download routes (ranges, traversal, sign-in, no key in responses), previews printer and library files as a viewer (layers, legend, slider, keyboard, orbit, the 2D layer view), times the big file, follows a live print on a virtual printer and cross-checks the layer against OctoPrint's `filepos`, then checks the camera wall: live streams vs. snapshots, streams closing while the tab is hidden and while one camera is full screen, kiosk mode (whole window, cursor hiding, wake lock, rotation, bookmarkable URL) and one column at 390 px; it writes the `gcode-*.png`, `cameras*.png`, `mobile-gcode-preview.png` and `mobile-cameras.png` screenshots. It runs the full Chromium build so WebGL uses the real GPU (`E2E_SOFTWARE_GL=1` for SwiftShader). Measured on an Apple M4 with the 101 MB file (3.57 million moves, 784 layers): downloaded and parsed in about 0.6 s from a folder library and 0.9–1.4 s through OctoPrint (it runs on the same machine, in Docker), kept as 1.6 million points (39 MB JS heap); a full frame of 1.6 million segments draws within a 60 Hz frame, and orbiting stays at 60 fps. With a phone's budget (390 px touch emulation) it loads in about 0.6 s as 0.96 million points and 22 MB of heap. `pnpm e2e:stats` (app `:5300`, mock OctoPrint `:5301`–`:5303`, mock Spoolman `:5304`; no Docker) seeds about 14 months of deterministic demo history on three printers and a removed one, checks the totals and buckets against the seed, a viewer limited to one printer (also in the CSV), the CSV row count, the file links into the History and a 390 px phone without sideways scrolling, then writes `stats.png`, `stats-tables.png`, `stats-light.png` and `mobile-stats.png`. `pnpm e2e:push` (app `:5200`, OctoPrint `:5201`–`:5202`, push service `:5203`; `E2E_PORT_BASE` moves them) needs no Docker: it checks that the manifest, icons, service worker and offline page are served without signing in, subscribes devices against a mock Web Push service (`scripts/e2e/mock-push.mjs`, which verifies the VAPID signature and decrypts every message) and checks validation, ownership, admin counts, a device the push service reports gone, and that prints on two mock printers reach only the people who can see them; then, in Chromium, the service worker registering and caching only the app shell, **Enable notifications on this device** and **Send test**, a push delivered to the real service worker (over the DevTools protocol) showing its notification with the printer's link, the offline page with API calls still going to the network, an iPhone browser tab being told to add to the Home Screen first, and turning it off again, and writes the `push-*.png` and `mobile-push.png` screenshots. Chromium's own push service registration is replaced by a subscription at the mock, since it would contact Google; clicking a system notification can't be automated, so `notificationclick` (focus or open the printer page) isn't covered by the automated tests. The home-screen icons in `static/` are rendered from the logo by `node scripts/pwa-icons.mjs`. It also writes `badge-96.png`, the monochrome badge Android shows for push notifications.
 
 `pnpm e2e:bedmesh` (ports `:5400`–`:5403`) needs no Docker: `scripts/e2e/mock-octoprint.mjs` gains the Bed Visualizer plugin (its settings, the `@BEDLEVELVISUALIZER` probe run, its push messages over a small websocket) and the script checks detection (no tab and a settings hint without the plugin), the history from meshes probed in OctoPrint, roles, the refusal while printing and the confirmation, an update with progress in Chromium, the written-back mesh, the `bed.drift` webhook, comparing, deleting, light and dark, and a 390 px phone, then writes the `bedmesh*.png` and `mobile-bedmesh*.png` screenshots.
 

@@ -166,7 +166,7 @@
 
 			{#if info.images === 'link'}
 				<p class="rounded-lg bg-surface px-3 py-2 text-[0.6875rem] text-muted-foreground">
-					{info.label} shows pictures by link only: {mediaLinks ? 'snapshots are shared by expiring link (General → Share snapshots by link).' : 'turn on “Share snapshots by link” under General to include the webcam snapshot.'}
+					{info.label} shows pictures by link only: {mediaLinks ? 'snapshots are shared by expiring link (Options → Share snapshots by link).' : 'turn on “Share snapshots by link” under Options to include the webcam snapshot.'}
 				</p>
 			{/if}
 
