@@ -88,9 +88,10 @@
 						<details>
 							<summary>On this page<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
 							<ul>
+								<li><a href="#navigation">Finding your way around</a></li>
 								<li><a href="#printers">Adding a printer</a></li>
 								<li><a href="#klipper">Klipper (Moonraker)</a></li>
-								<li><a href="#discover">Discover</a></li>
+								<li><a href="#discover">Printers &amp; Discover</a></li>
 								<li><a href="#roles">Users and roles</a></li>
 								<li><a href="#configuration">Configuration</a></li>
 								<li><a href="#queue">Print queue</a></li>
@@ -103,7 +104,7 @@
 								<li><a href="#push">Browser push</a></li>
 								<li><a href="#detection">Failure detection</a></li>
 								<li><a href="#spools">Spools, costs and maintenance</a></li>
-								<li><a href="#stats">Stats</a></li>
+								<li><a href="#stats">History stats</a></li>
 								<li><a href="#bedmesh">Bed mesh</a></li>
 								<li><a href="#preprint">Before each print</a></li>
 								<li><a href="#preview">G-code preview</a></li>
@@ -117,6 +118,13 @@
 				</nav>
 
 				<div class="prose">
+					<section id="navigation">
+						<h2>Finding your way around</h2>
+						<p>The <strong>sidebar</strong> holds the everyday pages, <strong>Overview</strong> (with more than one printer), <strong>Queue</strong>, <strong>Library</strong>, <strong>History</strong> and <strong>Cameras</strong>, then your printers. <strong>Filament</strong> appears once Spoolman is set up and <strong>Maintenance</strong> once there is a task (or one is overdue; its badge counts them). Admins get one <strong>Settings</strong> entry. ⌘K / Ctrl+K searches every page, printer and tab.</p>
+						<p><strong>Settings</strong> has its own sub-navigation (a rail, or a strip of sections on a phone): <strong>General</strong>, <strong>Printers &amp; Discover</strong>, <strong>Users</strong>, <strong>Notifications</strong>, <strong>Integrations</strong> and <strong>Audit log</strong>, plus <strong>Filament</strong> and <strong>Maintenance</strong> under <em>Set up</em> until they are in the sidebar. Their addresses are unchanged (<code>/settings</code>, <code>/discover</code>, <code>/users</code>, <code>/notifications</code>, <code>/integrations</code>, <code>/audit</code>). <strong>History</strong> has <strong>Prints</strong> and <strong>Stats</strong> (<code>/history/stats</code>; <code>/stats</code> redirects there).</p>
+						<p>Each <strong>printer</strong> has six tabs: <strong>Dashboard</strong>; <strong>Files</strong>, where <strong>Preview</strong> opens a toolpath (<code>?tab=files&amp;view=preview</code>); <strong>Control</strong>, with the <strong>Terminal</strong> as a panel underneath that <strong>Expand</strong> gives the whole tab (<code>?view=terminal</code>); <strong>Camera</strong>: <strong>Live</strong>, <strong>Timelapses</strong> (OctoPrint) and <strong>Failure detection</strong>; <strong>Jobs</strong>: the printer's <strong>History</strong> and <strong>Queue</strong>; and <strong>Care</strong>: <strong>Maintenance</strong>, and <strong>Bed mesh</strong> with the Bed Visualizer plugin. Links to the old tabs (<code>?tab=terminal</code>, <code>?tab=bed</code>…) open the matching tab and view.</p>
+					</section>
+
 					<section id="printers">
 						<h2>Adding a printer</h2>
 						<p>You need two things from each OctoPrint.</p>
@@ -129,24 +137,24 @@
 							</li>
 						</ul>
 						<p><strong>Test connection</strong> shows OctoPrint's version, which user the key belongs to, and any permission the key lacks. Self-signed certificate on your LAN? Turn off <strong>Verify TLS certificate</strong> for that server.</p>
-						<p>Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and <a href="#discover">Discover</a> does the rest. You approve the key in OctoPrint instead of copying it.</p>
+						<p>Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and <a href="#discover">Settings → Printers &amp; Discover</a> does the rest. You approve the key in OctoPrint instead of copying it.</p>
 					</section>
 
 					<section id="klipper">
 						<h2>Klipper printers (Moonraker)</h2>
-						<p>octo·modern talks to Klipper through Moonraker, the API server behind Mainsail and Fluidd. Choose <strong>Klipper</strong> when adding a printer (or <strong>Auto-detect</strong>, which asks <code>/server/info</code> before OctoPrint's <code>/api/version</code>, since Moonraker imitates the latter), or find it in <a href="#discover">Discover</a>: Moonraker announces itself as <code>_moonraker._tcp</code>.</p>
+						<p>octo·modern talks to Klipper through Moonraker, the API server behind Mainsail and Fluidd. Choose <strong>Klipper</strong> when adding a printer (or <strong>Auto-detect</strong>, which asks <code>/server/info</code> before OctoPrint's <code>/api/version</code>, since Moonraker imitates the latter), or find it in <a href="#discover">Printers &amp; Discover</a>: Moonraker announces itself as <code>_moonraker._tcp</code>.</p>
 						<ul>
 							<li><strong>URL</strong>: <code>http://&lt;host&gt;:7125</code>, or the Mainsail/Fluidd host, which proxies the same API.</li>
 							<li><strong>API key, optional</strong>: add octo·modern's address to <code>[authorization] trusted_clients</code> in <code>moonraker.conf</code> and leave it empty, or paste Moonraker's key (Mainsail: <strong>Settings → Authorization</strong>). The websocket then uses a one-shot token.</li>
 							<li><strong>Live</strong>: Moonraker's JSON-RPC websocket (<code>printer.objects.subscribe</code>), reconnecting with backoff and polled over HTTP meanwhile.</li>
 						</ul>
 						<p>What works: live status, temperatures, progress and ETA; start, pause, resume, cancel; files with folders, uploads, thumbnails and slicer estimates; G-code preview; jog, home, extrude, fan, feed and flow rate (as G-code); Klipper macros as buttons; Mainsail's temperature presets; the terminal; emergency stop (<code>printer.emergency_stop</code>) and firmware restart; webcams from <code>server.webcams.list</code>; history, including Moonraker's own job history; the queue, failure detection, notifications, smart plugs, spools and maintenance.</p>
-						<p>What doesn't (OctoPrint-only): loading a file without printing it, the SD card, serial connect/disconnect settings, OctoPrint's timelapse (the tab is hidden), and the Bed tab (it reads OctoPrint’s Bed Visualizer plugin).</p>
+						<p>What doesn't (OctoPrint-only): loading a file without printing it, the SD card, serial connect/disconnect settings, OctoPrint's timelapse (hidden under Camera), and Care → Bed mesh (it reads OctoPrint’s Bed Visualizer plugin).</p>
 					</section>
 
 					<section id="discover">
-						<h2>Discover</h2>
-						<p><strong>Discover</strong> (admins) finds OctoPrint servers and adds them in two clicks. It looks in three places:</p>
+						<h2>Printers &amp; Discover</h2>
+						<p><strong>Settings → Printers &amp; Discover</strong> (admins, <code>/discover</code>) lists your printers with <strong>Edit</strong>, and finds OctoPrint servers to add in two clicks. It looks in three places:</p>
 						<ul>
 							<li><strong>Docker</strong>: every container on each Docker endpoint, recognized by image or by port plus OctoPrint markers. Each candidate shows its image, compose project and the <strong>serial devices</strong> mapped into it, so you can tell which printer it drives.</li>
 							<li><strong>Arcane</strong>: the same, for every environment an <a href="https://getarcane.app">Arcane</a> instance manages, through its API with a read-only key (<code>environments:list</code>, <code>containers:list</code>, <code>containers:read</code>).</li>
@@ -254,7 +262,7 @@
 
 					<section id="queue">
 						<h2>Print queue</h2>
-						<p><strong>Queue</strong> in the sidebar holds prints waiting for a printer; each printer's <strong>Queue</strong> tab shows what it could take. Add jobs from the library, a printer's files (they print on that printer) or an upload, or let a slicer add them.</p>
+						<p><strong>Queue</strong> in the sidebar holds prints waiting for a printer; each printer's <strong>Jobs → Queue</strong> shows what it could take. Add jobs from the library, a printer's files (they print on that printer) or an upload, or let a slicer add them.</p>
 						<ul>
 							<li><strong>Which printer</strong>: one printer, or <em>any compatible printer</em>, meaning one whose tags include all the job's tags. Admins tag printers on the Queue page (<code>0.4mm</code>, <code>petg</code>, <code>bed:300</code>, …).</li>
 							<li><strong>Order and copies</strong>: drag jobs, or use the up/down arrows (the ⋯ menu on phones). Copies print one after another.</li>
@@ -396,7 +404,7 @@
 
 					<section id="notifications">
 						<h2>Notifications</h2>
-						<p>Admins set them up under <strong>Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
+						<p>Admins set them up under <strong>Settings → Notifications</strong>. Secrets (tokens, webhook URLs, passwords) are stored encrypted and never sent back to the browser; <strong>Send test</strong> tries the settings on screen and shows the service's answer word for word when it fails.</p>
 						<ul>
 							<li><strong>Channels</strong>: browser push (<a href="#push">below</a>), ntfy, Discord, Slack (incoming webhook, Block Kit), Telegram (bot token and chat ID, the snapshot as a photo), Pushover, Gotify, Matrix (homeserver, room ID, access token), email over SMTP (STARTTLS or TLS, snapshot inline), Home Assistant (webhook trigger and/or a <code>notify.*</code> service) and generic JSON webhooks.</li>
 							<li><strong>Events</strong>: print started, progress milestones (percentages, minutes left), paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom), printer offline, error, back, still hot after a print; plus <code>queue.bed_clear_needed</code>, <code>failure.suspected</code>, <code>spool.low</code>, <code>maintenance.due</code>, <code>power.off</code>, <code>bed.drift</code> and <code>print.prestart_failed</code> from other features.</li>
@@ -423,7 +431,7 @@
 						<p>octo·modern watches printing printers with Obico's failure-detection model (the "Spaghetti Detective"), in your own <code>ml_api</code> container from <a href="https://github.com/TheSpaghettiDetective/obico-server">obico-server</a>; no Obico account or cloud. Add it with <code>compose.detect.yaml</code> from the repository:</p>
 						<pre><code>echo "ML_API_TOKEN=$(openssl rand -hex 32)" &gt;&gt; .env
 docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
-						<p>Check <strong>Settings → Failure detection</strong> (ML API URL, token, and octo·modern's address as the container sees it, usually <code>http://octo-modern:3000</code>), press <strong>Test</strong> for a full round trip, then turn detection on in a printer's <strong>Failure detection</strong> tab.</p>
+						<p>Check <strong>Settings → Failure detection</strong> (ML API URL, token, and octo·modern's address as the container sees it, usually <code>http://octo-modern:3000</code>), press <strong>Test</strong> for a full round trip, then turn detection on under a printer's <strong>Camera → Failure detection</strong>.</p>
 						<ul>
 							<li><strong>Frames</strong>: after the first minutes of a print (default 5), a webcam snapshot every 10 s goes to <code>GET /p/?img=&lt;url&gt;</code>; the container downloads it and answers boxes and confidences. That's the ML API's only interface: it takes no image bytes, so octo·modern serves each frame through a single-use, 30-second link.</li>
 							<li><strong>Score</strong>: Obico's own algorithm: the frame's confidences summed, smoothed over 12 frames, minus a long-term baseline per printer, times the sensitivity. Warning from 33 %, failure from 67 % on Obico's 0–100 % scale.</li>
@@ -434,7 +442,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 
 					<section id="spools">
 						<h2>Spools, costs and maintenance</h2>
-						<p>The <strong>Filament</strong> page shows which <a href="https://github.com/Donkie/Spoolman">Spoolman</a> spool is on which printer and holds the admin settings; each printer's dashboard has a <strong>Filament</strong> card with the active spool per extruder.</p>
+						<p>The <strong>Filament</strong> page shows which <a href="https://github.com/Donkie/Spoolman">Spoolman</a> spool is on which printer and holds the admin settings; each printer's dashboard has a <strong>Filament</strong> card with the active spool per extruder. The page joins the sidebar once Spoolman is set up; until then admins open it from <strong>Settings → Set up</strong>.</p>
 						<ul>
 							<li><strong>Connecting</strong> (admins): Spoolman's address, e.g. <code>http://spoolman.lan:7912</code>, and optionally an auth header for a reverse proxy in front of it (stored encrypted, never sent back to the browser). Only the server talks to Spoolman.</li>
 							<li><strong>Choosing a spool</strong> (operators): search Spoolman's spools by name, vendor, material or location, with the colour and what's left. One spool per extruder; a spool sits on one tool at a time.</li>
@@ -443,12 +451,12 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 							<li><strong>Low spools</strong> turn red below the threshold (100 g by default) and send a <code>spool.low</code> notification once.</li>
 						</ul>
 						<p><strong>Cost per print</strong> (admins set the prices): filament by weight, at the spool's price from Spoolman or a price per kg per material, plus electricity (print time × the printer's power draw × the price per kWh). It's on every history entry, in the History stats per printer and in the CSV export (<code>filament_g</code>, <code>material</code>, <code>cost_filament</code>, <code>cost_energy</code>, <code>cost_total</code>); earlier prints are costed too, and <strong>Recalculate history</strong> applies new prices.</p>
-						<p><strong>Maintenance</strong>: per-printer tasks every so many print hours, kg of filament or days, counted from the print history since they were last done. Nozzle change, belt tension, lubrication, bed cleaning and e-steps are offered. Tasks are <em>due soon</em> at 90 % and <em>overdue</em> past their interval; the sidebar counts overdue ones and <code>maintenance.due</code> is sent once. <strong>Done</strong> logs who, when and your notes, and restarts the count.</p>
+						<p><strong>Maintenance</strong> (the page, and each printer's <strong>Care</strong> tab): per-printer tasks every so many print hours, kg of filament or days, counted from the print history since they were last done. Nozzle change, belt tension, lubrication, bed cleaning and e-steps are offered. Tasks are <em>due soon</em> at 90 % and <em>overdue</em> past their interval; the sidebar counts overdue ones and <code>maintenance.due</code> is sent once. <strong>Done</strong> logs who, when and your notes, and restarts the count.</p>
 					</section>
 
 					<section id="stats">
-						<h2>Stats</h2>
-						<p>The <strong>Stats</strong> page sums up the print history over the last 30 days, 90 days, 12 months or all time, for every printer or one.</p>
+						<h2>History stats</h2>
+						<p><strong>History → Stats</strong> (<code>/history/stats</code>) sums up the print history over the last 30 days, 90 days, 12 months or all time, for every printer or one.</p>
 						<ul>
 							<li><strong>Tiles</strong>: print hours, finished prints, success rate, filament in metres and grams, cost (only when prints have one) and the average print.</li>
 							<li><strong>Charts</strong>: print hours per day, week or month stacked by printer, and successes, failures and cancels over the same buckets. Hover or tap a column for its numbers; screen readers get them as a table.</li>
@@ -461,7 +469,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 
 					<section id="bedmesh">
 						<h2>Bed mesh</h2>
-						<p>Printers whose OctoPrint has the <a href="https://github.com/jneilliii/OctoPrint-BedLevelVisualizer">Bed Visualizer</a> plugin get a <strong>Bed</strong> tab; others show no bed-mesh UI (their settings dialog says how to get it). octo·modern checks for the plugin in OctoPrint's settings when the printer page first opens and every 15 minutes.</p>
+						<p>Printers whose OctoPrint has the <a href="https://github.com/jneilliii/OctoPrint-BedLevelVisualizer">Bed Visualizer</a> plugin get <strong>Bed mesh</strong> in the printer's <strong>Care</strong> tab; others show no bed-mesh UI (their settings dialog says how to get it). octo·modern checks for the plugin in OctoPrint's settings when the printer page first opens and every 15 minutes.</p>
 						<ul>
 							<li><strong>The mesh</strong>: a heatmap with each point's value (back of the bed at the top, lowest and highest outlined) and a 3D surface to rotate and zoom (drag, wheel or pinch, arrow keys), with flatness (max − min), the lowest and highest point and the mean. Missing points (<code>nan</code>) are grey and left out.</li>
 							<li><strong>Update mesh</strong> (operators): sends <code>@BEDLEVELVISUALIZER</code> and the plugin's probe G-code, as the plugin's own button does. It asks first, is refused while printing or disconnected, shows progress and refreshes when the plugin reports the mesh. The mesh is written back to the plugin so OctoPrint shows it too.</li>
@@ -484,7 +492,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 
 					<section id="preview">
 						<h2>G-code preview</h2>
-						<p>The <strong>Preview</strong> tab on a printer shows the job's toolpath; the cube button next to a file in <strong>Files</strong> or the <strong>Library</strong> previews any other. Drag to orbit (right-drag or Shift to pan), scroll or pinch to zoom, double-tap to reset; the slider and ↑/↓ change the layer. <strong>Layer</strong> shows one layer from above; <strong>Travel</strong> adds moves without extrusion; the legend hides feature types.</p>
+						<p><strong>Preview</strong> on a printer's job card shows the job's toolpath in its <strong>Files</strong> tab; the cube button next to a file in <strong>Files</strong> or the <strong>Library</strong> previews any other. Drag to orbit (right-drag or Shift to pan), scroll or pinch to zoom, double-tap to reset; the slider and ↑/↓ change the layer. <strong>Layer</strong> shows one layer from above; <strong>Travel</strong> adds moves without extrusion; the legend hides feature types.</p>
 						<ul>
 							<li><strong>Live</strong>: during a print, the preview follows OctoPrint's position in the file: the layer being printed, what's done and what's left, and the nozzle.</li>
 							<li><strong>Understood</strong>: G0/G1, G2/G3 arcs, G90/G91, M82/M83, G92, G20/G21. Layers from slicer comments (<code>;LAYER_CHANGE</code>, <code>;LAYER:n</code>) or from Z; colours from <code>;TYPE:</code>/<code>;FEATURE:</code> (PrusaSlicer, OrcaSlicer, Bambu Studio, Cura). Not <code>.bgcode</code> or SD card files.</li>

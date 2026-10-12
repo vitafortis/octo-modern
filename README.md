@@ -18,6 +18,7 @@
 ## Features
 
 - **Every printer in one place**: add any number of OctoPrint servers and Klipper printers (through Moonraker, the API Mainsail and Fluidd use). The sidebar shows each one's state (ready, printing, paused, error, unreachable) and progress; the overview shows the current file, progress, time left, ETA, temperatures and a webcam snapshot per printer. With a single printer, octo·modern opens straight to it.
+- **Calm navigation**: the sidebar holds the everyday pages (Overview, Queue, Library, History, Cameras) and your printers; Filament and Maintenance join it once you use them, and the admin pages sit behind one **Settings** entry with its own sub-navigation. Each printer has six tabs: **Dashboard**, **Files** (with the toolpath preview), **Control** (with the terminal), **Camera** (live view, timelapses, failure detection), **Jobs** (its history and queue) and **Care** (maintenance, bed mesh). See [Finding your way around](#finding-your-way-around).
 - **Live, without hammering OctoPrint**: while you watch a printer, octo·modern keeps one push connection to OctoPrint (its SockJS websocket) and fans updates out to every browser over Server-Sent Events. Printers nobody is watching get a light status poll. If the websocket can't connect (a proxy without websocket support, say), it polls instead and keeps retrying with backoff.
 - **Klipper (Moonraker)**: Klipper printers sit next to OctoPrint ones: live status over Moonraker's websocket, jobs, files with slicer thumbnails and estimates, temperatures, jog/home/extrude, macros as buttons, the terminal, webcams, history (with Klipper's own job history imported), the queue, failure detection, smart plugs and spools. The add-printer dialog detects which one answers. See [Klipper printers](#klipper-printers-moonraker) for what works and what doesn't.
 - **Temperatures**: a live chart of actual and target temperatures per hotend, bed and chamber (5, 15 or 30 minutes), set targets directly or from OctoPrint's temperature presets, and turn everything off at once.
@@ -28,11 +29,11 @@
 - **Slicer uploads**: PrusaSlicer, OrcaSlicer and Cura can send G-code to octo·modern as if it were an OctoPrint server, with an upload key that decides where it goes: the queue, a library folder, or one printer. See [Slicer uploads](#slicer-uploads).
 - **G-code preview**: see a file's toolpath before you print it, in 3D (orbit, pan, pinch) or layer by layer from above, with a layer slider, travel moves on or off and colours by feature type (walls, infill, supports… from PrusaSlicer, OrcaSlicer, Bambu Studio and Cura comments). Works for files on a printer and in the library; during a print it follows the job live, marking what's printed and where the nozzle is. Files of 100 MB and more stream in and are parsed in the background. See [G-code preview](#g-code-preview).
 - **Camera wall**: every webcam you may see on one page, with each printer's state, progress and temperatures on top; tap one for full screen. A **kiosk** mode for a wall tablet or TV hides everything else, hides the cursor, keeps the screen on and can rotate through the cameras; many cameras switch to snapshots to save bandwidth. Bookmarkable. See [Camera wall](#camera-wall).
-- **Webcams**: the live MJPEG stream on the dashboard (with fullscreen) and its own tab, relayed by octo·modern so it works wherever octo·modern does, even when the camera is on a LAN address the browser can't reach. Several cameras per printer get a switcher; flip and rotation follow OctoPrint's settings; HLS and WebRTC cameras get an "Open stream" link.
+- **Webcams**: the live MJPEG stream on the dashboard (with fullscreen) and the Camera tab, relayed by octo·modern so it works wherever octo·modern does, even when the camera is on a LAN address the browser can't reach. Several cameras per printer get a switcher; flip and rotation follow OctoPrint's settings; HLS and WebRTC cameras get an "Open stream" link.
 - **Control**: jog X/Y/Z in 0.1–100 mm steps (buttons or arrow keys, Page Up/Down and Home while the pad has focus), home, motors off, feed and flow rate overrides, part fan, extrude/retract and tool select. It follows the printer profile (axis inversion, build volume, extruder count, heated bed/chamber) and shows OctoPrint's custom controls (sections, commands, scripts, sliders and inputs, feedback lines). Movement is refused while a print runs, by the server too; jogs are coalesced in the audit log.
-- **Terminal**: the live serial log (virtualized, follows the bottom until you scroll up), filters for temperature reports, `ok`, SD status, `wait` and `busy`, search with highlighting, clear and copy. A G-code prompt with multi-line send, history (↑/↓, kept per user and printer), autocomplete with short descriptions, optional uppercasing, and an emergency stop button.
+- **Terminal**: a panel under the Control tab's controls (folds away, or **Expand** for the whole tab): the live serial log (virtualized, follows the bottom until you scroll up), filters for temperature reports, `ok`, SD status, `wait` and `busy`, search with highlighting, clear and copy. A G-code prompt with multi-line send, history (↑/↓, kept per user and printer), autocomplete with short descriptions, optional uppercasing, and an emergency stop button.
 - **Discover**: find OctoPrint in Docker (through a read-only socket proxy), in [Arcane](https://getarcane.app), over mDNS and with a subnet scan, see which serial port each container owns, and add one by approving octo·modern in OctoPrint (Application Keys), no key to copy. See [Discover](#discover).
-- **Print history**: every print on every printer, recorded whether or not anyone has a browser open: file, start and end, duration, result (success, failed, cancelled), filament used, who started it, a webcam picture of how it ended, and notes. A History tab per printer and a History page across all of them, with filters, success rate, print time and filament per printer and per week, CSV export, and "print again". Earlier prints are imported from OctoPrint. See [Print history](#print-history).
+- **Print history**: every print on every printer, recorded whether or not anyone has a browser open: file, start and end, duration, result (success, failed, cancelled), filament used, who started it, a webcam picture of how it ended, and notes. History per printer (its **Jobs** tab) and a History page across all of them, with filters, success rate, print time and filament per printer and per week, CSV export, and "print again". Earlier prints are imported from OctoPrint. See [Print history](#print-history).
 - **Stats**: print hours per day, week or month stacked by printer, outcomes over time, success rate, filament (m and g, per material and per Spoolman spool), cost, most-printed files, why prints failed and how busy each printer was, over 30 days, 90 days, 12 months or all time, in your own time zone, with a CSV of the prints behind it. See [Stats](#stats).
 - **Timelapses**: watch OctoPrint's timelapses in the browser (with seeking), download and delete them, render unrendered ones, and change the timelapse settings.
 - **Notifications** to browser push (phones and computers, see [Browser push](#browser-push)), ntfy, Discord, Slack, Telegram, Pushover, Gotify, Matrix, email (SMTP), Home Assistant or any webhook, with the webcam snapshot: prints started, at milestones, paused (filament runout, M600, a pause in the G-code, or who), finished, failed, cancelled (and by whom); printers offline, in error, back, or still hot after a print; plus the queue, failure detection and other features. Rules per printer and event, quiet hours per channel, de-duplication and a delivery log. See [Notifications](#notifications).
@@ -41,7 +42,7 @@
 - **Cost per print**: filament (by the spool's price from Spoolman, or a price per kg per material) plus electricity (print time × each printer's power draw), on every history entry, in the History stats per printer and in the CSV export; earlier prints are costed too.
 - **Maintenance reminders**: per-printer tasks counted in print hours, filament used or days (nozzle, belts, rails, bed, e-steps offered), with due/overdue badges, "Done" with notes and a log of who did what when.
 - **Before each print**: optionally level the bed (heating it first if you like) and run your own G-code before every print octo·modern starts, for all printers or per printer, skipped automatically when the file already does it. The printer shows **Preparing** with Cancel while the steps run, and the print only starts once they've finished. See [Before each print](#before-each-print-leveling-and-pre-print-g-code).
-- **Bed mesh**: for printers with the [Bed Visualizer](https://github.com/jneilliii/OctoPrint-BedLevelVisualizer) plugin, a **Bed** tab with the mesh as a heatmap with values and a 3D surface you can rotate and zoom, its range, lowest and highest points and flatness; **Update mesh** probes the bed from octo·modern. Every mesh is kept, so you can compare any two (a difference map) and follow flatness over time, and a `bed.drift` notification tells you when the bed warps past your limits. See [Bed mesh](#bed-mesh).
+- **Bed mesh**: for printers with the [Bed Visualizer](https://github.com/jneilliii/OctoPrint-BedLevelVisualizer) plugin, a **Bed mesh** view under the printer's **Care** tab with the mesh as a heatmap with values and a 3D surface you can rotate and zoom, its range, lowest and highest points and flatness; **Update mesh** probes the bed from octo·modern. Every mesh is kept, so you can compare any two (a difference map) and follow flatness over time, and a `bed.drift` notification tells you when the bed warps past your limits. See [Bed mesh](#bed-mesh).
 - **Connection**: connect and disconnect the printer with OctoPrint's ports, baud rates and printer profiles, and an emergency stop (M112).
 - **API keys stay server-side**: keys are sealed with AES-256-GCM and never sent to a browser. Every request to OctoPrint, including the push connection, webcam images and uploads, goes through octo·modern.
 - **Roles**: *admins* manage everything, *operators* run printers, *viewers* watch. Give people every printer or only some. See [Users and roles](#users-and-roles).
@@ -95,11 +96,11 @@ You need two things from each OctoPrint:
 
 **Klipper printer?** Pick **Klipper** (or leave **Auto-detect**) and enter Moonraker's URL: `http://<host>:7125`, or the Mainsail/Fluidd address, which proxies the same API. The API key is optional; see [Klipper printers](#klipper-printers-moonraker).
 
-Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and **Discover** (in the sidebar) does the rest. You approve the key in OctoPrint instead of copying it.
+Or let octo·modern find it: the setup wizard lists OctoPrint servers it finds in Docker and over mDNS right after you create the admin, and **Settings → Printers & Discover** does the rest. You approve the key in OctoPrint instead of copying it.
 
 ## Klipper printers (Moonraker)
 
-octo·modern talks to Klipper through [Moonraker](https://moonraker.readthedocs.io/), the API server behind Mainsail and Fluidd. Add one with **Add printer → Klipper** (or **Auto-detect**, which asks `/server/info` first; Moonraker also imitates OctoPrint's `/api/version` for slicers, so the order matters), or find it in **Discover**: Moonraker announces itself over mDNS as `_moonraker._tcp`.
+octo·modern talks to Klipper through [Moonraker](https://moonraker.readthedocs.io/), the API server behind Mainsail and Fluidd. Add one with **Add printer → Klipper** (or **Auto-detect**, which asks `/server/info` first; Moonraker also imitates OctoPrint's `/api/version` for slicers, so the order matters), or find it in **Settings → Printers & Discover**: Moonraker announces itself over mDNS as `_moonraker._tcp`.
 
 - **URL**: Moonraker's own port, `http://<host>:7125`, or the Mainsail/Fluidd host (`http://voron.lan`), which proxies `/server`, `/printer` and `/websocket` to it.
 - **API key, optional**: Moonraker trusts clients on the networks listed under `[authorization] trusted_clients` in `moonraker.conf`. Add octo·modern's address (or the Docker network) there and leave the key empty, or paste Moonraker's API key (Mainsail: **Settings → Authorization**; or `GET /access/api_key` from a trusted machine). With a key, the websocket authenticates with a one-shot token.
@@ -123,15 +124,15 @@ octo·modern talks to Klipper through [Moonraker](https://moonraker.readthedocs.
 | Print history, import of earlier prints | ✓ (PrintJobHistory, file statistics) | ✓ (Moonraker's job history) |
 | Queue, failure detection, notifications, smart plugs, spools, maintenance | ✓ | ✓ |
 | Library send, slicer uploads to a printer | ✓ | ✓ |
-| Timelapses | OctoPrint's timelapse | – (tab hidden; moonraker-timelapse isn't supported) |
-| Bed tab (bed meshes, drift alerts) | Bed Visualizer plugin | – (tab hidden; its routes answer 400) |
+| Timelapses | OctoPrint's timelapse | – (hidden under Camera; moonraker-timelapse isn't supported) |
+| Care → Bed mesh (bed meshes, drift alerts) | Bed Visualizer plugin | – (hidden; its routes answer 400) |
 | Discover | Docker, Arcane, mDNS, subnet scan | mDNS (`_moonraker._tcp`), subnet scan (add port 7125) |
 
 Relative webcam URLs (`/webcam/?action=stream`) are resolved against the Mainsail/Fluidd host, so with `:7125` in the printer's URL they go to port 80 of the same host. Klipper's `print_stats` changes become the same print events OctoPrint sends (started, paused, done, cancelled, failed), so history, notifications and the queue behave the same for both.
 
 ## Discover
 
-**Discover** (admins) finds OctoPrint servers and adds them in two clicks.
+**Settings → Printers & Discover** (admins, `/discover`) lists the printers you have, with **Edit**, and finds OctoPrint servers to add in two clicks.
 
 ![Discover](docs/screenshots/discover.png)
 
@@ -189,6 +190,27 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 
 ![Discover: network](docs/screenshots/discover-network.png)
 
+## Finding your way around
+
+**Sidebar**: **Overview** (with more than one printer), **Queue**, **Library**, **History**, **Cameras**, then your printers. **Filament** appears once Spoolman is set up, and **Maintenance** once there is a task (or something is overdue; the red badge counts overdue tasks). Admins get one **Settings** entry. ⌘K / Ctrl+K searches every page, printer and tab.
+
+**Settings** (admins) has its own sub-navigation, a rail beside the page (a strip of sections on phones): **General** (security, data, backups, failure detection, pre-print defaults), **Printers & Discover**, **Users**, **Notifications**, **Integrations** and **Audit log**, plus **Filament** and **Maintenance** under *Set up* while they aren't in the sidebar. The pages keep their addresses (`/settings`, `/discover`, `/users`, `/notifications`, `/integrations`, `/audit`).
+
+**History** has two views, **Prints** and **Stats** (`/history/stats`; `/stats` redirects there, keeping `range` and `printer`).
+
+**A printer** has six tabs (one row of icons with labels on a phone):
+
+| Tab | What's in it | Address |
+| --- | --- | --- |
+| **Dashboard** | job, temperatures, webcam, filament, power | `/p/<id>` |
+| **Files** | the printer's files; **Preview** opens the toolpath here, with **Files** to go back | `?tab=files`, `?tab=files&view=preview[&file=…]` |
+| **Control** | jog, home, temperatures, fans, macros; the **Terminal** panel underneath (**Expand** for full height) | `?tab=control`, `?tab=control&view=terminal` |
+| **Camera** | **Live**, **Timelapses** (OctoPrint), **Failure detection** | `?tab=camera[&view=timelapse\|detection]` |
+| **Jobs** | this printer's **History** and **Queue** | `?tab=jobs[&view=queue]` |
+| **Care** | **Maintenance**, and **Bed mesh** with the Bed Visualizer plugin | `?tab=care[&view=bed]` |
+
+Links to the old tabs (`?tab=preview`, `terminal`, `webcam`, `timelapse`, `detection`, `history`, `queue`, `maintenance`, `bed`), from bookmarks or notifications sent earlier, open the matching tab and view.
+
 ## Users and roles
 
 | | Admin | Operator | Viewer |
@@ -204,7 +226,7 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Watch the print queue | ✓ | ✓ | ✓ |
 | Add, reorder and remove queued jobs, pause the queue, confirm a bed is clear | ✓ | ✓ | |
 | Printer tags (for the queue), slicer upload keys | ✓ | | |
-| Watch the print history, Stats and timelapses, export CSV | ✓ | ✓ | ✓ |
+| Watch the print history, its Stats and timelapses, export CSV | ✓ | ✓ | ✓ |
 | Notes on prints, print again, delete and render timelapses | ✓ | ✓ | |
 | Watch failure detection (score, last frame) | ✓ | ✓ | ✓ |
 | Turn failure detection on/off per printer, its sensitivity and action; mark a false alarm | ✓ | ✓ | |
@@ -220,7 +242,7 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Notifications: channels, rules, quiet hours, delivery log; how many devices are subscribed | ✓ | | |
 | Set up smart plugs and their automations, test them | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
-| Users, Integrations, Audit log, Settings (including the ML API), backups, library sources | ✓ | | |
+| Settings: General (including the ML API), Users, Integrations, Audit log, backups, library sources | ✓ | | |
 
 Operators and viewers see every printer, or only the ones you pick under **Users → Printers**. Printers someone hasn't been given don't exist as far as they can tell. Roles are enforced on the server for every route, not just hidden in the UI.
 
@@ -256,7 +278,7 @@ octo·modern reads each printer's cameras from OctoPrint's webcam settings: the 
 
 ## G-code preview
 
-The **Preview** tab on a printer shows the job's toolpath; the cube button next to a file (in **Files** and in the **Library**) previews any other one. Drag to orbit (right-drag or Shift to pan), scroll or pinch to zoom, double-click or double-tap to reset; the slider and ↑/↓ (Page Up/Down, Home/End) change the layer. **Layer** switches to a top-down view of one layer over a faint copy of the one below. **Travel** shows moves without extrusion; the legend hides and shows feature types.
+**Preview** on the dashboard's job card shows the job's toolpath under the printer's **Files** tab; the cube button next to a file (in **Files** and in the **Library**) previews any other one, and **Files** takes you back to the list. Drag to orbit (right-drag or Shift to pan), scroll or pinch to zoom, double-click or double-tap to reset; the slider and ↑/↓ (Page Up/Down, Home/End) change the layer. **Layer** switches to a top-down view of one layer over a faint copy of the one below. **Travel** shows moves without extrusion; the legend hides and shows feature types.
 
 - **Live**: while the file prints, the preview follows OctoPrint's position in the file (`progress.filepos`, from the live updates the page already gets): the layer being printed, what's done (solid) and what's left (a faint ghost, toggle **Remaining**), and a dot at the nozzle. Moving the slider stops following; **Follow** resumes.
 - **What's understood**: `G0`/`G1`, arcs (`G2`/`G3` with `I`/`J` or `R`), absolute and relative positioning (`G90`/`G91`) and extrusion (`M82`/`M83`), `G92`, `G28`, inches (`G20`). Layers come from the slicer's comments (`;LAYER_CHANGE`, `;LAYER:n`, Bambu's `; CHANGE_LAYER`) or, without them, from the height of the extrusions. Feature colours come from `;TYPE:` / `; FEATURE:` comments. Binary G-code (`.bgcode`) and SD card files can't be previewed.
@@ -335,7 +357,7 @@ Notifications about prints are set up on the [Notifications](#notifications) pag
 
 ## Stats
 
-The **Stats** page sums up the print history for the last 30 days, 90 days, 12 months or all time, for every printer or one:
+**History → Stats** (`/history/stats`; old `/stats` links still work) sums up the print history for the last 30 days, 90 days, 12 months or all time, for every printer or one:
 
 - **Tiles**: print hours (and how many a day), finished prints with failed and cancelled ones, success rate, filament in metres and grams, cost (only when prints have one, see [Spools, costs and maintenance](#spools-costs-and-maintenance)) and the average print.
 - **Charts**: print hours per day (30 days), week (90 days) or month (12 months; all time picks by how far back it goes), stacked by printer; and successes, failures and cancels over the same buckets. Hover or tap a column for its numbers; screen readers get them as a table.
@@ -361,7 +383,7 @@ octo·modern is an installable web app: on a phone it gets its own icon and open
 
 ## Notifications
 
-Admins set them up under **Notifications** in the sidebar.
+Admins set them up under **Settings → Notifications** (`/notifications`).
 
 **Channels**: **Browser push** (see [below](#browser-push)), [ntfy](https://ntfy.sh) (server, topic, optional token), Discord (webhook), Slack (incoming webhook; Block Kit with the facts and a button back), Telegram (bot token and chat ID; the snapshot as a photo with the caption), Pushover (application token, user key; high priority for errors), Gotify (server, application token; markdown), Matrix (homeserver, room ID, access token of a bot account; the snapshot uploaded as an image), email over SMTP (STARTTLS, TLS or plain; HTML with the snapshot inline), Home Assistant (a webhook trigger, a `notify.*` service with a long-lived token, or both) and generic webhooks (JSON). Tokens, webhook URLs and passwords are stored encrypted and never sent back to the browser. **Send test** in the editor tries the settings on screen, with a test picture, and shows the service's answer word for word when it fails (`HTTP 400: Bad Request: chat not found`, `535 Authentication credentials invalid`…).
 
@@ -382,7 +404,7 @@ A generic webhook receives a JSON `POST` (version 2; channels set up before this
   "print": { "id": 12, "file": "benchy.gcode", "path": "parts/benchy.gcode", "startedAt": "…", "endedAt": "…", "elapsedS": 3720, "estimatedS": 3600, "completion": 42, "filamentMm": 1500, "startedBy": "Otto", "cancelledBy": null, "reason": "error" },
   "fields": [{ "label": "Printer", "value": "Prusa MK4" }, …],
   "data": null,
-  "at": "…", "url": "https://octo.example/p/…?tab=history", "imageUrl": null,
+  "at": "…", "url": "https://octo.example/p/…?tab=jobs", "imageUrl": null,
   "image": { "contentType": "image/jpeg", "base64": "…" }
 }
 ```
@@ -412,7 +434,7 @@ Notifications straight to phones and computers, without an app or a third-party 
 
 ## Spools, costs and maintenance
 
-The **Filament** page shows which spool is on which printer, and holds the admin settings for Spoolman and costs. Each printer's dashboard has a **Filament** card with the active spool per extruder.
+The **Filament** page shows which spool is on which printer, and holds the admin settings for Spoolman and costs. It joins the sidebar once Spoolman is set up; until then admins find it under **Settings → Set up**. Each printer's dashboard has a **Filament** card with the active spool per extruder.
 
 **Connecting Spoolman** (admins, **Filament → Spoolman**): enter Spoolman's address, e.g. `http://spoolman.lan:7912` (the `/api/v1` address works too). Spoolman has no login of its own; if a reverse proxy in front of it wants one, add an auth header (name and value, e.g. `Authorization: Bearer …`): the value is stored encrypted and never sent back to the browser. **Test** shows Spoolman's version and how many spools it has. octo·modern talks to Spoolman's REST API only from the server, so the browser doesn't need to reach it.
 
@@ -426,11 +448,11 @@ The **Filament** page shows which spool is on which printer, and holds the admin
 
 **Costs** (admins, **Filament → Print costs**): currency, electricity price per kWh, an average power draw while printing (a default and per printer), and a price per kg and density per material, with a default material and filament diameter for prints whose spool isn't known. Each print's cost is filament (grams from the spool's density, priced with the spool's price from Spoolman when it has one, else the material's) plus electricity (print time × draw × price). It's stored on the history entry when the print ends; entries without a cost (earlier and imported prints) are costed when the settings are saved and every few hours. **Recalculate history** re-costs every finished print with today's prices (prints priced from a Spoolman spool keep that price).
 
-**Maintenance** (the **Maintenance** page, and a tab per printer): tasks with an interval in print hours, kg of filament or days, counted from the print history since the task was last done (or since a "last done" date you give when adding it). New printers are offered nozzle change (500 h), belt tension (200 h), lubricating rods and rails (150 h), cleaning the bed (7 days) and checking e-steps (5 kg). A task is **due soon** at 90 % of its interval and **overdue** past it; the sidebar shows how many are overdue, and `maintenance.due` is sent once when a task becomes overdue. **Done** (operators) logs who did it, when, at what usage and your notes, and starts the count again.
+**Maintenance** (the **Maintenance** page, and each printer's **Care** tab; the page joins the sidebar once there's a task, and admins find it under **Settings → Set up** until then): tasks with an interval in print hours, kg of filament or days, counted from the print history since the task was last done (or since a "last done" date you give when adding it). New printers are offered nozzle change (500 h), belt tension (200 h), lubricating rods and rails (150 h), cleaning the bed (7 days) and checking e-steps (5 kg). A task is **due soon** at 90 % of its interval and **overdue** past it; the sidebar shows how many are overdue, and `maintenance.due` is sent once when a task becomes overdue. **Done** (operators) logs who did it, when, at what usage and your notes, and starts the count again.
 
 ## Bed mesh
 
-Printers whose OctoPrint has the [Bed Visualizer](https://github.com/jneilliii/OctoPrint-BedLevelVisualizer) plugin (OctoPrint-BedLevelVisualizer) get a **Bed** tab; the others show no bed-mesh UI at all (the printer's settings dialog says where the tab comes from). octo·modern asks OctoPrint whether the plugin is there (`plugins.bedlevelvisualizer` in `GET /api/settings`) when the printer page is first opened and every 15 minutes, and remembers the answer.
+Printers whose OctoPrint has the [Bed Visualizer](https://github.com/jneilliii/OctoPrint-BedLevelVisualizer) plugin (OctoPrint-BedLevelVisualizer) get a **Bed mesh** view in the printer's **Care** tab; the others show no bed-mesh UI at all (the printer's settings dialog says where it comes from). octo·modern asks OctoPrint whether the plugin is there (`plugins.bedlevelvisualizer` in `GET /api/settings`) when the printer page is first opened and every 15 minutes, and remembers the answer.
 
 - **The mesh**: a heatmap laid out as seen from the front (the back of the bed at the top), each cell with its value in mm, coloured on a scale around the mean (blue below, warm above; theme colours `--mesh-low/-mid/-high`, readable in light and dark), with the lowest and highest points outlined; and a 3D surface (drag to rotate, wheel or pinch to zoom, arrow keys and +/−, double-click to reset; heights are exaggerated and say so). Above them: **flatness** (max − min), the lowest and highest point with their X/Y, the mean and how many points were probed. Cells the probe didn't report (`nan`, empty) stay grey and are left out of the numbers.
 - **Update mesh** (operators): sends `@BEDLEVELVISUALIZER` and the plugin's own probe G-code (OctoPrint → Settings → Bed Visualizer → Collection, e.g. `G28` and `G29 T`), which is what the plugin's own button does; the plugin has no REST command for it. It asks first (the printer homes and moves; `409` with `confirmRequired`), is refused while a print is running or the printer is disconnected, shows progress, and the tab refreshes when the plugin reports the new mesh on its push socket. Without a push connection it watches the plugin's stored mesh instead. The new mesh is written back into the plugin's settings, as its own UI does, so OctoPrint shows it too (unless the plugin's "save mesh" is off).
@@ -487,7 +509,7 @@ Every switch, test, setup change, auto power-on/off, countdown and "Keep on" is 
 
 ## Timelapses
 
-The **Timelapse** tab lists OctoPrint's rendered timelapses with their thumbnails, plays them in the browser and downloads them. octo·modern relays the videos with HTTP Range requests passed through, so the player can seek without downloading the whole file, and the browser never needs to reach OctoPrint. Operators delete timelapses and render or delete unrendered ones; admins change the settings (off, on each layer change, or timed; frame rate, interval, post-roll). OctoPrint needs a webcam snapshot URL and ffmpeg to record timelapses (the `octoprint/octoprint` image has ffmpeg).
+**Camera → Timelapses** on a printer lists OctoPrint's rendered timelapses with their thumbnails, plays them in the browser and downloads them. octo·modern relays the videos with HTTP Range requests passed through, so the player can seek without downloading the whole file, and the browser never needs to reach OctoPrint. Operators delete timelapses and render or delete unrendered ones; admins change the settings (off, on each layer change, or timed; frame rate, interval, post-roll). OctoPrint needs a webcam snapshot URL and ffmpeg to record timelapses (the `octoprint/octoprint` image has ffmpeg).
 
 ## Failure detection
 
@@ -498,11 +520,11 @@ echo "ML_API_TOKEN=$(openssl rand -hex 32)" >> .env
 docker compose -f compose.yaml -f compose.detect.yaml up -d
 ```
 
-Then, as an admin, check **Settings → Failure detection** (the ML API URL, its token, and *octo·modern's address as the ML container sees it*, usually `http://octo-modern:3000`); **Test** checks the model is loaded and does a full round trip. Turn detection on per printer in its **Failure detection** tab.
+Then, as an admin, check **Settings → Failure detection** (the ML API URL, its token, and *octo·modern's address as the ML container sees it*, usually `http://octo-modern:3000`); **Test** checks the model is loaded and does a full round trip. Turn detection on per printer under its **Camera → Failure detection**.
 
 **What happens while a printer prints**
 
-1. After the first minutes of the print (default 5, by OctoPrint's print time; covers the first layer), every *N* seconds (default 10, which is what Obico's thresholds are tuned for) octo·modern takes a webcam snapshot, the same way the Webcam tab does.
+1. After the first minutes of the print (default 5, by OctoPrint's print time; covers the first layer), every *N* seconds (default 10, which is what Obico's thresholds are tuned for) octo·modern takes a webcam snapshot, the same way the Camera tab does.
 2. It sends the ML API `GET /p/?img=<one-time link to that frame>`; the container downloads the frame and answers with boxes and confidences.
 3. The detections feed a smoothed **failure score**, Obico's first-generation algorithm ported as is (and tested frame by frame against obico-server's code): `p` = the sum of the frame's confidences; an exponentially weighted mean of `p` over 12 frames; minus a long-term baseline of what this camera normally looks like (a rolling mean over ~7200 frames, kept per printer across prints, so a camera that always sees a bit of "failure" doesn't cry wolf); times the sensitivity (Obico's `detective_sensitivity`, 1.0 by default). It's compared against a warning threshold of `(short-term mean − baseline) × 3.8`, clamped to 0.38–0.78, and a failure threshold of 1.75 × that. The panel shows it on Obico's 0–100 % scale: **warning** from 33 %, **failure** from 67 %.
 4. **Warning**: a `failure.suspected` notification with the frame, boxes drawn in (once; again only after 10 minutes back to normal). **Failure**, once per print, the printer's setting: *do nothing*, *notify*, or *pause the print* (OctoPrint's pause, in the audit log as `octo·modern detector`, plus a notification).
@@ -522,7 +544,7 @@ There is **no endpoint that takes image bytes** (no POST, no upload), so the fra
 
 ## Print queue
 
-**Queue** (in the sidebar) holds prints waiting for a printer; each printer's **Queue** tab shows the jobs it could take.
+**Queue** (in the sidebar) holds prints waiting for a printer; each printer's **Jobs → Queue** shows the jobs it could take.
 
 - **Adding jobs**: **Add job** on the Queue page (from the library, or upload a file, which octo·modern keeps in its data folder until the job is removed), **Add to queue** on a library file, or the queue button on a file in a printer's **Files** tab (that file prints on that printer only). Slicers can add jobs too ([Slicer uploads](#slicer-uploads)).
 - **Which printer**: a job targets one printer, or **any compatible printer**: one whose tags include every tag the job requires. Admins set each printer's tags on the Queue page (free-form, e.g. `0.4mm`, `petg`, `bed:300`). Jobs added by an operator who only sees some printers only go to those.
@@ -650,7 +672,7 @@ To build it yourself: `docker build -t octo-modern .`
 
 ## Screenshots
 
-On a phone (390 px): the dashboard while printing, files, the jog pad, and the light theme.
+On a phone (390 px): the dashboard while printing, files, the jog pad, and the light theme; the six printer tabs in one row, and Settings with its strip of sections.
 
 <p align="center">
   <img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="24%" />
@@ -658,9 +680,15 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
   <img src="docs/screenshots/mobile-control.png" alt="Control on a phone" width="24%" />
   <img src="docs/screenshots/mobile-light.png" alt="Light theme on a phone" width="24%" />
 </p>
+<p align="center">
+  <img src="docs/screenshots/mobile-printer-tabs.png" alt="Printer tabs on a phone: Camera, Timelapses" width="24%" />
+  <img src="docs/screenshots/mobile-settings-nav.png" alt="Settings sections on a phone" width="24%" />
+</p>
 
 | | |
 | --- | --- |
+| ![Printer tabs](docs/screenshots/printer-tabs.png) | ![Settings](docs/screenshots/settings-nav.png) |
+| **Six tabs** per printer: Jobs → History here | **Settings**: one place for the admin pages |
 | ![Printer dashboard](docs/screenshots/printer.png) | ![Files](docs/screenshots/files.png) |
 | **Dashboard**: live webcam, job, temperatures | **Files**: upload, print, delete |
 | ![Webcam](docs/screenshots/webcam.png) | ![Cancel confirmation](docs/screenshots/confirm-cancel.png) |
@@ -680,15 +708,15 @@ On a phone (390 px): the dashboard while printing, files, the jog pad, and the l
 | ![History](docs/screenshots/history.png) | ![History, light](docs/screenshots/history-light.png) |
 | **History**: every print, stats per printer and week | **History**, light |
 | ![A print in the history](docs/screenshots/history-entry.png) | ![Printer history](docs/screenshots/printer-history.png) |
-| **A print**: how it ended, notes, print again | **History tab** of one printer |
+| **A print**: how it ended, notes, print again | **Jobs → History** of one printer |
 | ![Timelapse player](docs/screenshots/timelapse-player.png) | ![Timelapses, light](docs/screenshots/timelapse-light.png) |
-| **Timelapse**: play with seeking, download | **Timelapse settings**, light |
+| **Camera → Timelapses**: play with seeking, download | **Timelapse settings**, light |
 | ![Failure detection](docs/screenshots/detection.png) | ![Failure detection, light](docs/screenshots/detection-light.png) |
 | **Failure detection**: score, last frame with boxes, paused by the detector | **Failure detection**, light |
 | ![Queue](docs/screenshots/queue.png) | ![Queue, light](docs/screenshots/queue-light.png) |
 | **Queue**: jobs, copies, printers and their tags | **Queue**, light |
 | ![Bed is clear](docs/screenshots/queue-bed-clear.png) | ![Slicer upload keys](docs/screenshots/slicer-keys.png) |
-| **Queue tab**: confirm the bed is clear | **Slicer upload keys** for PrusaSlicer, OrcaSlicer, Cura |
+| **Jobs → Queue**: confirm the bed is clear | **Slicer upload keys** for PrusaSlicer, OrcaSlicer, Cura |
 | ![Queue on a phone](docs/screenshots/mobile-queue.png) | ![Bed is clear on a phone](docs/screenshots/mobile-queue-bed-clear.png) |
 | **Queue** on a phone | **Bed is clear** on a phone |
 | ![Notifications](docs/screenshots/notifications-light.png) | ![Channel editor](docs/screenshots/notifications-channel.png) |
@@ -784,7 +812,7 @@ pnpm check && pnpm test               # types + unit tests
 scripts/dev-octoprint.sh up 2         # two OctoPrint servers with virtual printers on :5101, :5102
 node scripts/mjpeg-source.mjs 5190    # a fake MJPEG webcam on :5190
 pnpm e2e                              # end-to-end against real OctoPrint containers (needs Docker)
-pnpm e2e:control                      # the Control and Terminal tabs end-to-end (OctoPrint on :5131, app on :3150)
+pnpm e2e:control                      # the Control tab and its terminal end-to-end (OctoPrint on :5131, app on :3150)
 pnpm e2e:discover                     # Discover end-to-end: real OctoPrint, mock Docker/Arcane/mDNS, Application Keys
 pnpm e2e:library                      # the Library against OctoPrint, SFTP, Samba and WebDAV containers
 ```
@@ -793,8 +821,8 @@ pnpm e2e:library                      # the Library against OctoPrint, SFTP, Sam
 pnpm e2e:history                      # print history, notifications and timelapses end to end
 pnpm e2e:notify                       # notifications: every channel type against local mocks, a real virtual printer
 pnpm e2e:mobile                       # phones: no sideways scrolling at 360/390/430 px, thumb-sized controls
-pnpm e2e:stats                        # the Stats page on seeded demo history (no Docker)
-pnpm e2e:bedmesh                      # the Bed tab against a mock OctoPrint with the Bed Visualizer plugin (no Docker)
+pnpm e2e:stats                        # History → Stats on seeded demo history (no Docker)
+pnpm e2e:bedmesh                      # Care → Bed mesh against a mock OctoPrint with the Bed Visualizer plugin (no Docker)
 pnpm e2e:klipper                      # Klipper printers against a mock Moonraker (no Docker; ports :5560–:5564)
 pnpm e2e:preprint                     # leveling and pre-print G-code against a mock OctoPrint and Moonraker (no Docker; ports :5600–:5603)
 ```
