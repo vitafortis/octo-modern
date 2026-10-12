@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plain http is permitted at the network layer because Android can't express "private
+  addresses only" here; the app enforces it instead: the setup page only accepts http for
+  private IPs and local names (ServerAddress.isPrivateHost), with a warning.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

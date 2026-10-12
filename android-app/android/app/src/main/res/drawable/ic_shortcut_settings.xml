@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lucide "settings-2" on the violet tile. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval"><solid android:color="#7453CC" /></shape>
+    </item>
+    <item android:drawable="@drawable/ic_settings_glyph" android:left="12dp" android:top="12dp" android:right="12dp" android:bottom="12dp" />
+</layer-list>

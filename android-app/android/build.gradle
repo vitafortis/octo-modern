@@ -1,0 +1,27 @@
+// Top-level build file. Capacitor's generated settings (capacitor.settings.gradle) pull in
+// @capacitor/android from ../node_modules, so run `pnpm install` in android-app/ first.
+
+buildscript {
+    ext.kotlin_version = '2.3.21'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}

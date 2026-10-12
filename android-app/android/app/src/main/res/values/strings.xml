@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">octo·modern</string>
+    <string name="title_activity_main">octo·modern</string>
+    <string name="package_name">io.github.vitafortis.octomodern</string>
+    <string name="custom_url_scheme">io.github.vitafortis.octomodern</string>
+    <string name="widget_label">Printer</string>
+    <string name="widget_description">A printer’s state, progress, time left and webcam snapshot</string>
+    <string name="shortcut_settings">App settings</string>
+    <string name="shortcut_settings_long">octo·modern app settings</string>
+</resources>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#9A64FF</color>
+    <color name="danger">#FC5855</color>
+
+    <color name="bg">#060509</color>
+    <color name="card">#0A090F</color>
+    <color name="surface">#08070C</color>
+    <color name="fg">#FAFAFA</color>
+    <color name="muted_fg">#8C8B93</color>
+    <color name="border">#1B1A20</color>
+    <color name="primary">#9A64FF</color>
+    <color name="primary_soft">#249A64FF</color>
+    <color name="primary_solid_top">#725ABD</color>
+    <color name="primary_solid_bottom">#5F45A6</color>
+    <color name="danger_solid_top">#C13C3B</color>
+    <color name="danger_solid_bottom">#A92227</color>
+    <color name="secondary_top">#1D1C23</color>
+    <color name="secondary_bottom">#15141A</color>
+    <color name="secondary_edge">#302F38</color>
+
+    <color name="widget_bg">#0E0D14</color>
+    <color name="widget_fg">#FAFAFA</color>
+    <color name="widget_muted">#8C8B93</color>
+    <color name="widget_track">#221F2E</color>
+    <color name="widget_primary">#B08AFF</color>
+    <color name="widget_success">#22C373</color>
+    <color name="widget_warning">#F5AE39</color>
+    <color name="widget_danger">#FC5855</color>
+    <color name="widget_image_bg">#16141E</color>
+</resources>
