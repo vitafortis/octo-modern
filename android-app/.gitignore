@@ -1,0 +1,5 @@
+node_modules/
+# Release signing: never commit keys or their passwords.
+android/keystore.properties
+*.jks
+*.keystore

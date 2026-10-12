@@ -101,6 +101,7 @@
 								<li><a href="#phone-app">Phone app</a></li>
 								<li><a href="#notifications">Notifications</a></li>
 								<li><a href="#push">Browser push</a></li>
+								<li><a href="#android">Android app</a></li>
 								<li><a href="#detection">Failure detection</a></li>
 								<li><a href="#spools">Spools, costs and maintenance</a></li>
 								<li><a href="#stats">Stats</a></li>
@@ -415,6 +416,19 @@
 							<li><strong>iPhone and iPad</strong> (iOS 16.4+): add octo·modern to the Home Screen first (Share → Add to Home Screen, see <a href="#phone-app">Phone app</a>), open it from there, then enable notifications.</li>
 							<li><strong>Who gets what</strong>: people only get printers they have access to; each person sees and removes only their own devices, admins see how many are subscribed. Devices the push service reports gone (404/410) are forgotten. A click opens the printer's page.</li>
 							<li><strong>Keys</strong>: a VAPID key pair is generated on first use and stored encrypted, or set <code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code> and <code>VAPID_SUBJECT</code>. Messages are end-to-end encrypted to each browser (RFC 8291).</li>
+						</ul>
+					</section>
+
+					<section id="android">
+						<h2>Android app</h2>
+						<p>The octo·modern web UI in an Android app (Android 8+), loaded from your own server, plus live print progress in the notification shade, a home-screen widget and an app lock.</p>
+						<ul>
+							<li><strong>Install</strong>: download <code>octo-modern-&lt;version&gt;.apk</code> from the repository's Releases (tags <code>android-v…</code>) on the phone and open it; allow installing unknown apps for your browser or file manager when Android asks. Enter your server's address (https, or http on your own network with a warning); the app checks it's octo·modern, then you sign in as usual.</li>
+							<li><strong>Device token</strong>: after you sign in, the app links itself to your account (<strong>My account → Android app</strong> lists it). Notifications and widgets use that token, with your role and printer access; it only opens the few API routes the app needs, and signing out in the app or on My account revokes it.</li>
+							<li><strong>Print progress</strong>: an ongoing notification per printer while it prints or prepares, with percent, time left and height, and Pause/Resume and Cancel (Cancel asks first) for operators and admins. A notification with the snapshot when it finishes, fails or is cancelled.</li>
+							<li><strong>Widget</strong>: a printer's state, progress, time left and webcam snapshot; 2×2 or larger; tap to open the printer.</li>
+							<li><strong>App lock</strong>: optional fingerprint, face or screen lock after the app has been in the background for a while.</li>
+							<li><strong>Limits</strong>: there's no Firebase push, so a print started elsewhere shows up when you open the app or at the next background check (every 15 minutes at best, later when the phone dozes; starting live progress from that check needs the app exempt from battery optimisation on Android 12+). Browser push doesn't work inside the app; it keeps working in Chrome on the same phone.</li>
 						</ul>
 					</section>
 

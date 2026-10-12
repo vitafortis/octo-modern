@@ -124,6 +124,8 @@
 			<p class="mt-3 flex items-start gap-2 rounded-lg bg-surface px-3 py-2 text-xs text-muted-foreground" data-testid="push-unsupported">
 				{#if can.reason === 'ios-home'}
 					<Share class="mt-0.5 size-3.5 shrink-0" /><span>On iPhone and iPad, add octo·modern to your Home Screen first (Share → <strong class="font-medium text-foreground">Add to Home Screen</strong>), then open it from there and turn notifications on.</span>
+				{:else if can.reason === 'android-app'}
+					<Info class="mt-0.5 size-3.5 shrink-0" /><span>The octo·modern app shows print progress and finished prints as its own notifications, so browser push isn’t needed here. Browser push keeps working in Chrome on this phone if you prefer it.</span>
 				{:else if can.reason === 'insecure'}
 					<Info class="mt-0.5 size-3.5 shrink-0" /><span>Browser push needs HTTPS: open octo·modern at its https:// address to turn notifications on for this device.</span>
 				{:else}

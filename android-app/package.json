@@ -1,0 +1,21 @@
+{
+	"name": "octo-modern-android",
+	"private": true,
+	"version": "0.1.0",
+	"description": "octo·modern Android companion app (Capacitor shell + native notifications, widget and biometric lock)",
+	"license": "Apache-2.0",
+	"scripts": {
+		"sync": "cap sync android",
+		"build:debug": "cap sync android && cd android && ./gradlew assembleDebug",
+		"build:release": "cap sync android && cd android && ./gradlew assembleRelease",
+		"test": "cd android && ./gradlew testDebugUnitTest"
+	},
+	"dependencies": {
+		"@capacitor/android": "8.5.3",
+		"@capacitor/core": "8.5.3"
+	},
+	"devDependencies": {
+		"@capacitor/cli": "8.5.3"
+	},
+	"packageManager": "pnpm@9.15.0"
+}

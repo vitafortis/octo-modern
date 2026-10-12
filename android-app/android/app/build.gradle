@@ -1,0 +1,122 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+// --- version -------------------------------------------------------------------------------
+// CI passes the tag's version and the run number (see .github/workflows/android.yml);
+// local builds fall back to 0.0.0-dev / 1.
+def appVersionName = System.getenv('APP_VERSION_NAME') ?: (project.findProperty('appVersionName') ?: '0.0.0-dev')
+def appVersionCode = (System.getenv('APP_VERSION_CODE') ?: (project.findProperty('appVersionCode') ?: '1')).toString().toInteger()
+
+// --- release signing -----------------------------------------------------------------------
+// From environment variables (CI):
+//   ANDROID_KEYSTORE_BASE64  the .jks, base64-encoded
+//   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+// or from an untracked android-app/android/keystore.properties:
+//   storeFile=/absolute/path/release.jks
+//   storePassword=…  keyAlias=…  keyPassword=…
+// Without either, release builds are signed with the debug key (fine for testing,
+// but Android won't update an install signed with a different key).
+def signing = null
+def ksB64 = System.getenv('ANDROID_KEYSTORE_BASE64')
+if (ksB64) {
+    def ks = new File(project.layout.buildDirectory.get().asFile, 'release.jks')
+    ks.parentFile.mkdirs()
+    ks.bytes = ksB64.trim().decodeBase64()
+    signing = [
+        storeFile: ks,
+        storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
+        keyAlias: System.getenv('ANDROID_KEY_ALIAS'),
+        keyPassword: System.getenv('ANDROID_KEY_PASSWORD') ?: System.getenv('ANDROID_KEYSTORE_PASSWORD')
+    ]
+} else {
+    def propsFile = rootProject.file('keystore.properties')
+    if (propsFile.exists()) {
+        def p = new Properties()
+        propsFile.withInputStream { p.load(it) }
+        signing = [
+            storeFile: file(p.getProperty('storeFile')),
+            storePassword: p.getProperty('storePassword'),
+            keyAlias: p.getProperty('keyAlias'),
+            keyPassword: p.getProperty('keyPassword') ?: p.getProperty('storePassword')
+        ]
+    }
+}
+
+android {
+    namespace = "io.github.vitafortis.octomodern"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "io.github.vitafortis.octomodern"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName appVersionName
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+            // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (signing) {
+            release {
+                storeFile signing.storeFile
+                storePassword signing.storePassword
+                keyAlias signing.keyAlias
+                keyPassword signing.keyPassword
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signing ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+    buildFeatures {
+        buildConfig true
+    }
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+    lint {
+        abortOnError false
+    }
+}
+
+base {
+    archivesName = "octo-modern-${appVersionName}"
+}
+
+repositories {
+    flatDir {
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-ktx:$androidxCoreVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    implementation "androidx.work:work-runtime-ktx:$workVersion"
+    implementation "androidx.biometric:biometric:$biometricVersion"
+    implementation "com.squareup.okhttp3:okhttp:$okhttpVersion"
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-cordova-android-plugins')
+
+    testImplementation "junit:junit:$junitVersion"
+    testImplementation "org.robolectric:robolectric:$robolectricVersion"
+    testImplementation "androidx.test:core:1.7.0"
+    testImplementation "com.squareup.okhttp3:mockwebserver:$okhttpVersion"
+}
+
+apply from: 'capacitor.build.gradle'

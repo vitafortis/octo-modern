@@ -54,6 +54,7 @@
 - **Phones and tablets**: below laptop width the sidebar becomes a drawer behind a slim top bar (with the printer's state and a search button), tables become lists with each row's actions in a menu, and dialogs slide up as sheets. On a phone, Pause, Cancel and the emergency stop (which still asks first) sit in a bar under your thumb; the jog pad is thumb-sized, the webcam goes fullscreen with a tap, the temperature chart reads out where you touch, and the terminal prompt stays just above the keyboard. Buttons and fields are at least 44 px on touch screens, with 16 px text so iOS doesn't zoom.
 - **Installable app**: add octo·modern to a phone's or computer's home screen or dock and it opens full screen like an app; an **Install app** button in the sidebar and on **My account** offers it where the browser can (see [Phone app](#phone-app)) (web app manifest, maskable and Apple touch icons, a status bar that follows the theme, notch- and home-indicator-aware). A service worker keeps the app's code cached for fast starts and shows an offline page when the server can't be reached; it never caches pages, API responses, cameras, live updates or sign-in.
 - **Browser push**: everyone can turn on notifications per device under **My account** (or **Notifications**) and gets them on their phone or computer, for the printers they have access to. Web Push with VAPID keys generated on first use; needs HTTPS, and on iPhone/iPad adding to the Home Screen first. See [Browser push](#browser-push).
+- **Android app**: octo·modern in its own app, with an ongoing notification per printer while it prints (progress, time left, height, **Pause/Resume** and **Cancel**), a notification with the snapshot when it finishes, a home-screen widget per printer with state, progress and a webcam snapshot, and an optional fingerprint/face lock. Install the APK from GitHub Releases. See [Android app](#android-app).
 - **Light and dark** themes, and multi-arch images (`amd64`, `arm64`).
 
 ## Getting started
@@ -217,6 +218,7 @@ Enter a CIDR (`192.168.4.0/24`), a range (`192.168.4.20-40`) or addresses, and p
 | Spoolman connection, cost settings | ✓ | | |
 | Timelapse settings, delete history entries, import history | ✓ | | |
 | Browser push on their own devices: turn on/off, list, remove, send a test | ✓ | ✓ | ✓ |
+| Android app: progress notifications and widgets, sign their own phones out (Pause/Resume/Cancel from a notification: as for prints above) | ✓ | ✓ | ✓ |
 | Notifications: channels, rules, quiet hours, delivery log; how many devices are subscribed | ✓ | | |
 | Set up smart plugs and their automations, test them | ✓ | | |
 | Add, edit and remove printers (and their API keys) | ✓ | | |
@@ -409,6 +411,41 @@ Notifications straight to phones and computers, without an app or a third-party 
 - Push subscriptions aren't part of backups (they belong to one browser and one install's keys); the channel and its rules are.
 
 **For developers**: other server code calls `notify({ kind, printerId, title?, message?, fields?, data?, snapshot? })` from `src/lib/server/notify/` with one of the kinds in `src/lib/notify.ts`; rules, quiet hours, de-dupe, snapshots and the log come with it.
+
+## Android app
+
+An Android app (Android 8 and later) that shows your octo·modern server, plus what a browser tab can't do: live print progress in the notification shade, a home-screen widget and an app lock. It's the same web UI you know, loaded from your server, so everything works as in the browser and stays in step with your server's version.
+
+| ![First launch: the server address](docs/screenshots/android-setup.png) | ![The app](docs/screenshots/android-app.png) | ![Print progress in the notification shade](docs/screenshots/android-notification.png) | ![Printer widget](docs/screenshots/android-widget.png) | ![App settings](docs/screenshots/android-settings.png) |
+| --- | --- | --- | --- | --- |
+
+**Install**
+
+1. On the phone, open the repository's [Releases](../../releases) and download the latest `octo-modern-<version>.apk` (from an *Android app* release, tags `android-v…`).
+2. Open it. Android asks to **allow installing unknown apps** for your browser or file manager the first time: allow it for that app, go back and tap **Install**. (Play Protect may ask you to confirm an app it doesn't know.) Updates install the same way, over the old version.
+3. Open **octo·modern**, enter the address you use in the browser (`https://print.example.com`) and tap **Connect**. The app checks that it's an octo·modern server first. Plain `http://` is only accepted for addresses on your own network (`192.168.x.x`, `10.x.x.x`, `*.local`, Tailscale's `100.x.x.x`…), with a warning.
+4. Sign in as in the browser (password or SSO). The app then links itself to your account: it gets its own **device token**, listed under **My account → Android app**, which the notifications and widgets use. Allow notifications when Android asks.
+
+**What it does**
+
+- **The web UI, at home in an app**: links to your server stay in the app, anything else (OctoPrint's own UI, docs) opens in your browser; the back button goes back; file uploads, CSV exports, timelapse and backup downloads (to *Downloads*), the live webcam and live updates work as in Chrome.
+- **Print progress**: while a printer you can see prints (or is being prepared by [Before each print](#before-each-print-leveling-and-pre-print-g-code)), an ongoing notification shows the file, percent, time left and Z height, with **Pause**/**Resume** and **Cancel** (Cancel asks first, in a small dialog; **Stop** for a preparation) if your role may control it. Viewers get the progress without buttons. When it ends, a notification says finished, failed or cancelled, with the webcam snapshot. It runs as a foreground service that checks every 5 seconds while something prints, and stops when nothing does.
+- **Widget**: long-press the home screen → **Widgets → octo·modern** and pick a printer (or **App settings → Home-screen widget → Add**). It shows the printer's name, state, progress, time left and a webcam snapshot; resize it for a larger snapshot with the file name. Tap it to open that printer. Light and dark follow the phone.
+- **App lock** (off by default): fingerprint, face or the screen lock when you come back to the app after a set time (every time, 1, 5, 15 or 60 minutes); the app is hidden in the recent-apps view while it's on.
+- **App settings** (long-press the app icon → **App settings**, or **My account → App settings** inside the app): the server and account, sign out, change server, notifications, keep watching in the background, the widget, the app lock.
+- **Signing out** in the app (or in the web UI) revokes the device token; **My account → Android app** shows every linked phone with when it was last seen, and signs one out. A token only works for the few things the app needs; see [Security model](#security-model).
+
+**Limits, honestly**
+
+- **No Firebase, so no instant push for prints started elsewhere.** The app follows prints live once it has seen one: when you open it while something prints, or when its background check finds one. That check runs every **15 minutes** (Android's minimum for background work), later when the phone is dozing or in battery saver, so a print started from your computer can take 15 minutes or more to show up while the app is closed. Android 12 and later also only let that check start the live notification when octo·modern is **not battery-optimised** (**App settings → Start live progress from the background → Allow**); otherwise it posts the progress as of the check and refreshes it each time. Turning off **Keep watching in the background** stops the service when you leave the app, and the check.
+- **Browser push doesn't work inside the app** (Android's WebView has no Web Push). The app's own notifications replace it there. If you'd rather keep [Browser push](#browser-push) for everything (failure detection, queue, offline printers…), it keeps working in Chrome on the same phone, or as an installed web app; the two don't interfere.
+- The progress notification covers prints and preparations; other events (failure detection, the queue, printers going offline) still come through your notification channels.
+- Widgets update with the 15-minute check, and every few seconds (snapshots once a minute) while the app is following a print. Pull-to-refresh isn't there: the pages update live anyway.
+- Some phone makers (Xiaomi, Huawei, OnePlus…) stop background apps more aggressively; allow octo·modern to run in the background in their battery settings if notifications stop.
+
+**Build it yourself**: the app lives in `android-app/` (Capacitor 8, Kotlin, its own `package.json`; not part of the server build or the Docker image). With JDK 21 and the Android SDK (platform 36): `cd android-app && pnpm install && pnpm exec cap sync android && cd android && ./gradlew assembleDebug` (or `assembleRelease`, signed from `android-app/android/keystore.properties` with `storeFile`, `storePassword`, `keyAlias`, `keyPassword`, or the `ANDROID_KEYSTORE_*` environment variables; otherwise with the debug key). `./gradlew testDebugUnitTest` runs the unit tests; `pnpm e2e:android` the end-to-end test on an emulator. Tags `android-vX.Y.Z` build and publish a release through `.github/workflows/android.yml`.
+
+**For developers**: the app calls `POST /api/account/devices` (`{ name, platform: 'android' }`, with the session cookie) once after sign-in and keeps the `ocd_…` token it gets; `GET`/`DELETE /api/account/devices/current` with the token check and revoke it; `GET /api/account/devices` and `DELETE /api/account/devices/<id>` (session) are what My account uses. `/api/health` answers `{ ok: true, app: "octo-modern" }`, which the app's server check looks for.
 
 ## Spools, costs and maintenance
 
@@ -769,6 +806,7 @@ Under **Settings → Backup & restore**, admins download an encrypted file with 
 - **Least privilege**: an OctoPrint Application Key acts as the user who approved it. Use a key of a user with only the permissions you want octo·modern to have; **Test connection** lists what it lacks.
 - **Access** is checked on the server for every printer-scoped page and API call. Viewers can't reach any route that changes a printer; operators can't reach server, user or settings routes. Confirmations for dangerous actions are enforced by the server.
 - **API tokens** (`ocm_` + 32 random bytes, SHA-256 hashed at rest) only work on `GET /api/status…`; they never become sessions, and repeated bad tokens from one address are throttled. Status responses omit OctoPrint URLs unless the token allows it, and report errors as codes only.
+- **Device tokens** (the Android app, `ocd_` + 32 random bytes, SHA-256 hashed at rest) are issued to a signed-in session, act as their user with the user's current role and printer access, and only open the routes the app needs (printer list and status, a printer's state and snapshot, pause/resume/cancel, stopping a preparation, and the device's own record); everything else answers `403`. Only `Authorization: Bearer`, never a query string. Disabling or deleting the account stops them at once; **My account** signs a phone out. On the phone the token is sealed with an AES-GCM key in the Android Keystore and bound to the server's address.
 - **Sign-in** is by OIDC or by local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies tied to a user and end when the user is disabled or their role changes. Writes from another origin are rejected.
 - **Discovery** is admin-only and read-only: Docker and Arcane are only read (`GET`), a socket proxy keeps writes blocked, and fingerprinting uses unauthenticated `GET`s. Keys from the Application Keys flow are polled for by octo·modern's server and go straight into the encrypted store; the browser only sees the request's state. Subnet scans need an admin, are capped at 4096 addresses and are audited.
 - **Library sources**: NAS passwords and SFTP keys are sealed like API keys (bound to the source) and never sent to a browser. Sources are read-only unless an admin allows writing; folder sources refuse `..` and symlinks that lead outside the folder; SFTP host keys can be pinned.

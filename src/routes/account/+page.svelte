@@ -5,6 +5,7 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import PushDevices from '#lib/components/notify/PushDevices.svelte';
 	import InstallCard from '#lib/components/install/InstallCard.svelte';
+	import LinkedDevices from '#lib/components/LinkedDevices.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { toast } from '#lib/client/state.svelte.ts';
 	import type { PageProps } from './$types';
@@ -94,5 +95,6 @@
 	<div class="max-w-2xl space-y-5 page-x pb-10">
 		<InstallCard />
 		<PushDevices admin={data.user.role === 'admin'} />
+		<LinkedDevices />
 	</div>
 </div>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from src/lib/components/Logo.svelte (viewBox 32). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="56dp" android:height="56dp" android:viewportWidth="32" android:viewportHeight="32">
+        <path android:pathData="M9,0 h14 a9,9 0 0 1 9,9 v14 a9,9 0 0 1 -9,9 h-14 a9,9 0 0 1 -9,-9 v-14 a9,9 0 0 1 9,-9 z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="32" android:endY="32">
+                    <item android:offset="0" android:color="#FFAA8DFF"/>
+                    <item android:offset="1" android:color="#FF6B1BD9"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M9,0 h14 a9,9 0 0 1 9,9 v14 a9,9 0 0 1 -9,9 h-14 a9,9 0 0 1 -9,-9 v-14 a9,9 0 0 1 9,-9 z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="0" android:endY="32">
+                    <item android:offset="0" android:color="#38FFFFFF"/>
+                    <item android:offset="0.5" android:color="#00FFFFFF"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.7" android:pathData="M15.1,2.8 h1.8 a0.8,0.8 0 0 1 0.8,0.8 v1.8 a0.8,0.8 0 0 1 -0.8,0.8 h-1.8 a0.8,0.8 0 0 1 -0.8,-0.8 v-1.8 a0.8,0.8 0 0 1 0.8,-0.8 z"/>
+        <path android:fillColor="#FFFFFF" android:pathData="M11.1,5.8 h9.8 a1.6,1.6 0 0 1 1.6,1.6 v3.2 a1.6,1.6 0 0 1 -1.6,1.6 h-9.8 a1.6,1.6 0 0 1 -1.6,-1.6 v-3.2 a1.6,1.6 0 0 1 1.6,-1.6 z"/>
+        <path android:fillColor="#FFFFFF" android:pathData="M12.3,12.2h7.4l-2.5,3.6h-2.4Z"/>
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2.4" android:strokeLineCap="round" android:pathData="M7.6,19.6h8.4"/>
+        <path android:strokeColor="#FFFFFF" android:strokeAlpha="0.72" android:strokeWidth="2.4" android:strokeLineCap="round" android:pathData="M7.6,23.4h16.8"/>
+        <path android:strokeColor="#FFFFFF" android:strokeAlpha="0.45" android:strokeWidth="2.4" android:strokeLineCap="round" android:pathData="M7.6,27.2h16.8"/>
+</vector>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- octo·modern's palette (src/app.css), light. values-night has the dark set. -->
+<resources>
+    <color name="brand">#8743FF</color>
+    <color name="logo_top">#AA8DFF</color>
+    <color name="logo_bottom">#6B1BD9</color>
+    <color name="danger">#DF202E</color>
+
+    <color name="bg">#FCFBFF</color>
+    <color name="card">#FFFFFF</color>
+    <color name="surface">#F7F6FB</color>
+    <color name="fg">#0A0A0A</color>
+    <color name="muted_fg">#69686E</color>
+    <color name="border">#DEDDE4</color>
+    <color name="primary">#8743FF</color>
+    <color name="primary_soft">#1A8743FF</color>
+    <color name="primary_solid_top">#7453CC</color>
+    <color name="primary_solid_bottom">#6440B8</color>
+    <color name="danger_solid_top">#D03739</color>
+    <color name="danger_solid_bottom">#BA1D27</color>
+    <color name="secondary_top">#FFFFFF</color>
+    <color name="secondary_bottom">#F5F4F8</color>
+    <color name="secondary_edge">#CECCD6</color>
+
+    <color name="widget_bg">#FFFFFF</color>
+    <color name="widget_fg">#0A0A0A</color>
+    <color name="widget_muted">#69686E</color>
+    <color name="widget_track">#EBE9F8</color>
+    <color name="widget_primary">#8743FF</color>
+    <color name="widget_success">#009956</color>
+    <color name="widget_warning">#B86F00</color>
+    <color name="widget_danger">#DF202E</color>
+    <color name="widget_image_bg">#F2F1F5</color>
+</resources>

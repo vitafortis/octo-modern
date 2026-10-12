@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="color-scheme" content="light dark" />
+		<title>octo·modern</title>
+		<link rel="stylesheet" href="app.css" />
+	</head>
+	<body>
+		<!-- Icons: Lucide (ISC), inline. -->
+		<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+			<defs>
+				<linearGradient id="logo-fill" x1="0" y1="0" x2="1" y2="1">
+					<stop offset="0" stop-color="oklch(72% 0.17 292.717)" />
+					<stop offset="1" stop-color="oklch(48% 0.25 292.717)" />
+				</linearGradient>
+				<linearGradient id="logo-sheen" x1="0" y1="0" x2="0" y2="1">
+					<stop offset="0" stop-color="#fff" stop-opacity="0.22" />
+					<stop offset="0.5" stop-color="#fff" stop-opacity="0" />
+				</linearGradient>
+			</defs>
+			<symbol id="logo" viewBox="0 0 32 32">
+				<rect width="32" height="32" rx="9" fill="url(#logo-fill)" />
+				<rect width="32" height="32" rx="9" fill="url(#logo-sheen)" />
+				<rect x="14.3" y="2.8" width="3.4" height="3.4" rx="0.8" fill="#fff" fill-opacity="0.7" />
+				<rect x="9.5" y="5.8" width="13" height="6.4" rx="1.6" fill="#fff" />
+				<path d="M12.3 12.2h7.4l-2.5 3.6h-2.4Z" fill="#fff" />
+				<g stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none">
+					<path d="M7.6 19.6h8.4" />
+					<path d="M7.6 23.4h16.8" stroke-opacity="0.72" />
+					<path d="M7.6 27.2h16.8" stroke-opacity="0.45" />
+				</g>
+			</symbol>
+			<symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" /><rect width="20" height="8" x="2" y="14" rx="2" /><path d="M6 6h.01M6 18h.01" /></symbol>
+			<symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
+			<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
+			<symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></symbol>
+			<symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4M12 17h.01" /></symbol>
+			<symbol id="i-circle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></symbol>
+			<symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5" /></symbol>
+			<symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" /></symbol>
+			<symbol id="i-loader" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></symbol>
+			<symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></symbol>
+			<symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5" /></symbol>
+			<symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" /></symbol>
+			<symbol id="i-widget" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></symbol>
+			<symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14" /></symbol>
+			<symbol id="i-battery" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="10" x="2" y="7" rx="2" ry="2" /><path d="M22 11v2M6 11v2M10 11v2" /></symbol>
+		</svg>
+
+		<main>
+			<!-- First launch: which server? -->
+			<section id="setup" hidden>
+				<div class="hero">
+					<svg width="64" height="64"><use href="#logo" /></svg>
+					<h1>Connect to octo·modern</h1>
+					<p class="small muted">Enter the address you open octo·modern at in your browser.</p>
+				</div>
+				<form id="setup-form" class="card" novalidate>
+					<label class="label" for="server">Server address</label>
+					<input id="server" class="input mono" type="url" inputmode="url" autocomplete="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://print.example.com" data-testid="server-input" />
+					<p class="xs muted" style="margin: 0.5rem 0 0">https:// anywhere. Plain http:// only on your own network (like 192.168.1.20:3000).</p>
+					<div id="setup-error" class="note note-danger" hidden><svg><use href="#i-circle-alert" /></svg><span></span></div>
+					<div id="setup-warning" class="note note-warning" hidden>
+						<svg><use href="#i-alert" /></svg>
+						<span>This address uses plain http: your password and session travel unencrypted on your network. Fine on a home LAN you trust; use https for anything else.</span>
+					</div>
+					<button id="connect" class="btn btn-primary btn-block" style="margin-top: 1rem" type="submit" data-testid="connect"><svg><use href="#i-plug" /></svg><span>Connect</span></button>
+				</form>
+				<p class="xs muted" style="text-align: center; margin-top: 1.25rem">You sign in on the next screen, as in the browser. The app then links itself to your account for notifications and widgets.</p>
+			</section>
+
+			<!-- App settings -->
+			<section id="settings" hidden>
+				<div class="topbar">
+					<button class="btn btn-ghost" id="back" data-testid="back"><svg><use href="#i-arrow-left" /></svg>Back</button>
+					<div class="brand"><svg width="24" height="24"><use href="#logo" /></svg>octo·modern</div>
+				</div>
+				<h1 class="page-title">App settings</h1>
+				<p class="small muted" style="margin: 0">This phone only. Printer and server settings are in octo·modern itself.</p>
+
+				<div class="card">
+					<h2><svg><use href="#i-server" /></svg>Server</h2>
+					<div class="kv"><span class="muted">Address</span><span class="mono" id="s-server"></span></div>
+					<div class="kv"><span class="muted">Account</span><span id="s-account"></span></div>
+					<div class="row-buttons">
+						<button class="btn btn-secondary" id="sign-out" data-testid="sign-out"><svg><use href="#i-logout" /></svg>Sign out</button>
+						<button class="btn btn-danger-outline" id="change-server">Change server</button>
+					</div>
+				</div>
+
+				<div class="card">
+					<h2><svg><use href="#i-bell" /></svg>Notifications</h2>
+					<div id="perm-note" class="note note-warning" hidden>
+						<svg><use href="#i-alert" /></svg>
+						<span style="flex: 1">Notifications are off for this app. <button class="btn btn-secondary" id="allow-notifications" style="margin-top: 0.5rem; width: 100%">Allow notifications</button></span>
+					</div>
+					<div class="setting">
+						<div class="text">
+							<div class="title">Print progress</div>
+							<div class="desc">An ongoing notification per printer while it prints or prepares: progress, time left, height, and Pause/Resume and Cancel if your role allows. Another when it finishes, with a webcam snapshot.</div>
+						</div>
+						<button class="switch" role="switch" aria-checked="false" id="t-notifications" aria-label="Print progress"></button>
+					</div>
+					<div class="setting">
+						<div class="text">
+							<div class="title">Keep watching in the background</div>
+							<div class="desc">Progress keeps updating after you leave the app. A check every 15 minutes (Android’s minimum; longer when the phone dozes) notices prints started elsewhere.</div>
+						</div>
+						<button class="switch" role="switch" aria-checked="false" id="t-keep" aria-label="Keep watching in the background"></button>
+					</div>
+					<div class="setting" id="battery-row" hidden>
+						<div class="text">
+							<div class="title">Start live progress from the background</div>
+							<div class="desc">Android only lets that 15-minute check start live progress when octo·modern isn’t battery-optimised. Otherwise it shows the progress as of the check.</div>
+							<button class="btn btn-secondary" id="battery" style="margin-top: 0.625rem"><svg><use href="#i-battery" /></svg>Allow</button>
+						</div>
+					</div>
+					<p class="note"><svg><use href="#i-info" /></svg><span>Browser push doesn’t work inside the app; these notifications replace it here. If you prefer browser push, it keeps working in Chrome on this phone.</span></p>
+				</div>
+
+				<div class="card" id="widget-card" hidden>
+					<h2><svg><use href="#i-widget" /></svg>Home-screen widget</h2>
+					<p class="xs muted">A printer’s state, progress, time left and webcam snapshot. Resize it for a bigger snapshot. You can also add it from the home screen: long-press, Widgets, octo·modern.</p>
+					<div id="widget-list"></div>
+				</div>
+
+				<div class="card">
+					<h2><svg><use href="#i-lock" /></svg>App lock</h2>
+					<div class="setting">
+						<div class="text">
+							<div class="title">Lock with fingerprint or screen lock</div>
+							<div class="desc" id="lock-desc">Asks when you come back to the app after a while.</div>
+						</div>
+						<button class="switch" role="switch" aria-checked="false" id="t-lock" aria-label="App lock"></button>
+					</div>
+					<div id="lock-after-row">
+						<label class="label" for="lock-after">Lock after</label>
+						<select class="input" id="lock-after">
+							<option value="0">Every time</option>
+							<option value="1">1 minute in the background</option>
+							<option value="5">5 minutes in the background</option>
+							<option value="15">15 minutes in the background</option>
+							<option value="60">1 hour in the background</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="card">
+					<h2><svg><use href="#i-info" /></svg>About</h2>
+					<div class="kv"><span class="muted">App version</span><span class="mono" id="s-version"></span></div>
+					<div class="kv"><span class="muted">This device</span><span id="s-linked"></span></div>
+					<p class="xs muted" style="margin: 0.5rem 0 0">Signed-in phones are listed under My account in octo·modern, where you can sign one out.</p>
+				</div>
+				<div id="settings-error" class="note note-danger" hidden><svg><use href="#i-circle-alert" /></svg><span></span></div>
+			</section>
+
+			<!-- The server couldn't be loaded -->
+			<section id="offline" hidden>
+				<div class="hero">
+					<svg width="56" height="56"><use href="#logo" /></svg>
+					<h1>Can’t reach octo·modern</h1>
+					<p class="small muted" id="offline-detail"></p>
+				</div>
+				<div class="row-buttons">
+					<button class="btn btn-primary" id="retry"><svg><use href="#i-refresh" /></svg>Try again</button>
+					<button class="btn btn-secondary" id="offline-settings"><svg><use href="#i-settings" /></svg>App settings</button>
+				</div>
+			</section>
+		</main>
+		<script src="app.js"></script>
+	</body>
+</html>

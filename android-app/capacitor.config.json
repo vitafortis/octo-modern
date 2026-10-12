@@ -1,0 +1,9 @@
+{
+	"appId": "io.github.vitafortis.octomodern",
+	"appName": "octo·modern",
+	"webDir": "www",
+	"android": {
+		"allowMixedContent": false,
+		"captureInput": false
+	}
+}

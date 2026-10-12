@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larger printer widget. RemoteViews: only FrameLayout/LinearLayout/TextView/ImageView/ProgressBar. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:clipToOutline="true"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_image_bg"
+            android:clipToOutline="true">
+
+            <ImageView
+                android:id="@+id/snapshot"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="Webcam snapshot"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/snapshot_empty"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_camera_off"
+                 />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/name"
+            style="@style/WidgetText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="sans-serif-medium"
+            android:textSize="15sp"
+             />
+
+        <TextView
+            android:id="@+id/file"
+            style="@style/WidgetText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="@color/widget_muted"
+            android:textSize="12sp"
+             />
+
+        <TextView
+            android:id="@+id/state"
+            style="@style/WidgetText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="@color/widget_primary"
+            android:textSize="13sp"
+             />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_marginTop="5dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/widget_progress" />
+
+        <TextView
+            android:id="@+id/detail"
+            style="@style/WidgetText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/widget_muted"
+            android:textSize="11sp"
+             />
+
+        <TextView
+            android:id="@+id/updated"
+            style="@style/WidgetText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/widget_muted"
+            android:textSize="10sp" />
+    </LinearLayout>
+</FrameLayout>
