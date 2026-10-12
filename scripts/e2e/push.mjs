@@ -10,7 +10,7 @@
 //   E2E_KEEP=1 pnpm e2e:push        # leave the app and mocks running afterwards
 //   E2E_SKIP_BUILD=1 pnpm e2e:push  # reuse ./build
 //
-// Ports 5200–5203: app 5200, OctoPrint 5201–5202, push service 5203.
+// Ports 5200–5203 (E2E_PORT_BASE moves them): app +0, OctoPrint +1 and +2, push service +3.
 // Needs a Playwright Chromium. Screenshots land in docs/screenshots/.
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -23,7 +23,8 @@ import { startMockPush } from './mock-push.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const SHOTS = join(ROOT, 'docs/screenshots');
-const APP_PORT = 5200;
+const PORT_BASE = Number(process.env.E2E_PORT_BASE ?? 5200);
+const APP_PORT = PORT_BASE;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const ADMIN = { email: 'admin@example.com', name: 'Ada Admin', password: 'e2e-admin-password' };
 const OPERATOR = { email: 'operator@example.com', name: 'Otto Operator', password: 'e2e-operator-password' };
@@ -104,9 +105,9 @@ function fakePushManager(sub) {
 async function main() {
 	mkdirSync(SHOTS, { recursive: true });
 	log('starting the mock push service and two mock OctoPrint servers');
-	const push = await startMockPush(5203);
-	const mk4Op = await startMockOctoPrint({ port: 5201, apiKey: 'mk4-e2e-key', printSeconds: 30 });
-	const voronOp = await startMockOctoPrint({ port: 5202, apiKey: 'voron-e2e-key', printSeconds: 30 });
+	const push = await startMockPush(PORT_BASE + 3);
+	const mk4Op = await startMockOctoPrint({ port: PORT_BASE + 1, apiKey: 'mk4-e2e-key', printSeconds: 30 });
+	const voronOp = await startMockOctoPrint({ port: PORT_BASE + 2, apiKey: 'voron-e2e-key', printSeconds: 30 });
 	closers.push(push.close, mk4Op.close, voronOp.close);
 	for (const [op, key] of [
 		[mk4Op, 'mk4-e2e-key'],
