@@ -423,7 +423,7 @@ Notifications straight to phones and computers, without an app or a third-party 
 | --- | --- |
 
 1. **An admin** adds a **Browser push** channel under **Notifications** (choose who gets it: everyone who can see the printer, operators and admins, or admins only) and a rule that sends events to it.
-2. **Everyone** turns it on per device: **My account → Browser push → Enable notifications on this device** (admins also find it on the Notifications page), and allows notifications when the browser asks. The list shows their devices ("Chrome on Android", "Safari on iPhone"…) with **Send test** and **Remove**; admins see how many devices of how many people are subscribed, never anyone else's devices.
+2. **Everyone** turns it on per device: **My account → Browser push → Enable notifications on this device** (admins also find it under **Settings → Notifications**), and allows notifications when the browser asks. The list shows their devices ("Chrome on Android", "Safari on iPhone"…) with **Send test** and **Remove**; admins see how many devices of how many people are subscribed, never anyone else's devices.
 3. **Clicking a notification** opens (or focuses) octo·modern on the printer's page. Messages about the same print replace each other.
 
 - **HTTPS is required**: browsers only offer push on a secure origin (`https://…`, or `localhost`). Behind a TLS reverse proxy, set `ORIGIN` (or the public URL under Notifications → Options).
