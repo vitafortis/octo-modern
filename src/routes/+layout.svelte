@@ -19,6 +19,9 @@
 	import { progressPercent, STATE_LABEL } from '#lib/printer.ts';
 	import { palette } from '#lib/client/palette.svelte.ts';
 	import { compactShell, trackVisualViewport } from '#lib/client/viewport.svelte.ts';
+	import { trackInstall } from '#lib/client/install.svelte.ts';
+	import InstallEntry from '#lib/components/install/InstallEntry.svelte';
+	import IosInstallSheet from '#lib/components/install/IosInstallSheet.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
@@ -103,6 +106,7 @@
 		if (editor.target || palette.open) drawerOpen = false;
 	});
 	$effect(() => trackVisualViewport());
+	$effect(() => trackInstall());
 
 	/** Swipe the drawer away to the left. */
 	let swipe: { x: number; y: number; dx: number } | null = null;
@@ -264,6 +268,7 @@
 				{/if}
 			</div>
 
+			<InstallEntry {rail} />
 			{#if data.viewer && data.auth === 'authenticated' && !rail}
 				<a href="/account" title="My account" class="flex items-center gap-2.5 border-t border-border px-3 py-2.5 transition-colors hover:bg-accent/60">
 					<span class="grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[0.6875rem] font-semibold text-primary uppercase">
@@ -329,6 +334,7 @@
 	</div>
 	<PrinterDialog />
 	<PowerMenu />
+	<IosInstallSheet />
 	<!-- ⌘K / Ctrl+K: search printers, pages and actions. -->
 	<CommandPalette signedIn={!!data.viewer} ontogglesidebar={toggleSidebar} />
 	<!-- The sidebar as a drawer below lg: a modal dialog, so focus stays inside and Esc closes it. -->

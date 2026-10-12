@@ -4,6 +4,7 @@
 	import { KeyRound, LoaderCircle, Lock, Save, UserRound } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import PushDevices from '#lib/components/notify/PushDevices.svelte';
+	import InstallCard from '#lib/components/install/InstallCard.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { toast } from '#lib/client/state.svelte.ts';
 	import type { PageProps } from './$types';
@@ -90,7 +91,8 @@
 			<button class="btn btn-primary" disabled={busy}>{#if busy}<LoaderCircle class="animate-spin" />{:else}<Save />{/if}Save</button>
 		</div>
 	</form>
-	<div class="max-w-2xl page-x pb-10">
+	<div class="max-w-2xl space-y-5 page-x pb-10">
+		<InstallCard />
 		<PushDevices admin={data.user.role === 'admin'} />
 	</div>
 </div>
