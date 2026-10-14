@@ -1,11 +1,12 @@
 /**
  * API tokens: read-only status tokens for dashboards (Homepage, Glance, Uptime Kuma,
- * Home Assistant), and slicer upload keys (scope `upload`, see octoprint-compat.ts).
+ * Home Assistant), slicer upload keys (scope `upload`, see octoprint-compat.ts), and
+ * MCP tokens for AI assistants (scope `mcp`, see mcp/).
  *
- * A token is `ocm_` + 32 random bytes (base64url), shown once; only its SHA-256 is
- * stored. Tokens are never sessions: hooks.server.ts accepts status tokens on the status
- * routes (`STATUS_ROUTE`, GET only; plus POST /api/status/<id>/bed-clear when the token
- * allows it) and upload keys under /octoprint/api/ only.
+ * A token is `ocm_` (MCP: `ocx_`) + 32 random bytes (base64url), shown once; only its
+ * SHA-256 is stored. Tokens are never sessions: hooks.server.ts accepts status tokens on
+ * the status routes (`STATUS_ROUTE`, GET only; plus POST /api/status/<id>/bed-clear when
+ * the token allows it), upload keys under /octoprint/api/ only, and MCP tokens on /mcp only.
  */
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { sha256 } from './crypto.ts';
@@ -16,15 +17,27 @@ import { cleanRelPath } from '#lib/library.ts';
 import type { User } from '#lib/types.ts';
 
 export const TOKEN_PREFIX = 'ocm_';
+/** MCP tokens look different, so a leaked one is recognisable (and never mistaken for a status token). */
+export const MCP_TOKEN_PREFIX = 'ocx_';
 
-export type TokenScope = 'status' | 'upload';
-export const TOKEN_SCOPES: TokenScope[] = ['status', 'upload'];
+export type TokenScope = 'status' | 'upload' | 'mcp';
+export const TOKEN_SCOPES: TokenScope[] = ['status', 'upload', 'mcp'];
+
+/** What an MCP token may do. It never exceeds what its creator may do at the time of each call. */
+export interface McpTokenOptions {
+	/** `read`: status, files, history…; `control`: also pause, cancel, start, heat (operators and admins only). */
+	access: 'read' | 'control';
+	/** Every printer the creator can see, or only these. */
+	printers: 'all' | string[];
+}
 
 export interface TokenOptions {
 	/** Upload keys: where uploaded files go. */
 	upload?: UploadTarget;
 	/** Status tokens: may also confirm a printer's bed is clear (POST /api/status/<id>/bed-clear). */
 	bedClear?: boolean;
+	/** MCP tokens: access level and printers. */
+	mcp?: McpTokenOptions;
 }
 
 export interface ApiToken {
@@ -37,6 +50,8 @@ export interface ApiToken {
 	options: TokenOptions;
 	expiresAt: string | null;
 	createdBy: string | null;
+	/** User id of the creator (not sent to the browser). */
+	createdById?: string | null;
 	createdAt: string;
 	lastUsedAt: string | null;
 	revokedAt: string | null;
@@ -49,6 +64,8 @@ export interface TokenPrincipal {
 	scope: TokenScope;
 	includeAddresses: boolean;
 	options: TokenOptions;
+	/** The user who created it (MCP tokens act as them). */
+	createdById: string | null;
 }
 
 /** The only paths a token opens: GET /api/status, /api/status/<id>, /api/status/badge/<id>.svg. */
@@ -70,12 +87,14 @@ export const BED_CLEAR_ROUTE = /^\/api\/status\/([^/]+)\/bed-clear\/?$/;
  * A new token. `alnum` avoids `-` and `_` in the random part, for slicers whose API key
  * field only takes letters and digits (they may also leave out the `ocm_` prefix).
  */
-export function generateToken(alnum = false): string {
+export function generateToken(alnum = false, prefix = TOKEN_PREFIX): string {
 	for (;;) {
 		const t = randomBytes(32).toString('base64url');
-		if (!alnum || /^[A-Za-z0-9]+$/.test(t)) return TOKEN_PREFIX + t;
+		if (!alnum || /^[A-Za-z0-9]+$/.test(t)) return prefix + t;
 	}
 }
+
+const prefixFor = (scope: TokenScope) => (scope === 'mcp' ? MCP_TOKEN_PREFIX : TOKEN_PREFIX);
 
 export const hashToken = (token: string) => sha256(token);
 
@@ -96,7 +115,8 @@ export function presentedToken(headers: Headers, url: URL): string | null {
 
 /** Well-formed tokens only, so junk never reaches the database. */
 export function looksLikeToken(token: string): boolean {
-	return token.startsWith(TOKEN_PREFIX) && /^[A-Za-z0-9_-]{40,60}$/.test(token.slice(TOKEN_PREFIX.length));
+	const prefix = token.startsWith(MCP_TOKEN_PREFIX) ? MCP_TOKEN_PREFIX : TOKEN_PREFIX;
+	return token.startsWith(prefix) && /^[A-Za-z0-9_-]{40,60}$/.test(token.slice(prefix.length));
 }
 
 type Row = Record<string, unknown>;
@@ -121,6 +141,7 @@ function toToken(r: Row): ApiToken {
 		options: parseOptions(r.options),
 		expiresAt: (r.expires_at as string) ?? null,
 		createdBy: (r.created_by_email as string) ?? null,
+		createdById: (r.created_by as string) ?? null,
 		createdAt: r.created_at as string,
 		lastUsedAt: (r.last_used_at as string) ?? null,
 		revokedAt: (r.revoked_at as string) ?? null
@@ -129,6 +150,12 @@ function toToken(r: Row): ApiToken {
 
 export function listTokens(): ApiToken[] {
 	return (sqlite().prepare('SELECT * FROM api_tokens ORDER BY revoked_at IS NOT NULL, created_at DESC').all() as Row[]).map(toToken);
+}
+
+/** For the browser: everything but the creator's user id. */
+export function publicToken(t: ApiToken): ApiToken {
+	const { createdById: _c, ...rest } = t;
+	return rest;
 }
 
 export function getToken(id: string): ApiToken | undefined {
@@ -173,6 +200,20 @@ export function parseUploadTarget(raw: unknown): UploadTarget {
 	}
 }
 
+/** An MCP token's `access` and `printers` (whether the printers exist is checked by the route). */
+export function parseMcpOptions(b: Record<string, unknown>): McpTokenOptions {
+	const access = b.access === 'control' ? 'control' : b.access === 'read' || b.access === undefined ? 'read' : null;
+	if (!access) throw new BadRequest('"access" must be "read" or "control"');
+	let printers: McpTokenOptions['printers'] = 'all';
+	if (Array.isArray(b.printers)) {
+		const ids = [...new Set(b.printers.filter((x): x is string => typeof x === 'string' && !!x))];
+		if (!ids.length) throw new BadRequest('Choose at least one printer, or all printers');
+		if (ids.length > 500) throw new BadRequest('Too many printers');
+		printers = ids;
+	} else if (b.printers !== undefined && b.printers !== 'all') throw new BadRequest('"printers" must be "all" or a list of printer ids');
+	return { access, printers };
+}
+
 export function parseTokenInput(body: unknown, now = Date.now()): TokenInput {
 	if (!body || typeof body !== 'object') throw new BadRequest('Expected a JSON object');
 	const b = body as Record<string, unknown>;
@@ -185,15 +226,16 @@ export function parseTokenInput(body: unknown, now = Date.now()): TokenInput {
 		if (!Number.isFinite(days) || days < 1 || days > 3650) throw new BadRequest('"expiresInDays" must be 1–3650');
 		expiresAt = new Date(now + Math.round(days) * 86_400_000).toISOString();
 	}
-	const scope: TokenScope = b.scope === 'upload' ? 'upload' : 'status';
-	const options: TokenOptions = scope === 'upload' ? { upload: parseUploadTarget(b.upload) } : b.bedClear === true ? { bedClear: true } : {};
+	const scope: TokenScope = b.scope === 'upload' ? 'upload' : b.scope === 'mcp' ? 'mcp' : 'status';
+	const options: TokenOptions =
+		scope === 'upload' ? { upload: parseUploadTarget(b.upload) } : scope === 'mcp' ? { mcp: parseMcpOptions(b) } : b.bedClear === true ? { bedClear: true } : {};
 	return { name, expiresAt, includeAddresses: scope === 'status' && b.includeAddresses === true, scope, options };
 }
 
 /** Creates a token and returns it in full — the only time it's ever available. */
 export function createToken(input: TokenInput, by: Pick<User, 'id' | 'email'> | null): { token: string; record: ApiToken } {
 	const scope = input.scope ?? 'status';
-	const token = generateToken(scope === 'upload');
+	const token = generateToken(scope === 'upload', prefixFor(scope));
 	const id = randomUUID();
 	const options = input.options && Object.keys(input.options).length ? JSON.stringify(input.options) : null;
 	sqlite()
@@ -201,7 +243,7 @@ export function createToken(input: TokenInput, by: Pick<User, 'id' | 'email'> | 
 			`INSERT INTO api_tokens (id, name, token_hash, prefix, scope, include_addresses, options, expires_at, created_by, created_by_email, created_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
-		.run(id, input.name, hashToken(token), token.slice(0, TOKEN_PREFIX.length + 6), scope, input.includeAddresses ? 1 : 0, options, input.expiresAt, by?.id ?? null, by?.email ?? null, new Date().toISOString());
+		.run(id, input.name, hashToken(token), token.slice(0, prefixFor(scope).length + 6), scope, input.includeAddresses ? 1 : 0, options, input.expiresAt, by?.id ?? null, by?.email ?? null, new Date().toISOString());
 	return { token, record: getToken(id)! };
 }
 
@@ -266,6 +308,31 @@ export function authorizeBedClearRequest(req: { method: string; headers: Headers
 	return { ok: true, principal };
 }
 
+/** A token from `Authorization: Bearer …` only (MCP: no query-string tokens, no cookies). */
+export function bearerToken(headers: Headers): string | null {
+	const auth = headers.get('authorization');
+	const m = auth ? /^Bearer\s+(\S+)\s*$/i.exec(auth) : null;
+	return m ? m[1] : null;
+}
+
+/**
+ * Decides a request to /mcp: an MCP token in `Authorization: Bearer ocx_…`. Bad tokens
+ * are throttled like on the status routes. What the token may do (its creator's current
+ * role and printers) is worked out per call, in mcp/principal.ts.
+ */
+export function authorizeMcpRequest(req: { headers: Headers; ip?: string }): StatusAuth {
+	const key = req.ip ?? 'unknown';
+	if (tooManyFailures(key)) return { ok: false, status: 429, message: 'Too many invalid tokens; try again later' };
+	const token = bearerToken(req.headers);
+	if (!token) return { ok: false, status: 401, message: 'MCP token required (Authorization: Bearer ocx_…)' };
+	const principal = verifyToken(token, 'mcp', req.ip);
+	if (!principal || !principal.options.mcp) {
+		failures.get(key)!.push(Date.now());
+		return { ok: false, status: 401, message: 'Invalid, expired or revoked MCP token' };
+	}
+	return { ok: true, principal };
+}
+
 /** The key a slicer sends: `X-Api-Key` (OctoPrint's header), `Authorization: Bearer`, or `?apikey=`. */
 export function presentedUploadKey(headers: Headers, url: URL): string | null {
 	const k = headers.get('x-api-key')?.trim();
@@ -314,5 +381,5 @@ export function verifyToken(token: string, scope: TokenScope, ip?: string): Toke
 		lastTouched.set(t.id, now);
 		sqlite().prepare('UPDATE api_tokens SET last_used_at = ?, last_used_ip = ? WHERE id = ?').run(new Date(now).toISOString(), ip ?? null, t.id);
 	}
-	return { id: t.id, name: t.name, scope: t.scope, includeAddresses: t.includeAddresses, options: t.options };
+	return { id: t.id, name: t.name, scope: t.scope, includeAddresses: t.includeAddresses, options: t.options, createdById: t.createdById ?? null };
 }

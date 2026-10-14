@@ -33,7 +33,7 @@ test('tokens look like ocm_ + 32 random bytes and only their hash is stored', ()
 test('verification: valid, revoked, expired, malformed', () => {
 	const { token, record } = t.createToken({ name: 'kuma', expiresAt: null, includeAddresses: true }, null);
 	const p = t.verifyToken(token, 'status');
-	assert.deepEqual(p, { id: record.id, name: 'kuma', scope: 'status', includeAddresses: true, options: {} });
+	assert.deepEqual(p, { id: record.id, name: 'kuma', scope: 'status', includeAddresses: true, options: {}, createdById: null });
 	assert.ok(t.getToken(record.id)!.lastUsedAt, 'last use is recorded');
 
 	assert.equal(t.verifyToken('ocm_nope', 'status'), null);

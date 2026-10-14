@@ -20,6 +20,8 @@ declare global {
 			apiToken?: import('#lib/server/api-tokens.ts').TokenPrincipal;
 			/** Set when the Android app's native code authenticated with a device token (devices.ts). */
 			device?: import('#lib/server/devices.ts').DevicePrincipal;
+			/** Set only on /mcp, by a valid MCP token: who the call acts as, on which printers (mcp/principal.ts). */
+			mcp?: import('#lib/server/mcp/principal.ts').McpContext;
 		}
 	}
 }

@@ -42,6 +42,11 @@ const OPEN_USER: User = {
 	lastLoginAt: null
 };
 
+/** The stand-in admin when OCM_AUTH=disabled (tokens created then act as it), else null. */
+export function openUser(): User | null {
+	return config.authDisabled ? OPEN_USER : null;
+}
+
 function guestUser(role: Exclude<Role, 'admin'>): User {
 	return { ...OPEN_USER, id: 'guest', email: 'guest', name: 'Guest', role };
 }

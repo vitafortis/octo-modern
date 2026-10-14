@@ -12,3 +12,17 @@ export function publicUrl(url: URL, headers: Headers): URL {
 	out.protocol = forwarded === 'https' ? 'https:' : forwarded === 'http' ? 'http:' : import.meta.env.DEV ? url.protocol : 'http:';
 	return out;
 }
+
+/**
+ * Whether an Origin header names the host the request came to. Hosts are compared (not
+ * full origins) so it works by IP, hostname, or behind a TLS-terminating proxy without
+ * configuring ORIGIN (hooks.server.ts, for every write and for /mcp).
+ */
+export function sameHost(origin: string, url: URL, headers: Headers): boolean {
+	const allowed = [url.host, headers.get('host'), headers.get('x-forwarded-host')].filter(Boolean);
+	let host = '';
+	try {
+		host = new URL(origin).host;
+	} catch {}
+	return allowed.includes(host);
+}

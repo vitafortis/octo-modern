@@ -3,12 +3,13 @@ import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import '#lib/server/jobs/index.ts';
 import { startJobs } from '#lib/server/jobs.ts';
 import { authenticate } from '#lib/server/auth.ts';
-import { publicUrl } from '#lib/server/origin.ts';
+import { publicUrl, sameHost } from '#lib/server/origin.ts';
 import { ADMIN_PAGES, adminOnlyApi, controlApi, printerIdFromPath, roleAllows } from '#lib/server/access.ts';
 import { canSee } from '#lib/server/permissions.ts';
 import { getPrinter } from '#lib/server/store.ts';
 import { authorizeBedClearRequest, authorizeStatusRequest, authorizeUploadRequest, BED_CLEAR_ROUTE, isStatusRoute } from '#lib/server/api-tokens.ts';
 import { FRAME_PATH } from '#lib/server/detect/frames.ts';
+import { MCP_PATH, mcpGate } from '#lib/server/mcp/server.ts';
 import { authorizeDeviceRequest, deviceJobCommandAllowed, isDeviceJobRoute, presentedDeviceToken } from '#lib/server/devices.ts';
 
 export const init: ServerInit = () => {
@@ -23,6 +24,25 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const method = event.request.method;
 	const isApi = pathname.startsWith('/api/');
 
+	// The MCP server for AI assistants: an MCP token in `Authorization: Bearer ocx_…` and
+	// nothing else (no cookies, no query-string tokens). Browsers' Origin must be this host
+	// (DNS-rebinding protection, as the MCP spec asks; same rule as below). The token acts as
+	// its creator, as they are now (mcp/principal.ts).
+	if (pathname === MCP_PATH) {
+		try {
+			event.locals.ip = event.getClientAddress();
+		} catch {}
+		event.locals.auth = 'anonymous';
+		event.locals.user = null;
+		const gate = mcpGate({ method, url: event.url, headers: event.request.headers, ip: event.locals.ip });
+		if (!gate.ok) return gate.response;
+		event.locals.mcp = gate.ctx;
+		const response = await resolve(event);
+		response.headers.set('X-Content-Type-Options', 'nosniff');
+		response.headers.set('Referrer-Policy', 'no-referrer');
+		return response;
+	}
+
 	// Writes must come from our own host. Browsers always send Origin on cross-site
 	// and non-GET requests, so a mismatch means a forged request. (This replaces
 	// SvelteKit's own CSRF check; see vite.config.ts.)
@@ -30,15 +50,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// behind a TLS-terminating proxy without configuring ORIGIN.
 	if (method !== 'GET' && method !== 'HEAD') {
 		const origin = event.request.headers.get('origin');
-		if (origin) {
-			const h = event.request.headers;
-			const allowed = [event.url.host, h.get('host'), h.get('x-forwarded-host')].filter(Boolean);
-			let host = '';
-			try {
-				host = new URL(origin).host;
-			} catch {}
-			if (!allowed.includes(host)) return json({ message: 'Cross-origin request blocked' }, { status: 403 });
-		}
+		if (origin && !sameHost(origin, event.url, event.request.headers)) return json({ message: 'Cross-origin request blocked' }, { status: 403 });
 	}
 
 	const visible = publicUrl(event.url, event.request.headers);

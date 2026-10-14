@@ -21,7 +21,12 @@
 // `pluginManager: { plugins, repository, updates, … }` adds OctoPrint's Plugin Manager, Software
 // Update and system commands (see mock-pluginmanager.mjs); `version` sets OctoPrint's version.
 // While it restarts, every connection is reset.
+//
+// Heater targets can be set (/api/printer/bed, /api/printer/tool). Jobs can be paused and resumed (`pause` with `action: pause | resume | toggle`); a paused
+// print's clock stops. `/webcam/?action=snapshot` answers a small generated JPEG (set the
+// printer's webcam URL to `/webcam/?action=snapshot` to use it).
 import { createServer } from 'node:http';
+import jpeg from 'jpeg-js';
 import { createHash } from 'node:crypto';
 import { createPluginManager } from './mock-pluginmanager.mjs';
 
@@ -34,6 +39,26 @@ const readBody = (req) =>
 	});
 
 const ROOM = 22;
+
+/** A 160×120 test picture (a violet gradient with a lighter "bed" band), encoded once. */
+let snapshotJpeg = null;
+function testSnapshot() {
+	if (snapshotJpeg) return snapshotJpeg;
+	const width = 160;
+	const height = 120;
+	const data = Buffer.alloc(width * height * 4);
+	for (let y = 0; y < height; y++)
+		for (let x = 0; x < width; x++) {
+			const i = (y * width + x) * 4;
+			const bed = y > 80;
+			data[i] = bed ? 200 : 60 + x / 2;
+			data[i + 1] = bed ? 200 : 40 + y / 3;
+			data[i + 2] = bed ? 210 : 140 + x / 3;
+			data[i + 3] = 255;
+		}
+	snapshotJpeg = jpeg.encode({ data, width, height }, 80).data;
+	return snapshotJpeg;
+}
 
 /**
  * - `powered()`: whether the printer has power (the mock plug's state)
@@ -226,7 +251,7 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 			if (bedVisualizer.uiSaves) Object.assign(b, { stored_mesh: mesh, ...axesFor(mesh), mesh_timestamp: new Date().toLocaleString('en-GB') });
 		}, bedVisualizer.delayMs ?? 1500).unref?.();
 	}
-	const connected = () => s.state === 'Operational' || s.state === 'Printing';
+	const connected = () => s.state === 'Operational' || s.state === 'Printing' || s.state === 'Paused';
 	let last = Date.now();
 	const tick = setInterval(() => {
 		const now = Date.now();
@@ -263,7 +288,7 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 	const flags = () => ({
 		operational: connected(),
 		printing: s.state === 'Printing',
-		paused: false,
+		paused: s.state === 'Paused',
 		pausing: false,
 		cancelling: false,
 		resuming: false,
@@ -322,6 +347,7 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 			}
 			return sendJson(res, { error: 'unknown' }, 404);
 		}
+		if (url.pathname === '/webcam/' && url.searchParams.get('action') === 'snapshot') return res.writeHead(200, { 'content-type': 'image/jpeg' }).end(testSnapshot());
 		if (req.headers['x-api-key'] !== apiKey) return sendJson(res, { error: 'Invalid API key' }, 403);
 		const p = url.pathname;
 		if (p === '/api/version') return sendJson(res, { api: '0.1', server: s.version, text: `OctoPrint ${s.version}` });
@@ -353,6 +379,15 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 			}
 			return res.writeHead(204).end();
 		}
+		// Heater targets, as the temperature controls set them.
+		if ((p === '/api/printer/bed' || p === '/api/printer/tool') && req.method === 'POST') {
+			if (!connected()) return sendJson(res, { error: 'Printer is not operational' }, 409);
+			const b = JSON.parse(body || '{}');
+			if (b.command !== 'target') return sendJson(res, { error: 'bad command' }, 400);
+			if (p === '/api/printer/bed') s.bedTarget = Number(b.target);
+			else if (b.targets?.tool0 !== undefined) s.toolTarget = Number(b.targets.tool0);
+			return res.writeHead(204).end();
+		}
 		if (p === '/api/printer') {
 			if (!connected()) return sendJson(res, { error: 'Printer is not operational' }, 409);
 			return sendJson(res, {
@@ -368,19 +403,30 @@ export async function startMockOctoPrint({ port = 0, apiKey = 'mock-key', powere
 					startPrint(s.selected);
 					return res.writeHead(204).end();
 				}
-				if (b.command === 'cancel' && s.state === 'Printing') {
+				if (b.command === 'pause' && (s.state === 'Printing' || s.state === 'Paused')) {
+					const pause = b.action === 'pause' || (b.action !== 'resume' && s.state === 'Printing');
+					if (pause && s.state === 'Printing') {
+						s.state = 'Paused';
+						s.pausedAt = Date.now();
+					} else if (!pause && s.state === 'Paused') {
+						s.state = 'Printing';
+						s.startedAt += Date.now() - s.pausedAt;
+					}
+					return res.writeHead(204).end();
+				}
+				if (b.command === 'cancel' && (s.state === 'Printing' || s.state === 'Paused')) {
 					s.state = 'Operational';
 					s.toolTarget = s.bedTarget = 0;
 					return res.writeHead(204).end();
 				}
 				return sendJson(res, { error: 'Printer is not printing' }, 409);
 			}
-			const elapsed = s.state === 'Printing' ? (Date.now() - s.startedAt) / 1000 : s.job?.done ? printSeconds : null;
+			const elapsed = s.state === 'Printing' || s.state === 'Paused' ? ((s.state === 'Paused' ? s.pausedAt : Date.now()) - s.startedAt) / 1000 : s.job?.done ? printSeconds : null;
 			const shown = s.job ?? (s.selected ? { path: s.selected } : null);
 			const file = shown ? { name: shown.path.split('/').pop(), path: shown.path, display: shown.path.split('/').pop(), origin: 'local', size: 123456, date: 1760000000 } : { name: null, path: null, display: null, origin: null, size: null, date: null };
 			return sendJson(res, {
 				job: { file, estimatedPrintTime: s.job ? printSeconds : null, filament: s.job ? { tool0: { length: 1234, volume: 3 } } : null, user: s.job ? 'admin' : null },
-				progress: { completion: elapsed == null ? null : Math.min(100, (elapsed / printSeconds) * 100), printTime: elapsed == null ? null : Math.round(elapsed), printTimeLeft: s.state === 'Printing' ? Math.max(0, Math.round(printSeconds - elapsed)) : null, printTimeLeftOrigin: 'estimate', filepos: null },
+				progress: { completion: elapsed == null ? null : Math.min(100, (elapsed / printSeconds) * 100), printTime: elapsed == null ? null : Math.round(elapsed), printTimeLeft: s.state === 'Printing' || s.state === 'Paused' ? Math.max(0, Math.round(printSeconds - elapsed)) : null, printTimeLeftOrigin: 'estimate', filepos: null },
 				state: s.state
 			});
 		}
