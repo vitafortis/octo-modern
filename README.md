@@ -60,6 +60,7 @@ More in [Getting started](#getting-started); what changed in [CHANGELOG.md](CHAN
 - **Audit log**: every print started, paused or cancelled, every temperature change, upload, deletion, G-code command and connection change, with who did it and from where.
 - **Single sign-on**: any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …), with accounts created automatically for matching emails.
 - **Status API for dashboards**: read-only tokens for Homepage, Glance, Uptime Kuma and Home Assistant. See [Dashboards and monitoring](#dashboards-and-monitoring).
+- **MCP server for Claude and other AI tools**: Claude Code, Claude Desktop and other MCP clients can ask how prints are going, look through the webcam, find files and read the history and stats; with a control token also pause, cancel, start (after confirming) and heat. Tokens act as their creator and never exceed their access. See [MCP server](#mcp-server-claude-and-other-ai-tools).
 - **Backup & restore**: an encrypted, passphrase-protected file with your printers (and their API keys), users, settings, notification channels and the print queue, optionally the print history (with or without its pictures), that restores on a fresh install.
 - **Command palette**: `⌘K` (`Ctrl+K` on Linux/Windows) jumps to printers, tabs and pages.
 - **Phones and tablets**: below laptop width the sidebar becomes a drawer behind a slim top bar (with the printer's state and a search button), tables become lists with each row's actions in a menu, and dialogs slide up as sheets. On a phone, Pause, Cancel and the emergency stop (which still asks first) sit in a bar under your thumb; the jog pad is thumb-sized, the webcam goes fullscreen with a tap, the temperature chart reads out where you touch, and the terminal prompt stays just above the keyboard. Buttons and fields are at least 44 px on touch screens, with 16 px text so iOS doesn't zoom.
@@ -289,10 +290,11 @@ Links to the old tabs (`?tab=preview`, `terminal`, `webcam`, `timelapse`, `detec
 | Set up smart plugs and their automations, test them | ✓ | | |
 | Add, edit and remove printers (and their API keys); Discover | ✓ | | |
 | OctoPrint plugins and updates: list, install, enable/disable, uninstall, update OctoPrint and plugins, restart OctoPrint | ✓ | | |
-| Integrations: single sign-on, status API tokens, slicer upload keys | ✓ | | |
+| Integrations: single sign-on, status API tokens, slicer upload keys, MCP tokens | ✓ | | |
+| Create MCP tokens for AI assistants (read-only or control, all or chosen printers); each acts as its creator and never exceeds what they may do now | ✓ | | |
 | Settings: General (sign-in and guests, the ML API, backups), Users, Audit log, library sources | ✓ | | |
 
-Admins always see every printer. Operators and viewers see every printer, or only the ones you pick under **Settings → Users** (the **Printers** column); printers someone hasn't been given don't exist as far as they can tell, and the history, stats and queued jobs of removed printers are for admins only. Guests (when sign-in is optional) act as viewers or operators on every printer, but can't use browser push or link the Android app. Status API tokens and slicer upload keys aren't users: a status token reads every printer (and may confirm a bed is clear if it was created to), an upload key only uploads to the one place it was made for. Roles are enforced on the server for every route, not just hidden in the UI.
+Admins always see every printer. Operators and viewers see every printer, or only the ones you pick under **Settings → Users** (the **Printers** column); printers someone hasn't been given don't exist as far as they can tell, and the history, stats and queued jobs of removed printers are for admins only. Guests (when sign-in is optional) act as viewers or operators on every printer, but can't use browser push or link the Android app. Status API tokens and slicer upload keys aren't users: a status token reads every printer (and may confirm a bed is clear if it was created to), an upload key only uploads to the one place it was made for. MCP tokens are made by admins and act as the admin who made them, cut down to read-only or to chosen printers if wanted: a token whose creator is later made an operator keeps working as an operator, a viewer's is read-only, a disabled account's stops. Roles are enforced on the server for every route, not just hidden in the UI.
 
 Dangerous actions ask for confirmation, and the server insists on it too (it answers `409` with `confirmRequired` until the request says `confirm: true`): cancelling a print, deleting a file, an emergency stop (M112), disconnecting during a print, sending G-code while printing, uninstalling an OctoPrint plugin, installing one from a URL, updating OctoPrint or plugins, restarting OctoPrint, and G-code that stops the machine or touches stored settings and firmware (M0/M1, M81, M92, M112, M302, M303, M410, M500–M502, M906/M907, M997, M999).
 
@@ -762,6 +764,72 @@ rest:
 
 **Uptime Kuma**: an HTTP monitor on `/api/status/<id>?strict=1&token=ocm_…` goes down when OctoPrint is unreachable or the printer reports an error.
 
+## MCP server (Claude and other AI tools)
+
+octo·modern has a built-in [Model Context Protocol](https://modelcontextprotocol.io) server at `/mcp`, so an AI assistant can work with your printers: *"How long is the Voron's print going to take?"*, *"Show me the MK4's camera"*, *"Did anything fail this week?"*, *"Queue the dragon from the NAS for any PETG printer"*, *"Pause the MK4"*. It speaks Streamable HTTP (stateless, protocol versions 2024-11-05 through 2025-11-25), built on the official MCP SDK.
+
+**Create a token** under **Settings → Integrations → MCP server** (admins): give it a name, choose **Read-only** or **Control**, all printers or chosen ones, and optionally an expiry. The token (`ocx_…`) is shown once, with ready-to-paste setup for:
+
+- **Claude Code**:
+  ```sh
+  claude mcp add --transport http octo-modern https://octo.example.com/mcp --header "Authorization: Bearer ocx_…"
+  ```
+- **Claude Desktop** (through [`mcp-remote`](https://www.npmjs.com/package/mcp-remote), needs Node.js), in `claude_desktop_config.json`:
+  ```json
+  {
+    "mcpServers": {
+      "octo-modern": {
+        "command": "npx",
+        "args": ["-y", "mcp-remote", "https://octo.example.com/mcp", "--header", "Authorization:${AUTH_HEADER}"],
+        "env": { "AUTH_HEADER": "Bearer ocx_…" }
+      }
+    }
+  }
+  ```
+  On plain `http://` (other than localhost) add `"--allow-http"` to `args`.
+- **Other MCP clients**: URL `https://octo.example.com/mcp`, transport Streamable HTTP, header `Authorization: Bearer ocx_…`.
+
+**claude.ai** (web and mobile custom connectors) isn't supported yet: those connectors sign in with OAuth, which octo·modern's MCP server doesn't offer; use Claude Code or Claude Desktop.
+
+![New MCP token](docs/screenshots/mcp-token-dialog.png)
+
+| | |
+| --- | --- |
+| ![Setup snippet](docs/screenshots/mcp-token-setup.png) | ![Light theme](docs/screenshots/mcp-token-setup-light.png) |
+| The token, once, with setup for each client | Light theme |
+
+**Tools**
+
+| Tool | What it does | Token |
+| --- | --- | --- |
+| `list_printers` | every printer: state, progress, time left/ETA, temperatures | read |
+| `get_printer_status` | one printer in detail: job, error, Z, pre-print steps, queue state (bed awaiting clear, held) | read |
+| `get_camera_snapshot` | a picture from the webcam (JPEG/PNG) | read |
+| `list_files` | a printer's files (folder or search), or the library: sources, folders, search across sources | read |
+| `get_queue` | queued jobs and each printer's queue state | read |
+| `get_print_history` | recent prints, filtered by printer, result or text | read |
+| `get_stats` | totals, success rate, utilisation, top files, failure reasons, materials for 30d/90d/12m/all | read |
+| `get_maintenance_due` | due and overdue maintenance tasks (or all) | read |
+| `get_updates_available` | OctoPrint and plugin updates from the last background check (creator must be an admin) | read |
+| `get_filament` | Spoolman: the spool on each tool, and the stock | read |
+| `pause_print`, `resume_print` | pause or resume the print | control |
+| `cancel_print` | cancel the print: needs `confirm: true`, otherwise it says what would happen | control |
+| `start_print` | print a file on the printer: needs `confirm: true`; refused while printing and until the bed is confirmed clear; pre-print steps ask for `preprint: "run" \| "skip"`, a spool that may run out for `ignore_filament_warning: true` | control |
+| `add_to_queue` | queue a library file or a printer's file, for one printer or any (with tags), with copies | control |
+| `confirm_bed_clear` | record that the bed is empty (the queue may then start its next job) | control |
+| `set_temperature` | set a tool, bed or chamber target (0 = off; tools ≤ 450 °C, bed ≤ 200 °C, chamber ≤ 120 °C) | control |
+
+Printers are named by name (case-insensitive, a unique prefix works) or id; an ambiguous name answers with the choices. Tools have MCP annotations (`readOnlyHint`, `destructiveHint`) so clients can ask before running the risky ones.
+
+**Security model**
+
+- A token acts **on behalf of the admin who created it**, re-checked on every call: it never exceeds that user's *current* role and printer access. Demote the creator to operator and nothing changes; to viewer, and the control tools disappear; disable or delete them, and the token stops working (`403`).
+- **Read-only** tokens don't even see the control tools (`tools/list`) and are refused if they call one. A token for **chosen printers** doesn't see the others at all; it can't queue jobs for "any printer".
+- **Dangerous actions** (`cancel_print`, `start_print`) do nothing without an explicit `confirm: true`; `start_print` goes through the same path as the **Print** button, so the bed-clear rule, the pre-print plan, the Spoolman filament check and "already printing" refusals all apply.
+- **Every action** through MCP is in the audit log as the creator, with `via MCP token “Name”`; reads aren't logged.
+- Only `Authorization: Bearer ocx_…` is accepted: no cookies, no query-string tokens. Repeated bad tokens from one address are throttled (`429`), like on the status routes. A browser `Origin` must be octo·modern's own host (`403` otherwise, against DNS rebinding). `GET /mcp` answers `405` (no SSE stream).
+- Tokens are stored as SHA-256 hashes, can expire and be revoked, and show when they were last used.
+
 ## Images
 
 Images are published to the GitHub Container Registry for `linux/amd64` and `linux/arm64`:
@@ -960,6 +1028,7 @@ Under **Settings → General → Backup & restore**, admins download an encrypte
 - **Least privilege**: an OctoPrint Application Key acts as the user who approved it. Use a key of a user with only the permissions you want octo·modern to have; **Test connection** lists what it lacks.
 - **Access** is checked on the server for every printer-scoped page and API call. Viewers can't reach any route that changes a printer; operators can't reach server, user or settings routes. Confirmations for dangerous actions are enforced by the server.
 - **API tokens** (`ocm_` + 32 random bytes, SHA-256 hashed at rest) never become sessions, and repeated bad tokens from one address are throttled. Status tokens only work on `GET /api/status…` (plus the bed-clear `POST` for tokens created with **May confirm bed clear**); their answers omit OctoPrint URLs unless the token allows it and report errors as codes only. Slicer upload keys only open `/octoprint/api/…` and upload to the one destination they were created for.
+- **MCP tokens** (`ocx_` + 32 random bytes, SHA-256 hashed at rest) only open `POST /mcp`, only as an `Authorization: Bearer` header, and act as their creator with the creator's current role and printer access, cut down to read-only or chosen printers when made so. Cancelling and starting prints need an explicit `confirm: true`; actions are audit-logged with the token's name. See [MCP server](#mcp-server-claude-and-other-ai-tools).
 - **Device tokens** (the Android app, `ocd_` + 32 random bytes, SHA-256 hashed at rest) are issued to a signed-in session, act as their user with the user's current role and printer access, and only open the routes the app needs (printer list and status, a printer's state and snapshot, pause/resume/cancel, stopping a preparation, and the device's own record); everything else answers `403`. Only `Authorization: Bearer`, never a query string. Disabling or deleting the account stops them at once; **My account** signs a phone out. On the phone the token is sealed with an AES-GCM key in the Android Keystore and bound to the server's address.
 - **Sign-in** is by OIDC or by local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies tied to a user and end when the user is disabled or their role changes. Writes from another origin are rejected.
 - **Discovery** is admin-only and read-only: Docker and Arcane are only read (`GET`), a socket proxy keeps writes blocked, and fingerprinting uses unauthenticated `GET`s. Keys from the Application Keys flow are polled for by octo·modern's server and go straight into the encrypted store; the browser only sees the request's state. Subnet scans need an admin, are capped at 4096 addresses and are audited.
@@ -996,6 +1065,7 @@ pnpm e2e:detect                       # failure detection against a mock ML API 
 pnpm e2e:stats                        # History → Stats on seeded demo history (no Docker)
 pnpm e2e:bedmesh                      # Care → Bed mesh against a mock Bed Visualizer (no Docker)
 pnpm e2e:plugins                      # Care → Plugins & updates against a mock Plugin Manager (no Docker)
+pnpm e2e:mcp                          # the MCP server: a token made in the UI, the MCP SDK client over HTTP (no Docker)
 pnpm e2e:push                         # the installable app and browser push against a mock push service (no Docker)
 pnpm e2e:install                      # the Install app button (no Docker)
 pnpm e2e:klipper                      # Klipper printers against a mock Moonraker (no Docker)
@@ -1008,6 +1078,8 @@ pnpm e2e:android                      # the Android app on an emulator (see its 
 `pnpm e2e:bedmesh` (ports `:5400`–`:5403`) needs no Docker: `scripts/e2e/mock-octoprint.mjs` gains the Bed Visualizer plugin (its settings, the `@BEDLEVELVISUALIZER` probe run, its push messages over a small websocket) and the script checks detection (no tab and a settings hint without the plugin), the history from meshes probed in OctoPrint, roles, the refusal while printing and the confirmation, an update with progress in Chromium, the written-back mesh, the `bed.drift` webhook, comparing, deleting, light and dark, and a 390 px phone, then writes the `bedmesh*.png` and `mobile-bedmesh*.png` screenshots.
 
 `pnpm e2e:plugins` (ports `:4500`–`:4502`) needs no Docker: `scripts/e2e/mock-pluginmanager.mjs` gives the mock OctoPrint the Plugin Manager, Software Update and system commands with OctoPrint 1.11's answers (checked against its source and a real 1.11.8), push messages for installs and updates, and a restart that takes it away for a few seconds; nothing is downloaded. The script checks roles (admins only), a key that isn't an OctoPrint admin's, every confirmation and the refusals while printing, then in Chromium searching and filtering, enable/disable with the **Restart needed** banner, a repository install with its live log, a failing install from a URL, uninstalling with settings and data, **Update all** through OctoPrint's restart to the new version, **Restart OctoPrint**, the audit log and a 390 px phone, and writes the `plugins*.png` and `mobile-plugins.png` screenshots. The node tests (`tests/plugins.test.ts`, ports `:4510`–`:4522`) parse answers recorded from a real OctoPrint 1.11.8.
+
+`pnpm e2e:mcp` (ports `:4700`–`:4702`) needs no Docker: two mock OctoPrints (one with a webcam), an MCP token created in **Settings → Integrations** in Chromium (both themes and a 390 px phone; the `mcp-*.png` screenshots), then the official MCP SDK client connected to the built app over HTTP: tools per access level, a camera picture, a print started (bed-clear check, describe, confirm) and cancelled, the audit log, bad tokens, a foreign Origin and `GET`. The node tests (`tests/mcp.test.ts`, ports `:4710`–`:4712`) cover the protocol (version negotiation, methods), the gate, per-printer and per-role scoping, a demoted or disabled creator, and every tool's answers and refusals.
 
 `pnpm e2e:klipper` needs no Docker: `scripts/e2e/mock-moonraker.mjs` simulates Klipper behind Moonraker (HTTP API and the JSON-RPC websocket, heaters, prints that progress, pause/resume/cancel, emergency stop and firmware restart, files with slicer metadata and thumbnails, webcams, job history, Mainsail presets). It tests auto-detection, a keyed Moonraker, mDNS discovery of `_moonraker._tcp`, adds a printer through the type picker in Chromium, checks live status over the websocket, prints from the Files tab, pauses, resumes and cancels from the header, the history entry and the imported job history, controls and macros, emergency stop and firmware restart, then writes the `*-klipper*.png` screenshots. Ports `:5560`–`:5564` (`E2E_PORT_BASE` moves them); the node tests use the same mock on `:5550`–`:5554`.
 

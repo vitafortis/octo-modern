@@ -18,6 +18,9 @@ Container images are built from every push to `main` as `ghcr.io/vitafortis/octo
 - **Stats** (History → Stats): print hours, outcomes, filament, cost, most-printed files, failure reasons and utilisation, with CSV.
 - **G-code preview** (3D and layers, live during a print, 100 MB files) and the **camera wall** with kiosk mode.
 
+### Integrations
+- **MCP server for Claude and other AI tools** at `/mcp` (Streamable HTTP, stateless, official MCP SDK): read tools (printers, status, camera snapshot, files and library, queue, history, stats, maintenance, updates, filament) and, for control tokens, pause/resume/cancel/start, add to queue, confirm a bed clear and set temperatures. `ocx_` tokens from **Settings → Integrations → MCP server** (admins), read-only or control, all or chosen printers, with copy-paste setup for Claude Code and Claude Desktop; each acts as its creator and never exceeds their current access. Cancel and start need `confirm: true` and go through the same checks as the UI; every action is audit-logged `via MCP token “Name”`.
+
 ### Notifications and apps
 - **Notifications** rebuilt as a module: ntfy, Discord, Slack, Telegram, Pushover, Gotify, Matrix, email, Home Assistant, webhooks and **browser push**, with rules, quiet hours, de-duplication and a delivery log.
 - **Installable web app** (manifest, service worker, offline page, Install app button).

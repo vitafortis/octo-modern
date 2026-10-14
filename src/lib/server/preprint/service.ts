@@ -243,17 +243,19 @@ export function prepChoice(raw: unknown): 'run' | 'skip' | undefined {
  * `preprint: 'run' | 'skip'`). Only when something is configured for the printer.
  */
 export function prepConfirmRequired(plan: PrepPlan, file: string): Response {
+	return Response.json(prepConfirmBody(plan, file), { status: 409 });
+}
+
+/** The body of that 409 (also what an MCP start answers with until `preprint` is chosen). */
+export function prepConfirmBody(plan: PrepPlan, file: string) {
 	const runs = planRuns(plan);
-	return Response.json(
-		{
-			message: runs
-				? 'Before the file starts, octo·modern runs the steps marked below and waits for each to finish. The printer shows “Preparing” meanwhile, with Cancel.'
-				: 'Everything set to run before a print is already in this file, so it starts right away.',
-			confirmRequired: true,
-			title: `Print ${file}?`,
-			confirmLabel: runs ? 'Prepare and print' : 'Print',
-			preprint: { steps: plan.steps.map(({ kind, label, run, reason, commands }) => ({ kind, label, run, reason, commands })), headRead: plan.headRead }
-		},
-		{ status: 409 }
-	);
+	return {
+		message: runs
+			? 'Before the file starts, octo·modern runs the steps marked below and waits for each to finish. The printer shows “Preparing” meanwhile, with Cancel.'
+			: 'Everything set to run before a print is already in this file, so it starts right away.',
+		confirmRequired: true as const,
+		title: `Print ${file}?`,
+		confirmLabel: runs ? 'Prepare and print' : 'Print',
+		preprint: { steps: plan.steps.map(({ kind, label, run, reason, commands }) => ({ kind, label, run, reason, commands })), headRead: plan.headRead }
+	};
 }

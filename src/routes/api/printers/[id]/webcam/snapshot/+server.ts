@@ -1,27 +1,18 @@
 import { json } from '@sveltejs/kit';
 import { handler } from '#lib/server/http.ts';
 import { requirePrinter } from '#lib/server/permissions.ts';
-import { cameraFor, cameraHeaders } from '#lib/server/octoprint/webcam.ts';
-import { httpFetch } from '#lib/server/octoprint/transport.ts';
-import { toOctoPrintError } from '#lib/server/octoprint/errors.ts';
-import { getApiKey } from '#lib/server/store.ts';
+import { fetchSnapshot } from '#lib/server/octoprint/webcam.ts';
+import { OctoPrintError } from '#lib/server/octoprint/errors.ts';
 import type { RequestHandler } from './$types';
 
 /** One frame from a camera (`?cam=<id>`, default the first), fetched by the server. */
 export const GET: RequestHandler = handler(async ({ params, locals, url }) => {
 	const p = requirePrinter(locals.user, params.id);
-	const cam = await cameraFor(p, url.searchParams.get('cam'));
-	if (!cam?.snapshotUrl) return json({ message: 'This printer has no webcam snapshot URL' }, { status: 404 });
-	let res: Response;
 	try {
-		res = await httpFetch(cam.snapshotUrl, { headers: cameraHeaders(p, cam.snapshotUrl, getApiKey(p.id)), signal: AbortSignal.timeout(8_000) }, p.verifyTls);
+		const { type, res } = await fetchSnapshot(p, url.searchParams.get('cam'));
+		return new Response(res.body, { headers: { 'content-type': type, 'cache-control': 'no-store' } });
 	} catch (err) {
-		throw toOctoPrintError(err, new URL(cam.snapshotUrl).host);
+		if (err instanceof OctoPrintError && (err.code === 'NO_SNAPSHOT' || err.code === 'BAD_SNAPSHOT')) return json({ message: err.message }, { status: err.status });
+		throw err;
 	}
-	const type = res.headers.get('content-type') ?? '';
-	if (!res.ok || !type.startsWith('image/')) {
-		await res.body?.cancel();
-		return json({ message: `The webcam answered ${res.status}${type ? ` (${type.split(';')[0]})` : ''}` }, { status: 502 });
-	}
-	return new Response(res.body, { headers: { 'content-type': type, 'cache-control': 'no-store' } });
 });

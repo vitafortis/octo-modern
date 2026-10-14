@@ -50,9 +50,12 @@ export function requireControl(user: User | null, id: string): Printer {
 	return p;
 }
 
-/** Records who did what; printer names are copied so entries outlive them. */
+/**
+ * Records who did what; printer names are copied so entries outlive them. `locals.via`
+ * (an MCP call: `MCP token “Name”`) is added to the detail, so the log says how it was done.
+ */
 export function audit(
-	locals: { user: User | null; ip?: string },
+	locals: { user: User | null; ip?: string; via?: string },
 	action: string,
 	opts: { printer?: Pick<Printer, 'id' | 'name'>; detail?: string; /** Acting user, when not yet signed in (logins). */ as?: Pick<User, 'id' | 'email'> } = {}
 ) {
@@ -63,7 +66,7 @@ export function audit(
 			action,
 			printerId: opts.printer?.id ?? null,
 			printerName: opts.printer?.name ?? null,
-			detail: opts.detail ?? null,
+			detail: locals.via ? (opts.detail ? `${opts.detail} (via ${locals.via})` : `via ${locals.via}`).slice(0, 500) : (opts.detail ?? null),
 			ip: locals.ip ?? null
 		});
 	} catch (err) {

@@ -101,6 +101,7 @@
 								<li><a href="#queue">Print queue</a></li>
 								<li><a href="#slicers">Slicer uploads</a></li>
 								<li><a href="#status-api">Status API</a></li>
+								<li><a href="#mcp">MCP server (AI tools)</a></li>
 								<li><a href="#power">Smart plugs</a></li>
 								<li><a href="#webcams">Webcams and files</a></li>
 								<li><a href="#phone-app">Phone app</a></li>
@@ -267,11 +268,12 @@ docker compose start</code></pre>
 								<tr><td>Set up smart plugs and their automations, test them</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Add, edit and remove printers (and their API keys); Discover</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>OctoPrint plugins and updates: list, install, enable/disable, uninstall, update OctoPrint and plugins, restart OctoPrint</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
-								<tr><td>Integrations: single sign-on, status API tokens, slicer upload keys</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Integrations: single sign-on, status API tokens, slicer upload keys, MCP tokens</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
+								<tr><td>Create MCP tokens for AI assistants; each acts as its creator and never exceeds what they may do now</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 								<tr><td>Settings: General (sign-in and guests, the ML API, backups), Users, Audit log, library sources</td><td class="yes" data-label="Admin">✓</td><td class="no" data-label="Operator">–</td><td class="no" data-label="Viewer">–</td></tr>
 							</tbody>
 						</table>
-						<p style="margin-top: 16px">Admins always see every printer. Operators and viewers see every printer, or only the ones you pick under <strong>Settings → Users</strong> (the <strong>Printers</strong> column); printers someone hasn't been given don't exist as far as they can tell, and the history, stats and queued jobs of removed printers are for admins only. Guests act as viewers or operators on every printer, but can't use browser push or link the Android app. Status API tokens and slicer upload keys aren't users: a status token reads every printer, an upload key only uploads to the one place it was made for. Roles are enforced on the server for every route, not just hidden in the UI.</p>
+						<p style="margin-top: 16px">Admins always see every printer. Operators and viewers see every printer, or only the ones you pick under <strong>Settings → Users</strong> (the <strong>Printers</strong> column); printers someone hasn't been given don't exist as far as they can tell, and the history, stats and queued jobs of removed printers are for admins only. Guests act as viewers or operators on every printer, but can't use browser push or link the Android app. Status API tokens and slicer upload keys aren't users: a status token reads every printer, an upload key only uploads to the one place it was made for. MCP tokens act as the admin who made them (cut down to read-only or chosen printers if wanted) and follow that account's current role. Roles are enforced on the server for every route, not just hidden in the UI.</p>
 						<p>Dangerous actions ask for confirmation, and the server insists on it too: cancelling a print, deleting a file, an emergency stop, disconnecting during a print, sending G-code while printing, uninstalling a plugin, installing one from a URL, updating or restarting OctoPrint, and G-code that stops the machine or touches stored settings and firmware.</p>
 						<h3>Guests and single sign-on</h3>
 						<p>Under <strong>Settings → General → Sign-in</strong> you can make sign-in optional: visitors use it as guests who can either watch or control printers, while admin pages still need an admin account. Single sign-on works with any OIDC provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …); register <code>&lt;your-url&gt;/auth/oidc/callback</code> as the redirect URI and set it up under <strong>Settings → Integrations</strong> (or with the <code>OCM_OIDC_*</code> variables).</p>
@@ -452,6 +454,44 @@ docker compose start</code></pre>
         unit_of_measurement: s</code></pre>
 						</div>
 						<p style="margin-top: 16px"><strong>Uptime Kuma</strong>: an HTTP monitor on <code>/api/status/&lt;id&gt;?strict=1&amp;token=ocm_…</code> goes down when OctoPrint is unreachable or the printer reports an error.</p>
+					</section>
+
+					<section id="mcp">
+						<h2>MCP server (Claude and other AI tools)</h2>
+						<p>octo·modern has a built-in <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server at <code>/mcp</code> (Streamable HTTP, stateless), so an AI assistant can work with your printers: how long a print has left, a look through the webcam, finding files, history and stats, and with a control token pausing, cancelling, starting and heating.</p>
+						<p>Create a token under <strong>Settings → Integrations → MCP server</strong> (admins): <strong>Read-only</strong> or <strong>Control</strong>, all printers or chosen ones, optional expiry. The <code>ocx_…</code> token is shown once with setup for each client.</p>
+						<div class="code">
+							<div class="code-head"><span>Claude Code</span></div>
+							<pre><code data-lang="sh">claude mcp add --transport http octo-modern https://octo.example.com/mcp --header "Authorization: Bearer ocx_…"</code></pre>
+						</div>
+						<div class="code">
+							<div class="code-head"><span>Claude Desktop · claude_desktop_config.json</span></div>
+							<pre><code data-lang="json">{
+  "mcpServers": {
+    "octo-modern": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://octo.example.com/mcp", "--header", "Authorization:${AUTH_HEADER}"],
+      "env": { "AUTH_HEADER": "Bearer ocx_…" }
+    }
+  }
+}</code></pre>
+						</div>
+						<p>Other MCP clients: the URL, transport Streamable HTTP and the header <code>Authorization: Bearer ocx_…</code>. <strong>claude.ai</strong> custom connectors need OAuth, which isn't supported yet.</p>
+						<table class="table stack">
+							<thead>
+								<tr><th scope="col">Tools</th><th scope="col">Token</th></tr>
+							</thead>
+							<tbody>
+								<tr><td class="var"><code>list_printers</code>, <code>get_printer_status</code>, <code>get_camera_snapshot</code>, <code>list_files</code> (printer or library), <code>get_queue</code>, <code>get_print_history</code>, <code>get_stats</code>, <code>get_maintenance_due</code>, <code>get_filament</code>, <code>get_updates_available</code> (admins)</td><td data-label="Token">read</td></tr>
+								<tr><td class="var"><code>pause_print</code>, <code>resume_print</code>, <code>cancel_print</code>, <code>start_print</code>, <code>add_to_queue</code>, <code>confirm_bed_clear</code>, <code>set_temperature</code></td><td data-label="Token">control</td></tr>
+							</tbody>
+						</table>
+						<ul style="margin-top: 16px">
+							<li>A token acts <strong>as the admin who made it</strong>, re-checked on every call: never more than that account may do now. Demoted to viewer, the control tools disappear; disabled or deleted, the token stops.</li>
+							<li>Read-only tokens don't see control tools at all; tokens for chosen printers don't see the others.</li>
+							<li><code>cancel_print</code> and <code>start_print</code> need <code>confirm: true</code>, otherwise they describe what would happen. Starts take the same path as the Print button: bed-clear check, pre-print plan (<code>preprint: "run" | "skip"</code>), Spoolman filament check, "already printing".</li>
+							<li>Actions are in the audit log as the creator, <em>via MCP token “Name”</em>. Bearer header only, throttled bad tokens, a foreign browser <code>Origin</code> is refused.</li>
+						</ul>
 					</section>
 
 					<section id="power">
@@ -646,6 +686,7 @@ docker compose -f compose.yaml -f compose.detect.yaml up -d</code></pre>
 							<li><strong>Least privilege</strong>: an OctoPrint Application Key acts as the user who approved it. Use a key of a user with only the permissions you want octo·modern to have; <strong>Test connection</strong> lists what it lacks.</li>
 							<li><strong>Access</strong> is checked on the server for every printer-scoped page and API call. Confirmations for dangerous actions are enforced by the server.</li>
 							<li><strong>API tokens</strong> (<code>ocm_</code> + 32 random bytes, SHA-256 hashed at rest) never become sessions, and repeated bad tokens from one address are throttled. Status tokens only work on <code>GET /api/status…</code> (and the bed-clear <code>POST</code> if allowed); slicer upload keys only on <code>/octoprint/api/…</code>, for their one destination.</li>
+							<li><strong>MCP tokens</strong> (<code>ocx_</code> + 32 random bytes, hashed at rest) only open <code>POST /mcp</code> as an <code>Authorization: Bearer</code> header, act as their creator with the creator's current role and printers (cut down to read-only or chosen printers), need <code>confirm: true</code> to cancel or start a print, and are audit-logged by name.</li>
 							<li><strong>Device tokens</strong> (the Android app, <code>ocd_</code> + 32 random bytes, hashed at rest) act as their user with the user's current role and printer access, only as an <code>Authorization: Bearer</code> header, and only open the routes the app needs (printer list and state, snapshots, pause/resume/cancel, stopping a preparation, the device's own record). Disabling the account or signing the phone out stops them at once.</li>
 							<li><strong>Sign-in</strong> is by OIDC or local accounts (scrypt-hashed passwords, login throttle). Sessions are httpOnly cookies that end when the user is disabled or their role changes. Writes from another origin are rejected.</li>
 							<li><strong>Discovery</strong> is admin-only and read-only: Docker and Arcane are only read, a socket proxy keeps writes blocked, and subnet scans are capped at 4096 addresses and audited.</li>

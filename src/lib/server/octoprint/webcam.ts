@@ -10,6 +10,9 @@
  * a plain image; the UI offers a link to open them directly instead.
  */
 import { backendFor } from '../backend/index.ts';
+import { getApiKey } from '../store.ts';
+import { httpFetch } from './transport.ts';
+import { OctoPrintError, toOctoPrintError } from './errors.ts';
 import type { Printer } from '#lib/types.ts';
 
 export type StreamKind = 'mjpeg' | 'hls' | 'webrtc';
@@ -154,4 +157,26 @@ export function cameraHeaders(printer: Printer, url: string, apiKey: string | un
 		if (apiKey && new URL(url).origin === new URL(printer.baseUrl).origin) return { 'X-Api-Key': apiKey };
 	} catch {}
 	return {};
+}
+
+/**
+ * One frame from a camera (`camId`, default the first), fetched by the server. The
+ * response is the camera's image (not yet read). Throws 404 without a snapshot URL,
+ * 502 when the camera answers with something other than an image.
+ */
+export async function fetchSnapshot(printer: Printer, camId?: string | null, timeoutMs = 8_000): Promise<{ type: string; res: Response }> {
+	const cam = await cameraFor(printer, camId);
+	if (!cam?.snapshotUrl) throw new OctoPrintError('This printer has no webcam snapshot URL', { status: 404, code: 'NO_SNAPSHOT' });
+	let res: Response;
+	try {
+		res = await httpFetch(cam.snapshotUrl, { headers: cameraHeaders(printer, cam.snapshotUrl, getApiKey(printer.id)), signal: AbortSignal.timeout(timeoutMs) }, printer.verifyTls);
+	} catch (err) {
+		throw toOctoPrintError(err, new URL(cam.snapshotUrl).host);
+	}
+	const type = res.headers.get('content-type') ?? '';
+	if (!res.ok || !type.startsWith('image/')) {
+		await res.body?.cancel();
+		throw new OctoPrintError(`The webcam answered ${res.status}${type ? ` (${type.split(';')[0]})` : ''}`, { status: 502, code: 'BAD_SNAPSHOT' });
+	}
+	return { type: type.split(';')[0].trim(), res };
 }

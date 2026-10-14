@@ -107,6 +107,22 @@ export async function addPrinterFileJob(user: User | null, b: Record<string, unk
 	return job;
 }
 
+/**
+ * Adds a job from the library (`{ source: 'library', sourceId, path }`) or a printer's
+ * files (`{ source: 'printer', printerId, path }`), with `printerId`, `tags` and `copies`,
+ * and records it in the audit log. Used by POST /api/queue and MCP's add_to_queue.
+ */
+export async function addQueueJob(locals: { user: User | null; ip?: string; via?: string }, b: Record<string, unknown>): Promise<StoredJob> {
+	const job = b.source === 'library' ? await addLibraryJob(locals.user, b) : b.source === 'printer' ? await addPrinterFileJob(locals.user, b) : null;
+	if (!job) throw new BadRequest('"source" must be "library" or "printer"');
+	const printer = job.printerId ? getPrinter(job.printerId) : undefined;
+	audit(locals, 'queue.add', {
+		printer,
+		detail: `${job.name}${job.copies > 1 ? ` ×${job.copies}` : ''} → ${printer ? printer.name : `any printer${job.tags.length ? ` with ${job.tags.join(', ')}` : ''}`}`
+	});
+	return job;
+}
+
 /** A sanitized file name for an upload. */
 export function uploadName(raw: string | null | undefined): string {
 	const name = baseName(String(raw ?? '').replace(/\\/g, '/'))

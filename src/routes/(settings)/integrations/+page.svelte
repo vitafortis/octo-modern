@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { CircleAlert, CircleCheck, Copy, KeyRound, LoaderCircle, Lock, Save, Trash2, Zap } from '@lucide/svelte';
+	import { Bot, CircleAlert, CircleCheck, Copy, KeyRound, LoaderCircle, Lock, Save, Trash2, Zap } from '@lucide/svelte';
 	import { Gauge } from '@lucide/svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import ApiTokens from '#lib/components/ApiTokens.svelte';
+	import McpTokens from '#lib/components/McpTokens.svelte';
 	import Switch from '#lib/components/Switch.svelte';
 	import { api, errorMessage } from '#lib/client/api.ts';
 	import { toast } from '#lib/client/state.svelte.ts';
@@ -130,7 +131,7 @@
 <svelte:head><title>Integrations · octo·modern</title></svelte:head>
 
 <div class="h-full overflow-y-auto">
-	<PageHeader title="Integrations" description="Sign-in providers, and API tokens for dashboards." />
+	<PageHeader title="Integrations" description="Sign-in providers, API tokens for dashboards and slicers, and the MCP server for AI assistants." />
 
 	<div class="max-w-5xl space-y-5 page-x pb-12">
 		<!-- SSO -->
@@ -286,6 +287,16 @@
 				<code class="font-mono">GET /api/status</code> (state, progress, time left and temperatures of each printer) and, for tokens allowed to, confirming a printer’s bed is clear for the print queue; nothing else.
 			</p>
 			<ApiTokens />
+		</section>
+
+		<!-- MCP server for AI assistants -->
+		<section id="mcp" class="card scroll-mt-6 p-5">
+			<h2 class="flex items-center gap-2 text-sm font-semibold"><Bot class="size-4 text-primary" />MCP server (Claude and other AI tools)</h2>
+			<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+				Lets Claude Code, Claude Desktop and other MCP clients read printer status, camera pictures, files, the queue and history — and, with a control token, pause,
+				cancel, start and heat. Each token acts as the admin who made it, limited to read-only or chosen printers if you like.
+			</p>
+			<McpTokens />
 		</section>
 
 		<!-- Slicer upload keys (OctoPrint-compatible API) -->
