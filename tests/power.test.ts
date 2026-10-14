@@ -344,7 +344,8 @@ test('service: power on → auto-connect; off needs confirming when hot, twice w
 	} finally {
 		live();
 	}
-	assert.ok(audits().some((a) => /^power\.auto_off: idle 0 min, hotend below 50 °C/.test(a)));
+	// The plug can report off a moment before the audit entry lands.
+	await until(() => audits().some((a) => /^power\.auto_off: idle 0 min, hotend below 50 °C/.test(a)), 'auto-off audited');
 	assert.ok(op.state.requests.some((r: { method: string; path: string }) => r.path === '/api/connection' && r.method === 'POST'), 'disconnected before the power went');
 	assert.equal(svc.info(printer.id)?.countdown, null);
 
